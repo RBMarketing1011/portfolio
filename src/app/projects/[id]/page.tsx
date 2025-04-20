@@ -8,13 +8,7 @@ import { Separator } from "@/components/ui/separator"
 
 import prismaDB from '@/db/prismaDB'
 
-type PageProps = {
-  params: {
-    id: string
-  }
-}
-
-export default async function ProjectShowcase ({ params }: PageProps)
+export default async function ProjectShowcase ({ params }: { params: Promise<{ id: string }> })
 {
   // Fetch project details from the database using the provided ID
   const { id } = await params
