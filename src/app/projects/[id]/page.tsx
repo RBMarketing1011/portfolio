@@ -11,7 +11,7 @@ import prismaDB from '@/db/prismaDB'
 export default async function ProjectShowcase ({ params }: { params: { id: string } })
 {
   // Fetch project details from the database using the provided ID
-  const { id } = await params
+  const { id } = params
 
   const project = await prismaDB.project.findFirst({
     where: {
