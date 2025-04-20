@@ -63,7 +63,7 @@ export default async function Home ()
         </span>
         <div className="max-w-[400px] flex flex-wrap gap-3 items-center justify-center mt-4">
           {
-            [ 'React', 'NextJS', 'Typescript', 'Prisma ORM', 'SQLite', 'Vercel', 'TailwindCSS', 'ShadCN', 'SSR', 'ISR' ]
+            [ 'React', 'NextJS', 'Typescript', 'Prisma ORM', 'PostgreSQL', 'NeonDB', 'Vercel', 'TailwindCSS', 'ShadCN', 'SSR', 'ISR' ]
               .map((tech, idx) => (
 
                 <Badge key={ idx } variant="default" className="rounded-full">
