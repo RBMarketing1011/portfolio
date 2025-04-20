@@ -203,7 +203,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "E:\\Code\\Personal Projects\\shadcn-portfolio\\src\\prisma",
+      "value": "E:\\Code\\Personal Projects\\portfolio\\src\\prisma",
       "fromEnvVar": null
     },
     "config": {
@@ -217,7 +217,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "E:\\Code\\Personal Projects\\shadcn-portfolio\\prisma\\schema.prisma",
+    "sourceFilePath": "E:\\Code\\Personal Projects\\portfolio\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -231,11 +231,12 @@ const config = {
     "db"
   ],
   "activeProvider": "sqlite",
+  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": "file:./portfolio.db"
+        "value": null
       }
     }
   },
