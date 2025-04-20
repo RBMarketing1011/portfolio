@@ -1,8 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
-import { Calendar, ExternalLink, Play } from "lucide-react"
-
-import { AspectRatio } from "@/components/ui/aspect-ratio"
+import { Calendar, ExternalLink } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -10,15 +8,14 @@ import { Separator } from "@/components/ui/separator"
 
 import prismaDB from '@/db/prismaDB'
 
-export default async function ProjectShowcase ({ params }: { params: { id: string[] } })
+export default async function ProjectShowcase ({ params }: { params: { id: string } })
 {
   // Fetch project details from the database using the provided ID
   const { id } = await params
-  const singleId = Array.isArray(id) ? id[ 0 ] : id
 
   const project = await prismaDB.project.findFirst({
     where: {
-      id: singleId, // Replace with the actual project ID you want to showcase
+      id: id, // Replace with the actual project ID you want to showcase
     },
   })
 
