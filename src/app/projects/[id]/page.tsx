@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
 import prismaDB from '@/db/prismaDB'
+import { cn } from '@/lib/utils'
 
 export default async function ProjectShowcase ({ params }: { params: Promise<{ id: string }> })
 {
@@ -41,7 +42,7 @@ export default async function ProjectShowcase ({ params }: { params: Promise<{ i
                       width={ 0 }
                       height={ 0 }
                       sizes="100vw"
-                      className="object-cover w-full h-full"
+                      className={ cn(project?.shortTitle!.toLowerCase().includes('hub') && 'object-left', 'object-cover w-full h-full') }
                       priority
                     />
                   </div>
