@@ -60,10 +60,14 @@ const About = (
                 <GithubLogo />
                 View Github
               </Link>
-              <Button variant="outline" className="rounded-full">
+              <Link
+                href='/resume.pdf'
+                download={ true }
+                className={ cn(buttonVariants({ variant: "outline" }), "rounded-full") }
+              >
                 <Download />
-                Download CV
-              </Button>
+                Download Resume
+              </Link>
             </div>
           </div>
         </div>
