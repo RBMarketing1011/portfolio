@@ -84,6 +84,9 @@ Prisma.NullTypes = {
  * Enums
  */
 exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
+  ReadUncommitted: 'ReadUncommitted',
+  ReadCommitted: 'ReadCommitted',
+  RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
 });
 
@@ -178,6 +181,11 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+};
+
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
@@ -222,7 +230,7 @@ const config = {
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null,
+    "rootEnvPath": "../../.env",
     "schemaEnvPath": "../../.env"
   },
   "relativePath": "../../prisma",
@@ -231,18 +239,17 @@ const config = {
   "datasourceNames": [
     "db"
   ],
-  "activeProvider": "sqlite",
-  "postinstall": false,
+  "activeProvider": "postgresql",
   "inlineDatasources": {
     "db": {
       "url": {
         "fromEnvVar": "DATABASE_URL",
-        "value": null
+        "value": "postgresql://neondb_owner:npg_XNhqM4fm0cAB@ep-damp-dream-a4d0d04g-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require"
       }
     }
   },
-  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/prisma\"\n}\n\ndatasource db {\n  provider = \"sqlite\"\n  url      = env(\"DATABASE_URL\")\n}\n\nmodel Profile {\n  id        String @id @default(cuid())\n  firstname String\n  lastname  String\n  email     String @unique\n  excerpt   String\n  title     String\n  bio       String\n  avatarUrl String\n  phone     String @unique\n  linkedIn  String\n  github    String\n\n  // Relationships\n  skills         Skill[]\n  experiences    Experience[]\n  projects       Project[]\n  educations     Education[]\n  certifications Certification[]\n\n  //Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Skill {\n  id    String @id @default(cuid())\n  name  String @unique\n  level String\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Experience {\n  id           String        @id @default(cuid())\n  company      String\n  title        String\n  location     String?\n  bulletPoints BulletPoint[]\n  technology   String?\n  startDate    DateTime\n  endDate      DateTime?\n  current      Boolean       @default(false)\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Project {\n  id           String   @id @default(cuid())\n  title        String\n  shortTitle   String?\n  excerpt      String?\n  description  String\n  imageUrl     String?\n  launchDate   DateTime\n  technologies String?\n  videoUrl     String?\n  websiteUrl   String?\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Education {\n  id           String    @id @default(cuid())\n  institution  String\n  degree       String\n  fieldOfStudy String?\n  startDate    DateTime\n  endDate      DateTime?\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Certification {\n  id             String    @id @default(cuid())\n  name           String\n  authority      String\n  issueDate      DateTime\n  expirationDate DateTime?\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel BulletPoint {\n  id           String     @id @default(cuid())\n  text         String\n  experience   Experience @relation(fields: [experienceId], references: [id])\n  experienceId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n",
-  "inlineSchemaHash": "498169446553f0c9d68200cdc3ca5ae094ce4563caafb349d49517b73a661f07",
+  "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nmodel Profile {\n  id        String @id @default(cuid())\n  firstname String\n  lastname  String\n  email     String @unique\n  excerpt   String\n  title     String\n  bio       String\n  avatarUrl String\n  phone     String @unique\n  linkedIn  String\n  github    String\n\n  // Relationships\n  skills         Skill[]\n  experiences    Experience[]\n  projects       Project[]\n  educations     Education[]\n  certifications Certification[]\n\n  //Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Skill {\n  id    String @id @default(cuid())\n  name  String @unique\n  level String\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Experience {\n  id           String        @id @default(cuid())\n  company      String\n  title        String\n  location     String?\n  bulletPoints BulletPoint[]\n  technology   String?\n  startDate    DateTime\n  endDate      DateTime?\n  current      Boolean       @default(false)\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Project {\n  id           String   @id @default(cuid())\n  title        String\n  shortTitle   String?\n  excerpt      String?\n  description  String\n  imageUrl     String?\n  launchDate   DateTime\n  technologies String?\n  videoUrl     String?\n  websiteUrl   String?\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Education {\n  id           String    @id @default(cuid())\n  institution  String\n  degree       String\n  fieldOfStudy String?\n  startDate    DateTime\n  endDate      DateTime?\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel Certification {\n  id             String    @id @default(cuid())\n  name           String\n  authority      String\n  issueDate      DateTime\n  expirationDate DateTime?\n\n  // Relationships\n  profile   Profile @relation(fields: [profileId], references: [id])\n  profileId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel BulletPoint {\n  id           String     @id @default(cuid())\n  text         String\n  experience   Experience @relation(fields: [experienceId], references: [id])\n  experienceId String\n\n  // Timestamps\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n",
+  "inlineSchemaHash": "8041ec0d0cbc501a7d139be9d844690cdc095ee75828e1011f541ff337ea4072",
   "copyEngine": true
 }
 
