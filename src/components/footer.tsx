@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Separator } from "@/components/ui/separator"
 import Link from "next/link"
-import { GithubLogo, LinkedInLogo, XLogo } from "./icons"
+import { GithubLogo, LinkedInLogo } from "./icons"
 import { cn } from '@/lib/utils'
 import { buttonVariants } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'

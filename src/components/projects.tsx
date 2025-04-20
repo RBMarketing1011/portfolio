@@ -1,8 +1,7 @@
 import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
-import { ExternalLink, FolderOpenDot, LinkIcon } from "lucide-react"
+import { buttonVariants } from "@/components/ui/button"
+import { ExternalLink, FolderOpenDot } from "lucide-react"
 import Image from "next/image"
-import { GithubLogo } from "./icons"
 import { Project } from '@/prisma'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
