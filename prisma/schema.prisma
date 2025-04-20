@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id        String @id @default(cuid())
+  firstname String
+  lastname  String
+  email     String @unique
+  excerpt   String
+  title     String
+  bio       String
+  avatarUrl String
+  phone     String @unique
+  linkedIn  String
+  github    String
+
+  // Relationships
+  skills         Skill[]
+  experiences    Experience[]
+  projects       Project[]
+  educations     Education[]
+  certifications Certification[]
+
+  //Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Skill {
+  id    String @id @default(cuid())
+  name  String @unique
+  level String
+
+  // Relationships
+  profile   Profile @relation(fields: [profileId], references: [id])
+  profileId String
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Experience {
+  id           String        @id @default(cuid())
+  company      String
+  title        String
+  location     String?
+  bulletPoints BulletPoint[]
+  technology   String?
+  startDate    DateTime
+  endDate      DateTime?
+  current      Boolean       @default(false)
+
+  // Relationships
+  profile   Profile @relation(fields: [profileId], references: [id])
+  profileId String
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  title        String
+  shortTitle   String?
+  excerpt      String?
+  description  String
+  imageUrl     String?
+  launchDate   DateTime
+  technologies String?
+  videoUrl     String?
+  websiteUrl   String?
+
+  // Relationships
+  profile   Profile @relation(fields: [profileId], references: [id])
+  profileId String
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Education {
+  id           String    @id @default(cuid())
+  institution  String
+  degree       String
+  fieldOfStudy String?
+  startDate    DateTime
+  endDate      DateTime?
+
+  // Relationships
+  profile   Profile @relation(fields: [profileId], references: [id])
+  profileId String
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Certification {
+  id             String    @id @default(cuid())
+  name           String
+  authority      String
+  issueDate      DateTime
+  expirationDate DateTime?
+
+  // Relationships
+  profile   Profile @relation(fields: [profileId], references: [id])
+  profileId String
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BulletPoint {
+  id           String     @id @default(cuid())
+  text         String
+  experience   Experience @relation(fields: [experienceId], references: [id])
+  experienceId String
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
