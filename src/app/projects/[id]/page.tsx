@@ -15,7 +15,7 @@ export default async function ProjectShowcase ({ params }: { params: { id: strin
 
   const project = await prismaDB.project.findFirst({
     where: {
-      id: id, // Replace with the actual project ID you want to showcase
+      id,
     },
   })
 
