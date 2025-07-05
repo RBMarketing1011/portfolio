@@ -45,7 +45,7 @@ const About = (
               alt={ profile.firstname + " " + profile.lastname + " profile image" }
             />
             <h2 className="text-4xl font-bold mb-4 tracking-tight">
-              Code, Coffee, and No BS
+              From Late Nights to Launch Day
             </h2>
             <p className="text-muted-foreground mb-6 text-justify">
               { profile.bio }
