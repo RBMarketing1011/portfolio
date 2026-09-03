@@ -1,79 +1,36 @@
-import About from "@/components/about"
-import Experience from "@/components/experience"
-import Hero from "@/components/hero"
-import Projects from "@/components/projects"
-import AnimatedGridPattern from '@/components/ui/animated-grid-pattern'
-import { Badge } from '@/components/ui/badge'
-import prismaDB from '@/db/prismaDB'
-import { cn } from '@/lib/utils'
+import Link from "next/link"
+import { ArrowRight, Bot, LayoutPanelTop, Sparkles, type LucideIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 
-export default async function Home ()
+export default function Home ()
 {
-  const profile = await prismaDB.profile.findFirst({
-    where: {
-      email: 'rbmarketingandanalytics@gmail.com'
-    },
-    include: {
-      experiences: {
-        include: {
-          bulletPoints: true,
-        },
-      },
-      projects: true,
-    },
-  })
-
-
   return (
-    profile &&
-    <div className="space-y-10 sm:space-y-16">
-      <div className="fixed inset-0 -z-10 w-screen h-screen">
-        <AnimatedGridPattern
-          numSquares={ 30 }
-          maxOpacity={ 0.1 }
-          duration={ 3 }
-          className={ cn(
-            "[mask-image:radial-gradient(700px_circle_at_center,white,transparent)]",
-            "inset-x-0 w-full h-screen skew-y-12"
-          ) }
-        />
-      </div>
-      <Hero
-        profile={ profile }
-      />
-      <About
-        profile={ profile }
-      />
-      <Experience
-        experiences={ profile.experiences }
-      />
-      <Projects
-        projects={ profile.projects }
-      />
-
-      <section id='stack' className="flex flex-col gap-1 items-center justify-center text-center max-w-screen-md mx-auto">
-        <span className="text-2xl font-bold">
-          Psst…
-        </span>
-        <span>
-          this template has been customized with some slick tech too.
-        </span>
-        <span>
-          I didn&apos;t just clone it — peep the stack below.
-        </span>
-        <div className="max-w-[400px] flex flex-wrap gap-3 items-center justify-center mt-4">
-          {
-            [ 'React', 'NextJS', 'Typescript', 'Prisma ORM', 'PostgreSQL', 'NeonDB', 'Vercel', 'TailwindCSS', 'ShadCN', 'SSR', 'ISR' ]
-              .map((tech, idx) => (
-
-                <Badge key={ idx } variant="default" className="rounded-full">
-                  { tech }
-                </Badge>
-
-              ))
-          }
+    <>
+      <section className="hero-grid relative overflow-hidden px-6 pb-24 pt-36 sm:px-10 lg:px-16 lg:pb-32">
+        <div className="mx-auto max-w-6xl">
+          <p className="eyebrow">ReynoldsBuild.dev</p>
+          <h1 className="mt-6 max-w-4xl font-display text-5xl font-semibold leading-[1.03] text-white sm:text-7xl">Software that keeps your business moving.</h1>
+          <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-300">We design and build the portals, tools, and automations that clear operational friction and give growing teams room to work.</p>
+          <div className="mt-10 flex flex-wrap gap-4">
+            <Button asChild size="lg" className="bg-[#1684f5] text-[#02101f] hover:bg-[#4aa2fb]"><Link href="/contact">Start a project <ArrowRight /></Link></Button>
+            <Button asChild size="lg" variant="outline" className="border-[#1684f5]/70 bg-transparent text-slate-100 hover:bg-[#1684f5]/10 hover:text-white"><Link href="/work">Explore our work</Link></Button>
+          </div>
         </div>
       </section>
-    </div>
+
+      <section className="border-y border-white/10 bg-[#07111f] px-6 py-16 sm:px-10 lg:px-16">
+        <div className="mx-auto grid max-w-6xl gap-5 md:grid-cols-3">
+          <ServiceHighlight icon={ LayoutPanelTop } title="Built around your operations" text="Purpose-built portals and internal systems, designed around how your team actually works." />
+          <ServiceHighlight icon={ Bot } title="Automation that earns its keep" text="Practical AI and integrations that remove repetitive work without adding another fragile tool." />
+          <ServiceHighlight icon={ Sparkles } title="A focused delivery partner" text="Strategy, design, and engineering under one roof, from the first workflow map to launch." />
+        </div>
+      </section>
+    </>
   )
+}
+
+function ServiceHighlight ({ icon: Icon, title, text }: { icon: LucideIcon, title: string, text: string })
+{
+  return <Card className="border-white/10 bg-[#091525] shadow-none"><CardContent className="p-7"><Icon className="text-[#1684f5]" size={ 25 } strokeWidth={ 1.7 } /><h2 className="mt-5 font-display text-xl font-semibold text-white">{ title }</h2><p className="mt-3 leading-7 text-slate-400">{ text }</p></CardContent></Card>
 }

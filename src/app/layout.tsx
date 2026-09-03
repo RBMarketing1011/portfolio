@@ -1,48 +1,35 @@
 import type { Metadata } from "next"
-import { Geist } from "next/font/google"
+import { DM_Sans, Space_Grotesk } from "next/font/google"
 import "@/styles/globals.css"
-import Navbar from "@/components/navbar"
-import Footer from "@/components/footer"
-import prismaDB from '@/db/prismaDB'
-import { ThemeProvider } from '@/components/theme-provider'
+import SiteFooter from "@/components/site-footer"
+import SiteHeader from "@/components/site-header"
 
-const geistSans = Geist({
-  subsets: [ "latin" ],
+const bodyFont = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+})
+
+const displayFont = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
 })
 export const metadata: Metadata = {
-  title: "Anthony Reynolds Portfolio",
-  description:
-    "Anthony Reynolds Portfolio - A showcase of my work and skills.",
+  title: "ReynoldsBuild.dev | Software That Moves Your Business Forward",
+  description: "Custom software, portals, and practical AI automation for growing businesses.",
 }
 
-export default async function RootLayout ({
+export default function RootLayout ({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>)
 {
-  const profile = await prismaDB.profile.findFirst({
-    where: {
-      email: 'rbmarketingandanalytics@gmail.com'
-    }
-  })
-
   return (
-    profile &&
-    <html lang="en" className='overflow-x-hidden' suppressHydrationWarning>
-      <body className={ `${ geistSans.className } antialiased` }>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Navbar
-            profile={ profile }
-          />
-          <main>{ children }</main>
-          <Footer />
-        </ThemeProvider>
+    <html lang="en" className="overflow-x-hidden">
+      <body className={ `${bodyFont.variable} ${displayFont.variable} antialiased` }>
+        <SiteHeader />
+        <main>{ children }</main>
+        <SiteFooter />
       </body>
     </html>
   )

@@ -1,57 +1,30 @@
-# Beautiful Portfolio Template
+# ReynoldsBuild.dev
 
-A modern and responsive portfolio template built with Next.js, Tailwind CSS, and Shadcn UI, and Shadcn UI Blocks.
+ReynoldsBuild.dev is a static company website for custom software, business portals, and practical AI automation. It is built with Next.js, Tailwind CSS, and shadcn/ui primitives.
 
-## Demo
-
-[Live Demo](https://shadcn-portfolio-template.vercel.app/)
-
-## Preview
-
-![Preview](./public/preview.png)
-
-## Features
-
-- 🎨 Modern and clean design
-- 📱 Fully responsive layout
-- 🎯 Built with Next.js 15
-- 💅 Styled with Tailwind CSS `4.0`
-- 🧩 Built with [Shadcn UI](https://ui.shadcn.com) and [Shadcn UI Blocks](https://shadcnui-blocks.com)
-- 🌙 Dark mode support
-
-## Getting Started
-
-1. Clone the repository:
+## Local development
 
 ```bash
-git clone https://github.com/akash3444/portfolio-template.git
-cd shadcn-ui-landing-page
+pnpm install
+pnpm dev
 ```
 
-2. Install dependencies:
+Open `http://localhost:3000` after the development server starts.
+
+## Contact form
+
+The site has no database. The contact form sends mail through Nodemailer. Copy `.env.example` to `.env.local` and replace every placeholder with the SMTP settings for the sending mailbox. Never commit `.env.local`.
 
 ```bash
-npm install
+CONTACT_TO_EMAIL=you@example.com
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=you@example.com
+SMTP_PASS=replace-with-your-smtp-password
+SMTP_FROM_EMAIL=you@example.com
 ```
 
-3. Start the development server:
+## Content
 
-```bash
-npm run dev
-```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser to see the result.
-
-## Customization
-
-1. Replace the placeholder images with your own content.
-2. Modify the text and styles in the components to match your brand and messaging.
-3. Add your own features and sections as needed.
-
-## Why this template?
-
-This project is a base template for a portfolio. It is built with Next.js, Tailwind CSS, Shadcn UI, and Shadcn UI Blocks. It is a great starting point for a portfolio. You can customized the content and media files as per your needs. It is not intended to be a complete solution for a portfolio. It is intended to be a starting point for a portfolio.
-
-## Contributing
-
-If you have any suggestions or improvements, please create an issue or submit a pull request.
+Current case-study and article copy is intentionally marked as in progress. Project previews in `public/` have been retained. Replace the records in `src/lib/site-content.ts` with approved project details and publish-ready insight content as it becomes available.

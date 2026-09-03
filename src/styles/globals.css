@@ -5,13 +5,17 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-space-grotesk);
+  --color-brand: #0197f6;
+  --color-brand-strong: #3fb2fa;
+  --color-ink: #03080f;
+  --color-panel: #091525;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: #03080f;
+  --foreground: #eef5ff;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -125,6 +129,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-dm-sans), sans-serif;
   }
 }
 
@@ -132,3 +137,7 @@
   scroll-behavior: smooth;
   scroll-margin-top: 2rem;
 }
+
+.font-display { font-family: var(--font-space-grotesk), sans-serif; }
+.hero-grid { background-color: var(--color-ink); background-image: linear-gradient(rgba(1, 151, 246, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(1, 151, 246, 0.07) 1px, transparent 1px); background-size: 44px 44px; }
+.eyebrow { color: var(--color-brand); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
