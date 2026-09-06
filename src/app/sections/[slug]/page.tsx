@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import { findEntry, library } from '../library'
+import { entryVariants, findEntry, library } from '../library'
 import { PreviewFrame } from '../preview-frame'
 
 export function generateStaticParams() {
@@ -19,9 +19,15 @@ export default async function SectionPage({
 
 	if (!found) notFound()
 
+	// Numbered in the toolbar; the descriptive names stay in the library for authoring.
+	const variants = entryVariants(found.entry).map((variant, index) => ({
+		id: variant.id,
+		name: `Variant ${index + 1}`,
+	}))
+
 	return (
 		<Suspense fallback={null}>
-			<PreviewFrame slug={slug} name={found.entry.name} />
+			<PreviewFrame slug={slug} name={found.entry.name} variants={variants} />
 		</Suspense>
 	)
 }

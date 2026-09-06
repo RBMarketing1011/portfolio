@@ -15,8 +15,10 @@ export function LibraryNav({ groups }: { groups: NavGroup[] }) {
 	const pathname = usePathname()
 	const params = useSearchParams()
 	const navRef = useRef<HTMLElement>(null)
-	// Preserves viewport and theme choices when moving between sections.
-	const search = params.toString()
+	// Viewport and theme carry across sections; the variant is per entry, so it does not.
+	const carried = new URLSearchParams(params.toString())
+	carried.delete('v')
+	const search = carried.toString()
 	const query = search ? `?${search}` : ''
 
 	// The sidebar starts at the top on load, so bring the selected entry into view.

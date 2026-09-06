@@ -3,6 +3,7 @@ import {
 	Breadcrumbs,
 	CaseStudyCard,
 	CheckList,
+	Chips,
 	CtaBand,
 	FilterBar,
 	Grid,
@@ -15,7 +16,6 @@ import {
 	SectionHeading,
 	StatBand,
 	TeamCard,
-	TechStackChips,
 	VideoPlayer,
 	sampleArticles,
 	sampleCaseStudies,
@@ -96,7 +96,7 @@ export function CaseStudyDetailTemplate() {
 
 					<aside className='space-y-8'>
 						<GlassCard className='p-7'>
-							<TechStackChips />
+							<Chips />
 						</GlassCard>
 						<GlassCard className='p-7'>
 							<p className='text-xs font-semibold uppercase tracking-widest text-slate-500'>

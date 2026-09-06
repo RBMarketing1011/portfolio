@@ -42,6 +42,7 @@ export function FeatureRows({
 			],
 		},
 	],
+	layout = 'alternating',
 }: {
 	rows?: {
 		eyebrow: string
@@ -49,37 +50,101 @@ export function FeatureRows({
 		description: string
 		points: string[]
 	}[]
+	/** How each row arranges its copy against its media. */
+	layout?: 'alternating' | 'cards' | 'stacked'
 }) {
 	return (
 		<Section>
-			<div className='space-y-20 lg:space-y-28'>
-				{rows.map((row, index) => (
-					<div
-						key={row.title}
-						className='grid items-center gap-12 lg:grid-cols-2'>
-						<div className={index % 2 === 1 ? 'lg:order-2' : ''}>
+			<div
+				className={cn(
+					layout === 'alternating' && 'space-y-20 lg:space-y-28',
+					layout === 'cards' && 'space-y-6',
+					layout === 'stacked' && 'space-y-16',
+				)}>
+				{rows.map((row, index) => {
+					const heading = (
+						<>
 							<p className='eyebrow'>{row.eyebrow}</p>
 							<h3 className='mt-4 font-display text-2xl font-semibold leading-tight text-white sm:text-3xl'>
 								{row.title}
 							</h3>
-							<p className='mt-5 leading-8 text-slate-400'>{row.description}</p>
-							<ul className='mt-7 space-y-3'>
-								{row.points.map((point) => (
-									<li key={point} className='flex gap-3 text-slate-300'>
-										<Check className='mt-1 size-4 shrink-0 text-brand' />
-										<span className='leading-7'>{point}</span>
-									</li>
-								))}
-							</ul>
-						</div>
-						<GlassCard
-							className={`aspect-video w-full ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
-							<div className='flex h-full items-center justify-center px-6 text-center text-sm text-slate-500'>
-								Media slot for this row
+						</>
+					)
+					const points = (
+						<ul className='space-y-3'>
+							{row.points.map((point) => (
+								<li key={point} className='flex gap-3 text-slate-300'>
+									<Check className='mt-1 size-4 shrink-0 text-brand' />
+									<span className='leading-7'>{point}</span>
+								</li>
+							))}
+						</ul>
+					)
+
+					if (layout === 'stacked') {
+						return (
+							<div key={row.title} className='border-t border-white/10 pt-10'>
+								<div className='flex h-64 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-sm text-slate-500 sm:h-80'>
+									Media slot for this row
+								</div>
+								<div className='mt-10 grid gap-8 lg:grid-cols-[1fr_1.2fr]'>
+									<div>{heading}</div>
+									<div>
+										<p className='leading-8 text-slate-400'>
+											{row.description}
+										</p>
+										<div className='mt-6'>{points}</div>
+									</div>
+								</div>
 							</div>
-						</GlassCard>
-					</div>
-				))}
+						)
+					}
+
+					const copy = (
+						<div
+							className={
+								layout === 'alternating' && index % 2 === 1 ? 'lg:order-2' : ''
+							}>
+							{heading}
+							<p className='mt-5 leading-8 text-slate-400'>{row.description}</p>
+							<div className='mt-7'>{points}</div>
+						</div>
+					)
+
+					if (layout === 'cards') {
+						return (
+							<GlassCard
+								key={row.title}
+								variant='accent'
+								className={cn(
+									'grid items-center gap-10 p-8 lg:grid-cols-2 lg:p-10',
+									accentEdges[index % accentEdges.length],
+								)}>
+								{copy}
+								<div className='flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-white/3 text-sm text-slate-500'>
+									Media slot for this row
+								</div>
+							</GlassCard>
+						)
+					}
+
+					return (
+						<div
+							key={row.title}
+							className='grid items-center gap-12 lg:grid-cols-2'>
+							{copy}
+							<GlassCard
+								className={cn(
+									'aspect-video w-full',
+									index % 2 === 1 && 'lg:order-1',
+								)}>
+								<div className='flex h-full items-center justify-center px-6 text-center text-sm text-slate-500'>
+									Media slot for this row
+								</div>
+							</GlassCard>
+						</div>
+					)
+				})}
 			</div>
 		</Section>
 	)
@@ -124,6 +189,7 @@ export function ProcessSteps({
 			],
 		},
 	],
+	layout = 'cards',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
@@ -134,7 +200,20 @@ export function ProcessSteps({
 		summary: string
 		detail: string[]
 	}[]
+	/** How the numbered steps are drawn. */
+	layout?: 'cards' | 'timeline' | 'columns'
 }) {
+	const detailList = (items: string[]) => (
+		<ul className='space-y-3'>
+			{items.map((item) => (
+				<li key={item} className='flex gap-3 text-slate-300'>
+					<Check className='mt-1 size-4 shrink-0 text-brand' />
+					<span className='leading-7'>{item}</span>
+				</li>
+			))}
+		</ul>
+	)
+
 	return (
 		<Section>
 			<SectionHeading
@@ -142,15 +221,16 @@ export function ProcessSteps({
 				title={title}
 				description={description}
 			/>
-			<ol className='mt-12 space-y-5'>
-				{steps.map((step, index) => (
-					<GlassCard
-						key={step.number}
-						asChild
-						variant='accent'
-						className={accentEdges[index % accentEdges.length]}>
-						<li className='grid gap-8 p-8 lg:grid-cols-[auto_1fr_1fr] lg:items-start'>
-							<span className='font-display text-5xl font-semibold text-brand/30'>
+
+			{layout === 'timeline' && (
+				<ol className='mt-12 border-l border-white/10 pl-8 sm:pl-12'>
+					{steps.map((step) => (
+						<li
+							key={step.number}
+							className='relative pb-12 last:pb-0 sm:grid sm:grid-cols-[1fr_1fr] sm:gap-10'>
+							<span
+								aria-hidden
+								className='absolute -left-8 flex size-11 items-center justify-center rounded-full border border-brand/40 bg-ink font-display text-sm font-semibold text-brand sm:-left-12 sm:size-12'>
 								{step.number}
 							</span>
 							<div>
@@ -159,18 +239,55 @@ export function ProcessSteps({
 								</h3>
 								<p className='mt-3 leading-8 text-slate-400'>{step.summary}</p>
 							</div>
-							<ul className='space-y-3'>
-								{step.detail.map((item) => (
-									<li key={item} className='flex gap-3 text-slate-300'>
-										<Check className='mt-1 size-4 shrink-0 text-brand' />
-										<span className='leading-7'>{item}</span>
-									</li>
-								))}
-							</ul>
+							<div className='mt-6 sm:mt-0'>{detailList(step.detail)}</div>
 						</li>
-					</GlassCard>
-				))}
-			</ol>
+					))}
+				</ol>
+			)}
+
+			{layout === 'columns' && (
+				<ol className='mt-12 grid gap-8 md:grid-cols-3'>
+					{steps.map((step) => (
+						<li key={step.number} className='border-t-2 border-brand/40 pt-6'>
+							<span className='font-display text-6xl font-semibold text-brand/25'>
+								{step.number}
+							</span>
+							<h3 className='mt-4 font-display text-xl font-semibold text-white'>
+								{step.title}
+							</h3>
+							<p className='mt-3 leading-7 text-slate-400'>{step.summary}</p>
+							<div className='mt-6'>{detailList(step.detail)}</div>
+						</li>
+					))}
+				</ol>
+			)}
+
+			{layout === 'cards' && (
+				<ol className='mt-12 space-y-5'>
+					{steps.map((step, index) => (
+						<GlassCard
+							key={step.number}
+							asChild
+							variant='accent'
+							className={accentEdges[index % accentEdges.length]}>
+							<li className='grid gap-8 p-8 lg:grid-cols-[auto_1fr_1fr] lg:items-start'>
+								<span className='font-display text-5xl font-semibold text-brand/30'>
+									{step.number}
+								</span>
+								<div>
+									<h3 className='font-display text-2xl font-semibold text-white'>
+										{step.title}
+									</h3>
+									<p className='mt-3 leading-8 text-slate-400'>
+										{step.summary}
+									</p>
+								</div>
+								{detailList(step.detail)}
+							</li>
+						</GlassCard>
+					))}
+				</ol>
+			)}
 		</Section>
 	)
 }
@@ -212,12 +329,75 @@ export function BentoGrid({
 			blurb: 'The last tile closes the final row with no gap left over.',
 		},
 	],
+	tileStyle = 'accent',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	description?: string
 	tiles?: { title: string; blurb: string; wide?: boolean; icon?: LucideIcon }[]
+	/** How each tile is drawn. Spans stay the same across all three. */
+	tileStyle?: 'accent' | 'divided' | 'numbered'
 }) {
+	if (tileStyle === 'divided') {
+		return (
+			<Section>
+				<SectionHeading
+					eyebrow={eyebrow}
+					title={title}
+					description={description}
+				/>
+				<div className='mt-12 grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3'>
+					{tiles.map((tile, index) => {
+						const Icon = tile.icon ?? Workflow
+						return (
+							<div
+								key={index}
+								className={cn('bg-ink p-7', tile.wide && 'lg:col-span-2')}>
+								<div className='flex items-center gap-3'>
+									<Icon className='size-5 shrink-0 text-brand' />
+									<h3 className='font-display text-lg font-semibold text-white'>
+										{tile.title}
+									</h3>
+								</div>
+								<p className='mt-3 leading-7 text-slate-400'>{tile.blurb}</p>
+							</div>
+						)
+					})}
+				</div>
+			</Section>
+		)
+	}
+
+	if (tileStyle === 'numbered') {
+		return (
+			<Section>
+				<SectionHeading
+					eyebrow={eyebrow}
+					title={title}
+					description={description}
+				/>
+				<div className='mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
+					{tiles.map((tile, index) => (
+						<div
+							key={index}
+							className={cn(
+								'rounded-xl border border-white/12 p-7',
+								tile.wide && 'lg:col-span-2',
+							)}>
+							<span className='font-display text-sm font-semibold tracking-[0.2em] text-brand'>
+								{String(index + 1).padStart(2, '0')}
+							</span>
+							<h3 className='mt-4 font-display text-lg font-semibold text-white'>
+								{tile.title}
+							</h3>
+							<p className='mt-3 leading-7 text-slate-400'>{tile.blurb}</p>
+						</div>
+					))}
+				</div>
+			</Section>
+		)
+	}
+
 	return (
 		<Section>
 			<SectionHeading
@@ -291,6 +471,7 @@ export function TabsShowcase({
 			],
 		},
 	],
+	tabStyle = 'pills',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
@@ -302,7 +483,11 @@ export function TabsShowcase({
 		body: string
 		points: string[]
 	}[]
+	/** Where the tab list sits and how the active tab is marked. */
+	tabStyle?: 'pills' | 'underline' | 'side'
 }) {
+	const side = tabStyle === 'side'
+
 	return (
 		<Section>
 			<SectionHeading
@@ -310,20 +495,49 @@ export function TabsShowcase({
 				title={title}
 				description={description}
 			/>
-			<Tabs defaultValue={items[0]?.id} className='mt-12'>
-				<TabsList className='flex h-auto w-full flex-wrap justify-start gap-2 bg-transparent p-0'>
+			<Tabs
+				defaultValue={items[0]?.id}
+				orientation={side ? 'vertical' : 'horizontal'}
+				className={cn(
+					'mt-12',
+					side && 'gap-0 lg:grid lg:grid-cols-[14rem_1fr] lg:gap-10',
+				)}>
+				<TabsList
+					className={cn(
+						'h-auto bg-transparent p-0',
+						tabStyle === 'pills' && 'flex w-full flex-wrap justify-start gap-2',
+						tabStyle === 'underline' &&
+							'flex w-full justify-start gap-8 rounded-none border-b border-white/10',
+						side &&
+							'flex w-full flex-col items-stretch gap-1 lg:sticky lg:top-24',
+					)}>
 					{items.map((item) => (
 						<TabsTrigger
 							key={item.id}
 							value={item.id}
-							className='rounded-lg border border-white/10 bg-white/3 px-5 py-2.5 text-sm font-medium text-slate-400 data-[state=active]:border-brand/40 data-[state=active]:bg-brand/10 data-[state=active]:text-white'>
+							className={cn(
+								'text-sm font-medium text-slate-400',
+								tabStyle === 'pills' &&
+									'rounded-lg border border-white/10 bg-white/3 px-5 py-2.5 data-[state=active]:border-brand/40 data-[state=active]:bg-brand/10 data-[state=active]:text-white',
+								tabStyle === 'underline' &&
+									'-mb-px rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 pb-4 data-[state=active]:border-brand data-[state=active]:bg-transparent data-[state=active]:text-white',
+								side &&
+									'justify-start rounded-lg border-0 border-l-2 border-transparent bg-transparent px-4 py-3 text-left data-[state=active]:border-brand data-[state=active]:bg-brand/8 data-[state=active]:text-white',
+							)}>
 							{item.label}
 						</TabsTrigger>
 					))}
 				</TabsList>
 				{items.map((item) => (
-					<TabsContent key={item.id} value={item.id} className='mt-8'>
-						<GlassCard className='grid items-center gap-10 p-8 lg:grid-cols-2 lg:p-10'>
+					<TabsContent
+						key={item.id}
+						value={item.id}
+						className={cn('mt-8', side && 'lg:mt-0')}>
+						<GlassCard
+							className={cn(
+								'grid items-center gap-10 p-8 lg:p-10',
+								!side && 'lg:grid-cols-2',
+							)}>
 							<div>
 								<h3 className='font-display text-2xl font-semibold text-white'>
 									{item.title}
@@ -370,13 +584,80 @@ export function ComparisonTable({
 			values: [true, true, false],
 		},
 	],
+	tableStyle = 'accent',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	description?: string
 	columns?: string[]
 	rows?: { label: string; values: boolean[] }[]
+	/** How the table itself is drawn. */
+	tableStyle?: 'accent' | 'rules' | 'zebra'
 }) {
+	const mark = (value: boolean) =>
+		value ? (
+			<Check className='size-5 text-brand' />
+		) : (
+			<Minus className='size-5 text-slate-700' />
+		)
+
+	const table = (
+		<table className='w-full min-w-2xl border-collapse text-left'>
+			<thead>
+				<tr
+					className={cn(
+						tableStyle === 'accent' && 'border-b border-brand/20',
+						tableStyle === 'rules' && 'border-b border-white/15',
+						tableStyle === 'zebra' && 'border-b border-white/10',
+					)}>
+					<th className='p-5 text-sm font-medium text-slate-500'>&nbsp;</th>
+					{columns.map((column, index) => (
+						<th
+							key={column}
+							className={cn(
+								'p-5 text-sm font-semibold',
+								tableStyle === 'rules' && 'uppercase tracking-[0.14em]',
+								index === 0
+									? cn(
+											'text-brand',
+											tableStyle === 'accent' && 'bg-brand/8',
+											tableStyle === 'zebra' && 'border-t-2 border-brand',
+										)
+									: 'text-slate-400',
+							)}>
+							{column}
+						</th>
+					))}
+				</tr>
+			</thead>
+			<tbody>
+				{rows.map((row, rowIndex) => (
+					<tr
+						key={row.label}
+						className={cn(
+							tableStyle === 'accent' &&
+								'border-b border-brand/10 last:border-b-0',
+							tableStyle === 'rules' &&
+								'border-b border-white/8 last:border-b-0',
+							tableStyle === 'zebra' && rowIndex % 2 === 1 && 'bg-white/3',
+						)}>
+						<td className='p-5 leading-7 text-slate-300'>{row.label}</td>
+						{row.values.map((value, index) => (
+							<td
+								key={index}
+								className={cn(
+									'p-5',
+									index === 0 && tableStyle === 'accent' && 'bg-brand/8',
+								)}>
+								{mark(value)}
+							</td>
+						))}
+					</tr>
+				))}
+			</tbody>
+		</table>
+	)
+
 	return (
 		<Section>
 			<SectionHeading
@@ -384,52 +665,23 @@ export function ComparisonTable({
 				title={title}
 				description={description}
 			/>
-			<GlassCard
-				variant='accent'
-				className='mt-12 overflow-x-auto border-brand/30 from-brand/12'>
-				<table className='w-full min-w-2xl border-collapse text-left'>
-					<thead>
-						<tr className='border-b border-brand/20'>
-							<th className='p-5 text-sm font-medium text-slate-500'>&nbsp;</th>
-							{columns.map((column, index) => (
-								<th
-									key={column}
-									className={cn(
-										'p-5 text-sm font-semibold',
-										index === 0 ? 'bg-brand/8 text-brand' : 'text-slate-400',
-									)}>
-									{column}
-								</th>
-							))}
-						</tr>
-					</thead>
-					<tbody>
-						{rows.map((row) => (
-							<tr
-								key={row.label}
-								className='border-b border-brand/10 last:border-b-0'>
-								<td className='p-5 leading-7 text-slate-300'>{row.label}</td>
-								{row.values.map((value, index) => (
-									<td
-										key={index}
-										className={cn('p-5', index === 0 && 'bg-brand/8')}>
-										{value ? (
-											<Check className='size-5 text-brand' />
-										) : (
-											<Minus className='size-5 text-slate-700' />
-										)}
-									</td>
-								))}
-							</tr>
-						))}
-					</tbody>
-				</table>
-			</GlassCard>
+			{tableStyle === 'rules' ? (
+				<div className='mt-12 overflow-x-auto'>{table}</div>
+			) : (
+				<GlassCard
+					variant={tableStyle === 'accent' ? 'accent' : 'default'}
+					className={cn(
+						'mt-12 overflow-x-auto',
+						tableStyle === 'accent' && 'border-brand/30 from-brand/12',
+					)}>
+					{table}
+				</GlassCard>
+			)}
 		</Section>
 	)
 }
 
-export function TechStackChips({
+export function Chips({
 	label = 'Built With',
 	items = [
 		'Chip One',
@@ -439,12 +691,35 @@ export function TechStackChips({
 		'Chip Five',
 		'Chip Six',
 	],
+	variant = 'outline',
 	className,
 }: {
 	label?: string
 	items?: string[]
+	variant?: 'outline' | 'solid' | 'inline'
 	className?: string
 }) {
+	// No pills at all, just a dot-separated line under the label.
+	if (variant === 'inline') {
+		return (
+			<div className={className}>
+				<p className='eyebrow'>{label}</p>
+				<ul className='mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-slate-300'>
+					{items.map((item, index) => (
+						<li key={item} className='flex items-center gap-3'>
+							{item}
+							{index < items.length - 1 && (
+								<span aria-hidden className='text-slate-600'>
+									&middot;
+								</span>
+							)}
+						</li>
+					))}
+				</ul>
+			</div>
+		)
+	}
+
 	return (
 		<div className={className}>
 			<p className='eyebrow'>{label}</p>
@@ -453,7 +728,12 @@ export function TechStackChips({
 					<li key={item}>
 						<Badge
 							variant='outline'
-							className='border-white/15 bg-white/3 px-3 py-1 text-slate-300'>
+							className={cn(
+								'px-3 py-1',
+								variant === 'solid'
+									? 'border-brand/40 bg-brand/12 font-medium text-brand'
+									: 'border-white/15 bg-white/3 text-slate-300',
+							)}>
 							{item}
 						</Badge>
 					</li>

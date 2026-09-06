@@ -41,12 +41,14 @@ export function MediaCard({
 	caption = 'This is the media caption, describing what is on screen.',
 	fill = false,
 	natural = false,
+	variant = 'card',
 	className,
 }: Partial<MediaItem> & {
 	/** Fill the parent cell instead of holding 16:9, for collage layouts. */
 	fill?: boolean
 	/** Take the image's own ratio instead of 16:9, for masonry and mixed sets. */
 	natural?: boolean
+	variant?: 'card' | 'overlay' | 'bare'
 	className?: string
 }) {
 	const triggerRef = useRef<HTMLButtonElement>(null)
@@ -113,6 +115,8 @@ export function MediaCard({
 							'relative w-full overflow-hidden',
 							fill && 'h-full',
 							!fill && !natural && 'aspect-video',
+							variant === 'bare' &&
+								'rounded-lg border-transparent bg-transparent shadow-none backdrop-blur-none before:hidden',
 						)}>
 						<Image
 							src={src}
@@ -127,6 +131,11 @@ export function MediaCard({
 							}}
 							className='object-cover'
 						/>
+						{variant === 'overlay' && caption && (
+							<span className='absolute inset-x-0 bottom-0 bg-linear-to-t from-ink via-ink/70 to-transparent p-5 text-left text-sm text-slate-200'>
+								{caption}
+							</span>
+						)}
 						<span className='absolute inset-0 flex items-center justify-center bg-ink/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100'>
 							<span className='flex size-12 items-center justify-center rounded-full border border-white/20 bg-ink/70 backdrop-blur'>
 								<Maximize2 className='size-5 text-white' />
@@ -134,8 +143,12 @@ export function MediaCard({
 						</span>
 					</GlassCard>
 				</button>
-				{caption && !fill && (
-					<figcaption className='mt-4 text-sm text-slate-500'>
+				{caption && !fill && variant !== 'overlay' && (
+					<figcaption
+						className={cn(
+							'mt-4 text-sm text-slate-500',
+							variant === 'bare' && 'mt-3 text-center text-xs',
+						)}>
 						{caption}
 					</figcaption>
 				)}

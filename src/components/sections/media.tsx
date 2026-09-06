@@ -294,14 +294,72 @@ export function MediaGallery({
 			caption: 'This is the fourth shot caption',
 		},
 	],
+	thumbnails = 'bottom',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	description?: string
 	items?: { src: string; alt: string; caption?: string }[]
+	/** Where the thumbnail strip sits relative to the lead image. */
+	thumbnails?: 'bottom' | 'side' | 'top'
 }) {
 	const [active, setActive] = useState(0)
 	const current = items[active]
+	const side = thumbnails === 'side'
+
+	const lead = (
+		<>
+			<GlassCard className='relative aspect-video w-full overflow-hidden'>
+				<Image
+					key={current.src}
+					src={current.src}
+					alt={current.alt}
+					fill
+					sizes='(min-width: 1024px) 72rem, 100vw'
+					className='object-cover'
+				/>
+			</GlassCard>
+			{current.caption && (
+				<p className='mt-4 text-sm text-slate-500'>{current.caption}</p>
+			)}
+		</>
+	)
+
+	const strip = (
+		<ul
+			className={cn(
+				'gap-4',
+				side
+					? 'grid grid-cols-3 sm:grid-cols-1'
+					: 'grid grid-cols-2 sm:grid-cols-4',
+			)}>
+			{items.map((item, index) => (
+				<li key={item.src}>
+					<button
+						type='button'
+						onClick={() => setActive(index)}
+						aria-current={index === active}
+						className={cn(
+							'relative block aspect-video w-full overflow-hidden rounded-lg border transition-colors',
+							index === active
+								? 'border-brand'
+								: 'border-white/10 hover:border-white/30',
+						)}>
+						<Image
+							src={item.src}
+							alt=''
+							fill
+							sizes='16rem'
+							className={cn(
+								'object-cover transition-opacity',
+								index === active ? 'opacity-100' : 'opacity-55',
+							)}
+						/>
+					</button>
+				</li>
+			))}
+		</ul>
+	)
 
 	return (
 		<Section>
@@ -310,49 +368,26 @@ export function MediaGallery({
 				title={title}
 				description={description}
 			/>
-			<div className='mt-12'>
-				<GlassCard className='relative aspect-video w-full overflow-hidden'>
-					<Image
-						key={current.src}
-						src={current.src}
-						alt={current.alt}
-						fill
-						sizes='(min-width: 1024px) 72rem, 100vw'
-						className='object-cover'
-					/>
-				</GlassCard>
-				{current.caption && (
-					<p className='mt-4 text-sm text-slate-500'>{current.caption}</p>
-				)}
-
-				<ul className='mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4'>
-					{items.map((item, index) => (
-						<li key={item.src}>
-							<button
-								type='button'
-								onClick={() => setActive(index)}
-								aria-current={index === active}
-								className={cn(
-									'relative block aspect-video w-full overflow-hidden rounded-lg border transition-colors',
-									index === active
-										? 'border-brand'
-										: 'border-white/10 hover:border-white/30',
-								)}>
-								<Image
-									src={item.src}
-									alt=''
-									fill
-									sizes='16rem'
-									className={cn(
-										'object-cover transition-opacity',
-										index === active ? 'opacity-100' : 'opacity-55',
-									)}
-								/>
-							</button>
-						</li>
-					))}
-				</ul>
-			</div>
+			{side ? (
+				<div className='mt-12 grid gap-6 sm:grid-cols-[1fr_10rem]'>
+					<div>{lead}</div>
+					{strip}
+				</div>
+			) : (
+				<div className='mt-12'>
+					{thumbnails === 'top' ? (
+						<>
+							{strip}
+							<div className='mt-6'>{lead}</div>
+						</>
+					) : (
+						<>
+							{lead}
+							<div className='mt-6'>{strip}</div>
+						</>
+					)}
+				</div>
+			)}
 		</Section>
 	)
 }
@@ -495,24 +530,63 @@ export function Figure({
 	src = '/hub/hub.png',
 	alt = '',
 	caption = 'This is a figure caption. It sits under an image inside long-form copy.',
+	design = 'below',
 	className,
 }: {
 	src?: string
 	alt?: string
 	caption?: string
+	/** Where the caption sits and how the image is framed. */
+	design?: 'below' | 'framed' | 'beside'
 	className?: string
 }) {
+	const image = (
+		<div className='relative aspect-video w-full overflow-hidden rounded-xl border border-white/10'>
+			<Image
+				src={src}
+				alt={alt}
+				fill
+				sizes='(min-width: 768px) 48rem, 100vw'
+				className='object-cover'
+			/>
+		</div>
+	)
+
+	if (design === 'framed') {
+		return (
+			<figure className={cn('my-10 max-w-3xl', className)}>
+				<GlassCard className='p-3'>
+					{image}
+					{caption && (
+						<figcaption className='px-2 py-3 text-sm leading-6 text-slate-500'>
+							{caption}
+						</figcaption>
+					)}
+				</GlassCard>
+			</figure>
+		)
+	}
+
+	if (design === 'beside') {
+		return (
+			<figure
+				className={cn(
+					'my-10 grid max-w-4xl gap-5 sm:grid-cols-[10rem_1fr]',
+					className,
+				)}>
+				{caption && (
+					<figcaption className='order-2 border-t border-white/10 pt-3 text-sm leading-6 text-slate-500 sm:order-1 sm:border-t-0 sm:border-r sm:pt-0 sm:pr-5 sm:text-right'>
+						{caption}
+					</figcaption>
+				)}
+				<div className='order-1 sm:order-2'>{image}</div>
+			</figure>
+		)
+	}
+
 	return (
 		<figure className={cn('my-10 max-w-3xl', className)}>
-			<div className='relative aspect-video w-full overflow-hidden rounded-xl border border-white/10'>
-				<Image
-					src={src}
-					alt={alt}
-					fill
-					sizes='(min-width: 768px) 48rem, 100vw'
-					className='object-cover'
-				/>
-			</div>
+			{image}
 			{caption && (
 				<figcaption className='mt-3 text-sm leading-6 text-slate-500'>
 					{caption}

@@ -24,12 +24,15 @@ export function FilterBar({
 	defaultValue,
 	onChange,
 	resultCount,
+	design = 'pills',
 	className,
 }: {
 	filters?: string[]
 	defaultValue?: string
 	onChange?: (value: string) => void
 	resultCount?: number
+	/** How the filter controls are drawn. */
+	design?: 'pills' | 'underline' | 'segmented'
 	className?: string
 }) {
 	const [active, setActive] = useState(defaultValue ?? filters[0])
@@ -42,10 +45,18 @@ export function FilterBar({
 	return (
 		<div
 			className={cn(
-				'flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6',
+				'flex flex-wrap items-center justify-between gap-4',
+				design !== 'segmented' && 'border-b border-white/10 pb-6',
 				className,
 			)}>
-			<ul className='flex flex-wrap gap-2'>
+			<ul
+				className={cn(
+					'flex flex-wrap',
+					design === 'pills' && 'gap-2',
+					design === 'underline' && 'gap-6',
+					design === 'segmented' &&
+						'gap-0 rounded-lg border border-white/12 bg-white/3 p-1',
+				)}>
 				{filters.map((filter) => (
 					<li key={filter}>
 						<button
@@ -53,10 +64,22 @@ export function FilterBar({
 							onClick={() => select(filter)}
 							aria-pressed={filter === active}
 							className={cn(
-								'rounded-full border px-4 py-1.5 text-sm font-medium transition-colors',
-								filter === active
-									? 'border-brand/40 bg-brand/10 text-white'
-									: 'border-white/10 bg-white/3 text-slate-400 hover:border-white/25 hover:text-white',
+								'text-sm font-medium transition-colors',
+								design === 'pills' && 'rounded-full border px-4 py-1.5',
+								design === 'pills' &&
+									(filter === active
+										? 'border-brand/40 bg-brand/10 text-white'
+										: 'border-white/10 bg-white/3 text-slate-400 hover:border-white/25 hover:text-white'),
+								design === 'underline' && 'border-b-2 pb-2',
+								design === 'underline' &&
+									(filter === active
+										? 'border-brand text-white'
+										: 'border-transparent text-slate-400 hover:text-white'),
+								design === 'segmented' && 'rounded-md px-4 py-1.5',
+								design === 'segmented' &&
+									(filter === active
+										? 'bg-brand text-ink'
+										: 'text-slate-400 hover:text-white'),
 							)}>
 							{filter}
 						</button>
@@ -96,6 +119,7 @@ export function Pagination({
 	siblings = 1,
 	hrefFor = (n: number) => `?page=${n}`,
 	onPageChange,
+	design = 'numbers',
 	className,
 }: {
 	page?: number
@@ -105,6 +129,8 @@ export function Pagination({
 	hrefFor?: (page: number) => string
 	/** Handle paging in state instead of navigating. */
 	onPageChange?: (page: number) => void
+	/** How the control is laid out. */
+	design?: 'numbers' | 'compact' | 'spread'
 	className?: string
 }) {
 	const first = page <= 1
@@ -120,45 +146,79 @@ export function Pagination({
 			: undefined,
 	})
 
+	const previous = (
+		<PaginationPrevious
+			{...linkProps(page - 1)}
+			aria-disabled={first}
+			className={cn(first && 'pointer-events-none opacity-40')}
+		/>
+	)
+
+	const next = (
+		<PaginationNext
+			{...linkProps(page + 1)}
+			aria-disabled={last}
+			className={cn(last && 'pointer-events-none opacity-40')}
+		/>
+	)
+
+	const numbers = pageItems(page, totalPages, siblings).map((item, index) =>
+		item === 'gap' ? (
+			<PaginationItem key={`gap-${index}`}>
+				<PaginationEllipsis />
+			</PaginationItem>
+		) : (
+			<PaginationItem key={item}>
+				<PaginationLink
+					{...linkProps(item)}
+					isActive={item === page}
+					className={cn(
+						'tabular-nums',
+						item === page &&
+							'border-brand bg-transparent font-bold text-brand hover:bg-brand/10 hover:text-brand',
+					)}>
+					{item}
+				</PaginationLink>
+			</PaginationItem>
+		),
+	)
+
+	if (design === 'compact') {
+		return (
+			<PaginationRoot className={className}>
+				<PaginationContent className='gap-6'>
+					<PaginationItem>{previous}</PaginationItem>
+					<PaginationItem>
+						<span className='px-2 text-sm tabular-nums text-slate-400'>
+							Page <span className='font-semibold text-white'>{page}</span> of{' '}
+							{totalPages}
+						</span>
+					</PaginationItem>
+					<PaginationItem>{next}</PaginationItem>
+				</PaginationContent>
+			</PaginationRoot>
+		)
+	}
+
+	if (design === 'spread') {
+		return (
+			<PaginationRoot
+				className={cn('border-t border-white/10 pt-6', className)}>
+				<PaginationContent className='w-full justify-between'>
+					<PaginationItem>{previous}</PaginationItem>
+					<div className='flex items-center gap-1'>{numbers}</div>
+					<PaginationItem>{next}</PaginationItem>
+				</PaginationContent>
+			</PaginationRoot>
+		)
+	}
+
 	return (
 		<PaginationRoot className={className}>
 			<PaginationContent>
-				<PaginationItem>
-					<PaginationPrevious
-						{...linkProps(page - 1)}
-						aria-disabled={first}
-						className={cn(first && 'pointer-events-none opacity-40')}
-					/>
-				</PaginationItem>
-
-				{pageItems(page, totalPages, siblings).map((item, index) =>
-					item === 'gap' ? (
-						<PaginationItem key={`gap-${index}`}>
-							<PaginationEllipsis />
-						</PaginationItem>
-					) : (
-						<PaginationItem key={item}>
-							<PaginationLink
-								{...linkProps(item)}
-								isActive={item === page}
-								className={cn(
-									'tabular-nums',
-									item === page &&
-										'border-brand bg-transparent font-bold text-brand hover:bg-brand/10 hover:text-brand',
-								)}>
-								{item}
-							</PaginationLink>
-						</PaginationItem>
-					),
-				)}
-
-				<PaginationItem>
-					<PaginationNext
-						{...linkProps(page + 1)}
-						aria-disabled={last}
-						className={cn(last && 'pointer-events-none opacity-40')}
-					/>
-				</PaginationItem>
+				<PaginationItem>{previous}</PaginationItem>
+				{numbers}
+				<PaginationItem>{next}</PaginationItem>
 			</PaginationContent>
 		</PaginationRoot>
 	)
@@ -172,10 +232,13 @@ export function TableOfContents({
 		{ id: 'section-three', label: 'This is the third heading' },
 		{ id: 'section-four', label: 'This is the fourth heading' },
 	],
+	design = 'rail',
 	className,
 }: {
 	title?: string
 	items?: { id: string; label: string }[]
+	/** How the list marks the active heading. */
+	design?: 'rail' | 'numbered' | 'card'
 	className?: string
 }) {
 	const [active, setActive] = useState(items[0]?.id)
@@ -204,19 +267,50 @@ export function TableOfContents({
 		<nav
 			aria-label='Table of contents'
 			// self-start stops a grid parent stretching it, which would leave sticky no room to travel.
-			className={cn('lg:sticky lg:top-28 lg:self-start', className)}>
+			className={cn(
+				'lg:sticky lg:top-28 lg:self-start',
+				design === 'card' &&
+					'rounded-xl border border-white/10 bg-white/3 p-6 backdrop-blur-xl',
+				className,
+			)}>
 			<p className='eyebrow'>{title}</p>
-			<ul className='mt-4 space-y-1 border-l border-white/10'>
-				{items.map((item) => (
+			<ul
+				className={cn(
+					'mt-4 space-y-1',
+					design === 'rail' && 'border-l border-white/10',
+				)}>
+				{items.map((item, index) => (
 					<li key={item.id}>
 						<a
 							href={`#${item.id}`}
 							className={cn(
-								'-ml-px block border-l py-1.5 pl-4 text-sm transition-colors',
-								item.id === active
-									? 'border-brand font-medium text-white'
-									: 'border-transparent text-slate-500 hover:border-white/30 hover:text-slate-300',
+								'block text-sm transition-colors',
+								design === 'rail' && '-ml-px border-l py-1.5 pl-4',
+								design === 'rail' &&
+									(item.id === active
+										? 'border-brand font-medium text-white'
+										: 'border-transparent text-slate-500 hover:border-white/30 hover:text-slate-300'),
+								design === 'numbered' && 'flex gap-3 py-1.5',
+								design === 'card' && 'rounded-md px-3 py-2',
+								design === 'card' &&
+									(item.id === active
+										? 'bg-brand/12 font-medium text-white'
+										: 'text-slate-500 hover:bg-white/5 hover:text-slate-300'),
+								design === 'numbered' &&
+									(item.id === active
+										? 'font-medium text-white'
+										: 'text-slate-500 hover:text-slate-300'),
 							)}>
+							{design === 'numbered' && (
+								<span
+									aria-hidden
+									className={cn(
+										'tabular-nums',
+										item.id === active ? 'text-brand' : 'text-slate-700',
+									)}>
+									{String(index + 1).padStart(2, '0')}
+								</span>
+							)}
 							{item.label}
 						</a>
 					</li>

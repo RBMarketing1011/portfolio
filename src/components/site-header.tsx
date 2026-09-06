@@ -517,7 +517,58 @@ function MobileNav() {
 	)
 }
 
-export default function SiteHeader() {
+export default function SiteHeader({
+	design = 'bar',
+}: {
+	/** How the fixed bar is shaped. */
+	design?: 'bar' | 'floating' | 'stacked'
+}) {
+	const cta = (
+		<Button
+			asChild
+			className='hidden whitespace-nowrap bg-brand font-bold text-ink hover:bg-brand-strong sm:inline-flex lg:hidden xl:inline-flex'>
+			<Link href='/contact'>Book An Assessment</Link>
+		</Button>
+	)
+
+	if (design === 'floating') {
+		return (
+			<header className='fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-10'>
+				<nav
+					className='header-fade relative mx-auto flex max-w-7xl items-center justify-between gap-6 rounded-full border border-white/12 px-5 py-2.5 shadow-[0_8px_32px_-12px_color-mix(in_srgb,var(--color-ink)_80%,transparent)] backdrop-blur-md'
+					aria-label='Main'>
+					<Wordmark />
+					<DesktopNav />
+					<div className='flex items-center gap-2'>
+						{cta}
+						<MobileNav />
+					</div>
+				</nav>
+			</header>
+		)
+	}
+
+	if (design === 'stacked') {
+		return (
+			<header className='header-fade fixed inset-x-0 top-0 z-50 border-b border-white/10 backdrop-blur-md'>
+				<div className='mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-3 sm:px-6 lg:px-10'>
+					<Wordmark />
+					<div className='flex items-center gap-2'>
+						{cta}
+						<MobileNav />
+					</div>
+				</div>
+				<nav
+					className='relative hidden border-t border-white/8 px-4 sm:px-6 lg:block lg:px-10'
+					aria-label='Main'>
+					<div className='mx-auto flex max-w-7xl justify-center'>
+						<DesktopNav />
+					</div>
+				</nav>
+			</header>
+		)
+	}
+
 	return (
 		<header className='header-fade fixed inset-x-0 top-0 z-50 border-b border-white/10 px-4 py-3 backdrop-blur-md sm:px-6 lg:px-10'>
 			<nav
@@ -527,11 +578,7 @@ export default function SiteHeader() {
 				<DesktopNav />
 
 				<div className='flex items-center gap-2'>
-					<Button
-						asChild
-						className='hidden whitespace-nowrap bg-brand font-bold text-ink hover:bg-brand-strong sm:inline-flex lg:hidden xl:inline-flex'>
-						<Link href='/contact'>Book An Assessment</Link>
-					</Button>
+					{cta}
 					<MobileNav />
 				</div>
 			</nav>

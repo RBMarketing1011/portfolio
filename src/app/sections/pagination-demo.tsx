@@ -9,7 +9,11 @@ const TOTAL_PAGES = 12
 const TOTAL_RESULTS = PER_PAGE * TOTAL_PAGES
 
 // Preview-only: pages in state so the component can be clicked through in the library.
-export function PaginationDemo() {
+export function PaginationDemo({
+	design,
+}: {
+	design?: 'numbers' | 'compact' | 'spread'
+}) {
 	const [page, setPage] = useState(1)
 	const start = (page - 1) * PER_PAGE + 1
 
@@ -20,6 +24,7 @@ export function PaginationDemo() {
 				<Pagination
 					page={page}
 					totalPages={TOTAL_PAGES}
+					design={design}
 					onPageChange={setPage}
 				/>
 			</div>

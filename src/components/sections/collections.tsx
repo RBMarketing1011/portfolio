@@ -32,14 +32,38 @@ export function Grid({
 	title,
 	description,
 	columns = 3,
+	heading = 'above',
 	className,
 	children,
 }: HeadingProps & {
 	columns?: keyof typeof columnClasses
+	/** Where the section heading sits relative to the cells. */
+	heading?: 'above' | 'beside' | 'centered'
 	className?: string
 	children: React.ReactNode
 }) {
 	const hasHeading = Boolean(eyebrow || title || description)
+
+	const cells = (
+		<div className={cn('grid gap-5', columnClasses[columns])}>{children}</div>
+	)
+
+	if (hasHeading && heading === 'beside') {
+		return (
+			<Section className={className}>
+				<div className='grid gap-12 lg:grid-cols-[18rem_1fr]'>
+					<div className='lg:sticky lg:top-28 lg:self-start'>
+						<SectionHeading
+							eyebrow={eyebrow}
+							title={title}
+							description={description}
+						/>
+					</div>
+					<div className={cn('grid gap-5', columnClasses[2])}>{children}</div>
+				</div>
+			</Section>
+		)
+	}
 
 	return (
 		<Section className={className}>
@@ -48,16 +72,10 @@ export function Grid({
 					eyebrow={eyebrow}
 					title={title}
 					description={description}
+					align={heading === 'centered' ? 'center' : undefined}
 				/>
 			)}
-			<div
-				className={cn(
-					'grid gap-5',
-					columnClasses[columns],
-					hasHeading && 'mt-12',
-				)}>
-				{children}
-			</div>
+			<div className={cn(hasHeading && 'mt-12')}>{cells}</div>
 		</Section>
 	)
 }
@@ -104,11 +122,13 @@ export function Carousel({
 	description,
 	size = 'md',
 	label = 'Carousel',
+	controls = 'below',
 	className,
 	children,
 }: HeadingProps & {
 	size?: CarouselSize
 	label?: string
+	controls?: 'below' | 'overlay' | 'bars'
 	className?: string
 	children: React.ReactNode
 }) {
@@ -123,7 +143,10 @@ export function Carousel({
 					description={description}
 				/>
 			)}
-			<CarouselTrack label={label} className={cn(hasHeading && 'mt-12')}>
+			<CarouselTrack
+				label={label}
+				controls={controls}
+				className={cn(hasHeading && 'mt-12')}>
 				{React.Children.map(children, (child) => (
 					<CarouselItem size={size}>{child}</CarouselItem>
 				))}
@@ -134,34 +157,68 @@ export function Carousel({
 
 export function Marquee({
 	eyebrow,
+	heading = 'centered',
 	className,
 	children,
 }: {
 	eyebrow?: string
+	/** How the label sits against the track. */
+	heading?: 'centered' | 'rule' | 'inline'
 	className?: string
 	children: React.ReactNode
 }) {
+	const track = (
+		// Masked at both edges so items fade rather than clip at the viewport.
+		<div className='group overflow-hidden mask-[linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]'>
+			{/* Two identical copies; the keyframe shifts exactly one, so the loop has no seam. */}
+			<div className='flex w-max animate-marquee gap-14 group-hover:paused'>
+				{[0, 1].map((copy) => (
+					<div
+						key={copy}
+						aria-hidden={copy === 1}
+						className='flex shrink-0 items-center gap-14'>
+						{children}
+					</div>
+				))}
+			</div>
+		</div>
+	)
+
+	// Label pinned to the left with the track running beside it.
+	if (heading === 'inline') {
+		return (
+			<Section className={className}>
+				<div className='flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-10'>
+					{eyebrow && (
+						<p className='eyebrow shrink-0 sm:max-w-32 sm:leading-5'>
+							{eyebrow}
+						</p>
+					)}
+					<div className='min-w-0 flex-1'>{track}</div>
+				</div>
+			</Section>
+		)
+	}
+
+	// Label left, rule filling the rest of the width above the track.
+	if (heading === 'rule') {
+		return (
+			<Section className={className}>
+				{eyebrow && (
+					<div className='flex items-center gap-5'>
+						<p className='eyebrow shrink-0'>{eyebrow}</p>
+						<span aria-hidden className='h-px flex-1 bg-white/12' />
+					</div>
+				)}
+				<div className={cn('-mx-6', eyebrow && 'mt-9')}>{track}</div>
+			</Section>
+		)
+	}
+
 	return (
 		<Section className={className}>
 			{eyebrow && <p className='eyebrow text-center'>{eyebrow}</p>}
-			{/* Masked at both edges so items fade rather than clip at the viewport. */}
-			<div
-				className={cn(
-					'group -mx-6 overflow-hidden mask-[linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]',
-					eyebrow && 'mt-9',
-				)}>
-				{/* Two identical copies; the keyframe shifts exactly one, so the loop has no seam. */}
-				<div className='flex w-max animate-marquee gap-14 group-hover:paused'>
-					{[0, 1].map((copy) => (
-						<div
-							key={copy}
-							aria-hidden={copy === 1}
-							className='flex shrink-0 items-center gap-14'>
-							{children}
-						</div>
-					))}
-				</div>
-			</div>
+			<div className={cn('-mx-6', eyebrow && 'mt-9')}>{track}</div>
 		</Section>
 	)
 }

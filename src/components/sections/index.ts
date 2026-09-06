@@ -46,7 +46,7 @@ export {
 	BentoGrid,
 	TabsShowcase,
 	ComparisonTable,
-	TechStackChips,
+	Chips,
 } from './explain'
 export { ProseBlock, Callout, AuthorBio } from './content'
 export {

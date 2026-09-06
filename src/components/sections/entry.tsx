@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
@@ -248,11 +248,71 @@ export function Breadcrumbs({
 		{ label: 'Parent Page', href: '/services' },
 		{ label: 'This Is The Current Page' },
 	],
+	variant = 'chevron',
 	className,
 }: {
 	items?: { label: string; href?: string }[]
+	variant?: 'chevron' | 'slash' | 'pill'
 	className?: string
 }) {
+	const parent = [...items].reverse().find((item) => item.href)
+
+	// A back link rather than a trail, for deep pages on small screens.
+	if (variant === 'pill') {
+		return (
+			<nav aria-label='Breadcrumb' className={className}>
+				<ol className='flex flex-wrap items-center gap-2'>
+					{parent && (
+						<li>
+							<Link
+								href={parent.href ?? '/'}
+								className='flex items-center gap-1.5 rounded-full border border-white/12 bg-white/4 px-3 py-1.5 text-sm text-slate-300 transition-colors hover:border-brand/40 hover:text-white'>
+								<ArrowLeft className='size-3.5' />
+								{parent.label}
+							</Link>
+						</li>
+					)}
+					<li>
+						<span
+							aria-current='page'
+							className='rounded-full border border-brand/40 bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand'>
+							{items[items.length - 1]?.label}
+						</span>
+					</li>
+				</ol>
+			</nav>
+		)
+	}
+
+	// Quieter than the chevron trail; sits well directly above a long headline.
+	if (variant === 'slash') {
+		return (
+			<nav aria-label='Breadcrumb' className={className}>
+				<ol className='flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-widest text-slate-600'>
+					{items.map((item, index) => {
+						const last = index === items.length - 1
+						return (
+							<li key={item.label} className='flex items-center gap-2'>
+								{item.href && !last ? (
+									<Link
+										href={item.href}
+										className='transition-colors hover:text-brand'>
+										{item.label}
+									</Link>
+								) : (
+									<span aria-current='page' className='text-slate-300'>
+										{item.label}
+									</span>
+								)}
+								{!last && <span aria-hidden>/</span>}
+							</li>
+						)
+					})}
+				</ol>
+			</nav>
+		)
+	}
+
 	return (
 		<nav aria-label='Breadcrumb' className={className}>
 			<ol className='flex flex-wrap items-center gap-1.5 text-sm text-slate-500'>

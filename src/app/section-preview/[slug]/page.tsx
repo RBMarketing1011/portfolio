@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { findEntry, library } from '@/app/sections/library'
+import { findEntry, findVariant, library } from '@/app/sections/library'
 import { readSettings } from '@/app/sections/theme-settings'
 import { googleFontHref } from '@/app/sections/google-fonts'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -36,6 +36,7 @@ export default async function SectionPreviewFrame({
 	const fontHref = googleFontHref([settings.headingFont, settings.bodyFont])
 
 	const { entry, group } = found
+	const variant = findVariant(entry, flat.get('v'))
 
 	return (
 		<>
@@ -50,7 +51,7 @@ export default async function SectionPreviewFrame({
 			<style>{`[data-preview-root] [data-slot='scroll-area-viewport'] > div { display: block !important; }`}</style>
 			<ScrollArea data-preview-root className='h-screen bg-background'>
 				<InertLinks>
-					{entry.preview ?? (
+					{variant?.preview ?? (
 						<div className='flex min-h-screen items-center justify-center p-10'>
 							<div className='max-w-md text-center'>
 								<p className='font-display text-xl font-semibold text-white'>
