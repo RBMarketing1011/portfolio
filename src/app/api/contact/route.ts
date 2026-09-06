@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 		from: process.env.SMTP_FROM_EMAIL ?? process.env.SMTP_USER,
 		replyTo: email.trim(),
 		to: process.env.CONTACT_TO_EMAIL,
-		subject: `ReynoldsBuild.dev inquiry from ${name.trim()}`,
+		subject: `Reynolds Built inquiry from ${name.trim()}`,
 		text: `Name: ${name.trim()}\nEmail: ${email.trim()}\nCompany: ${typeof company === 'string' ? company.trim() : ''}\n\n${message.trim()}`,
 	})
 	return NextResponse.json({ ok: true })

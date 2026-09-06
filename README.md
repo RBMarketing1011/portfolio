@@ -1,6 +1,6 @@
-# ReynoldsBuild.dev
+# Reynolds Built
 
-ReynoldsBuild.dev is a static company website for custom software, business portals, and practical AI automation. It is built with Next.js, Tailwind CSS, and shadcn/ui primitives.
+Reynolds Built (ReynoldsBuilt.dev) is the marketing site for an AI, automation, and custom software consultancy. It is built with Next.js, Tailwind CSS, and shadcn/ui primitives, with no database.
 
 ## Local development
 

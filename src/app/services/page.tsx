@@ -1,72 +1,117 @@
 import Link from 'next/link'
-import { ArrowRight, Blocks, BrainCircuit, Map } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import {
+	CheckList,
+	CtaBand,
+	PageHero,
+	Section,
+	SectionHeading,
+} from '@/components/sections'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { GlassCard } from '@/components/ui/glass-card'
+import { Separator } from '@/components/ui/separator'
+import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
+import { capabilityGroups, services } from '@/lib/site-content'
 
-const services = [
-	{
-		icon: Map,
-		title: 'Product strategy',
-		text: 'We map the workflow, identify the leverage points, and define the smallest useful version before a line of code is written.',
-	},
-	{
-		icon: Blocks,
-		title: 'Custom software',
-		text: 'Portals, internal systems, dashboards, and applications designed for your process instead of forcing you into a generic one.',
-	},
-	{
-		icon: BrainCircuit,
-		title: 'AI and automation',
-		text: 'Useful automations and connected systems that help your team move faster while keeping the work visible and accountable.',
-	},
-]
+export const metadata = buildMetadata({
+	title: 'Services',
+	description:
+		'AI and automation assessments, workflow automation, applied AI systems, and custom software built around how your business actually runs.',
+	path: '/services',
+})
 
 export default function ServicesPage() {
 	return (
-		<div className='min-h-screen bg-[#03080f] px-6 pb-24 pt-36 sm:px-10 lg:px-16'>
-			<section className='mx-auto max-w-6xl'>
-				<p className='eyebrow'>What we build</p>
-				<h1 className='mt-5 max-w-3xl font-display text-4xl font-semibold text-white sm:text-6xl'>
-					The digital systems behind better workdays.
-				</h1>
-				<p className='mt-6 max-w-2xl text-lg leading-8 text-slate-300'>
-					ReynoldsBuild.dev partners with small and mid-sized businesses that
-					have outgrown spreadsheets, disconnected tools, and manual handoffs.
-				</p>
-				<div className='mt-14 grid gap-5 md:grid-cols-3'>
-					{services.map(({ icon: Icon, title, text }) => (
-						<Card
-							key={title}
-							className='border-white/10 bg-[#091525] shadow-none'>
-							<CardHeader>
-								<Icon className='text-[#1684f5]' size={28} />
-								<CardTitle className='pt-5 font-display text-xl text-white'>
-									{title}
-								</CardTitle>
-							</CardHeader>
-							<CardContent className='leading-7 text-slate-400'>
-								{text}
-							</CardContent>
-						</Card>
+		<>
+			<JsonLd
+				schema={breadcrumbSchema([
+					{ name: 'Home', path: '/' },
+					{ name: 'Services', path: '/services' },
+				])}
+			/>
+
+			<PageHero
+				eyebrow='Services'
+				title='Consulting that ends in working software.'
+				description='We start by understanding the business, not the tech stack. Then we build the smallest thing that moves the needle, and keep going from there.'>
+				<Button
+					asChild
+					size='lg'
+					className='mt-9 bg-brand font-bold text-ink hover:bg-brand-strong'>
+					<Link href='/contact'>
+						Book An Assessment <ArrowRight />
+					</Link>
+				</Button>
+			</PageHero>
+
+			{services.map((service, index) => (
+				<Section
+					key={service.slug}
+					id={service.slug}
+					className={
+						index % 2 === 1 ? 'border-y border-white/10 bg-[#060d18]' : ''
+					}>
+					<div className='grid gap-12 lg:grid-cols-[1fr_1.2fr]'>
+						<div>
+							<span className='flex size-12 items-center justify-center rounded-lg border border-brand/25 bg-brand/10'>
+								<service.icon className='size-6 text-brand' />
+							</span>
+							<p className='mt-6 eyebrow'>{service.tagline}</p>
+							<h2 className='mt-3 font-display text-3xl font-semibold text-white sm:text-4xl'>
+								{service.name}
+							</h2>
+							<p className='mt-5 leading-8 text-slate-400'>{service.summary}</p>
+						</div>
+
+						<GlassCard className='p-8'>
+							<h3 className='font-display font-semibold text-white'>
+								What you get
+							</h3>
+							<div className='mt-5'>
+								<CheckList items={service.deliverables} />
+							</div>
+
+							<Separator className='my-7 bg-white/10' />
+
+							<h3 className='font-display font-semibold text-white'>
+								What changes
+							</h3>
+							<ul className='mt-5 space-y-3'>
+								{service.outcomes.map((outcome) => (
+									<li key={outcome} className='leading-7 text-slate-400'>
+										{outcome}
+									</li>
+								))}
+							</ul>
+						</GlassCard>
+					</div>
+				</Section>
+			))}
+
+			<Section className='border-t border-white/10'>
+				<SectionHeading
+					eyebrow='Capabilities'
+					title='The engineering underneath'
+					description='The consulting is the front half. This is what we bring to the build.'
+				/>
+				<div className='mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3'>
+					{capabilityGroups.map((group) => (
+						<GlassCard key={group.title} className='p-6'>
+							<group.icon className='size-5 text-brand' />
+							<h3 className='mt-4 font-display font-semibold text-white'>
+								{group.title}
+							</h3>
+							<ul className='mt-3 space-y-2 text-slate-400'>
+								{group.items.map((item) => (
+									<li key={item}>{item}</li>
+								))}
+							</ul>
+						</GlassCard>
 					))}
 				</div>
-				<div className='mt-14 border-l-2 border-[#1684f5] pl-6'>
-					<p className='font-display text-2xl font-medium text-white'>
-						Not sure where to begin?
-					</p>
-					<p className='mt-2 max-w-xl text-slate-400'>
-						Bring the process that is slowing your team down. We will help
-						determine the practical next step.
-					</p>
-					<Button
-						asChild
-						className='mt-6 bg-[#1684f5] text-[#02101f] hover:bg-[#4aa2fb]'>
-						<Link href='/contact'>
-							Talk through a project <ArrowRight />
-						</Link>
-					</Button>
-				</div>
-			</section>
-		</div>
+			</Section>
+
+			<CtaBand />
+		</>
 	)
 }

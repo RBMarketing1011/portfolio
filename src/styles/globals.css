@@ -7,81 +7,86 @@
 @theme {
 	--font-sans: var(--font-dm-sans);
 	--font-display: var(--font-space-grotesk);
+	/* Indirection so a wrapper can swap typefaces without touching components. */
+	--font-heading: var(--font-space-grotesk);
+	--font-body: var(--font-dm-sans);
 	--color-brand: #0197f6;
 	--color-brand-strong: #3fb2fa;
 	--color-ink: #03080f;
 	--color-panel: #091525;
+
+	--animate-accordion-down: accordion-down 250ms ease-out;
+	--animate-accordion-up: accordion-up 200ms ease-out;
+	--animate-marquee: marquee 45s linear infinite;
+
+	/* Track holds two identical copies, so one full width is a seamless loop. */
+	@keyframes marquee {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(calc(-50% - 1.75rem));
+		}
+	}
+
+	/* Radix exposes the measured panel height on the content element. */
+	@keyframes accordion-down {
+		from {
+			height: 0;
+		}
+		to {
+			height: var(--radix-accordion-content-height);
+		}
+	}
+	@keyframes accordion-up {
+		from {
+			height: var(--radix-accordion-content-height);
+		}
+		to {
+			height: 0;
+		}
+	}
 }
 
 :root {
 	--background: #03080f;
-	--foreground: #eef5ff;
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
-	--destructive-foreground: oklch(0.577 0.245 27.325);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.87 0 0);
-	--chart-1: oklch(0.646 0.222 41.116);
-	--chart-2: oklch(0.6 0.118 184.704);
-	--chart-3: oklch(0.398 0.07 227.392);
-	--chart-4: oklch(0.828 0.189 84.429);
-	--chart-5: oklch(0.769 0.188 70.08);
+	--foreground: #e8f1fb;
+	--card: #0a1523;
+	--card-foreground: #e8f1fb;
+	--popover: #0b1826;
+	--popover-foreground: #e8f1fb;
+	--primary: #0197f6;
+	--primary-foreground: #02121f;
+	--secondary: #142235;
+	--secondary-foreground: #e8f1fb;
+	--muted: #101c2c;
+	--muted-foreground: #9cb0c6;
+	--accent: #16273c;
+	--accent-foreground: #ffffff;
+	--destructive: #f2555a;
+	--destructive-foreground: #2a0a0c;
+	--border: #1b2b3f;
+	--input: #22364e;
+	--ring: #0197f6;
+	--chart-1: #0197f6;
+	--chart-2: #3fb2fa;
+	--chart-3: #7cc9fc;
+	--chart-4: #1f6fb2;
+	--chart-5: #0d4a7a;
 	--radius: 0.625rem;
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.205 0 0);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.97 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.87 0 0);
+	--sidebar: #0a1523;
+	--sidebar-foreground: #e8f1fb;
+	--sidebar-primary: #0197f6;
+	--sidebar-primary-foreground: #02121f;
+	--sidebar-accent: #16273c;
+	--sidebar-accent-foreground: #ffffff;
+	--sidebar-border: #1b2b3f;
+	--sidebar-ring: #0197f6;
 }
 
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.145 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.145 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.985 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.396 0.141 25.723);
-	--destructive-foreground: oklch(0.637 0.237 25.331);
-	--border: oklch(0.269 0 0);
-	--input: oklch(0.269 0 0);
-	--ring: oklch(0.439 0 0);
-	--chart-1: oklch(0.488 0.243 264.376);
-	--chart-2: oklch(0.696 0.17 162.48);
-	--chart-3: oklch(0.769 0.188 70.08);
-	--chart-4: oklch(0.627 0.265 303.9);
-	--chart-5: oklch(0.645 0.246 16.439);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(0.269 0 0);
-	--sidebar-ring: oklch(0.439 0 0);
+	--background: #03080f;
+	--foreground: #e8f1fb;
 }
 
 @theme inline {
@@ -129,7 +134,7 @@
 	}
 	body {
 		@apply bg-background text-foreground;
-		font-family: var(--font-dm-sans), sans-serif;
+		font-family: var(--font-body), sans-serif;
 	}
 }
 
@@ -139,14 +144,45 @@
 }
 
 .font-display {
-	font-family: var(--font-space-grotesk), sans-serif;
+	font-family: var(--font-heading), sans-serif;
 }
+/* Layer order is top-down: grid lines sit above the diagonal wash.
+   Colours are mixed from the brand and ink tokens so the grid follows theming. */
 .hero-grid {
 	background-color: var(--color-ink);
 	background-image:
-		linear-gradient(rgba(1, 151, 246, 0.07) 1px, transparent 1px),
-		linear-gradient(90deg, rgba(1, 151, 246, 0.07) 1px, transparent 1px);
-	background-size: 44px 44px;
+		linear-gradient(
+			color-mix(in srgb, var(--color-brand) 7%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			90deg,
+			color-mix(in srgb, var(--color-brand) 7%, transparent) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			135deg,
+			color-mix(in srgb, var(--color-brand-strong) 28%, transparent) 0%,
+			color-mix(in srgb, var(--color-brand) 14%, transparent) 28%,
+			color-mix(in srgb, var(--color-ink) 60%, transparent) 62%,
+			color-mix(in srgb, var(--color-ink) 95%, transparent) 100%
+		);
+	background-size:
+		44px 44px,
+		44px 44px,
+		100% 100%;
+	background-repeat: repeat, repeat, no-repeat;
+}
+/* Translucent base keeps the backdrop blur working under the horizontal wash.
+   Mixed from the tokens so the header follows theming like the hero grid. */
+.header-fade {
+	background-color: color-mix(in srgb, var(--color-ink) 85%, transparent);
+	background-image: linear-gradient(
+		90deg,
+		color-mix(in srgb, var(--color-brand-strong) 18%, transparent) 0%,
+		color-mix(in srgb, var(--color-brand) 8%, transparent) 38%,
+		transparent 72%
+	);
 }
 .eyebrow {
 	color: var(--color-brand);
