@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { Check, Minus, Workflow, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { GlassCard } from '@/components/ui/glass-card'
@@ -49,6 +50,8 @@ export function FeatureRows({
 		title: string
 		description: string
 		points: string[]
+		/** Real screenshot. Falls back to an empty media slot when absent. */
+		image?: string
 	}[]
 	/** How each row arranges its copy against its media. */
 	layout?: 'alternating' | 'cards' | 'stacked'
@@ -62,6 +65,26 @@ export function FeatureRows({
 					layout === 'stacked' && 'space-y-16',
 				)}>
 				{rows.map((row, index) => {
+					const media = (className: string) =>
+						row.image ? (
+							<div className={cn('relative overflow-hidden', className)}>
+								<Image
+									src={row.image}
+									alt=''
+									fill
+									sizes='(min-width: 1024px) 36rem, 100vw'
+									className='object-cover'
+								/>
+							</div>
+						) : (
+							<div
+								className={cn(
+									'flex items-center justify-center bg-white/3 px-6 text-center text-sm text-slate-500',
+									className,
+								)}>
+								Media slot for this row
+							</div>
+						)
 					const heading = (
 						<>
 							<p className='eyebrow'>{row.eyebrow}</p>
@@ -84,9 +107,7 @@ export function FeatureRows({
 					if (layout === 'stacked') {
 						return (
 							<div key={row.title} className='border-t border-white/10 pt-10'>
-								<div className='flex h-64 items-center justify-center rounded-xl border border-white/10 bg-white/3 text-sm text-slate-500 sm:h-80'>
-									Media slot for this row
-								</div>
+								{media('h-64 rounded-xl border border-white/10 sm:h-80')}
 								<div className='mt-10 grid gap-8 lg:grid-cols-[1fr_1.2fr]'>
 									<div>{heading}</div>
 									<div>
@@ -121,9 +142,7 @@ export function FeatureRows({
 									accentEdges[index % accentEdges.length],
 								)}>
 								{copy}
-								<div className='flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-white/3 text-sm text-slate-500'>
-									Media slot for this row
-								</div>
+								{media('aspect-video rounded-lg border border-white/10')}
 							</GlassCard>
 						)
 					}
@@ -135,12 +154,10 @@ export function FeatureRows({
 							{copy}
 							<GlassCard
 								className={cn(
-									'aspect-video w-full',
+									'aspect-video w-full overflow-hidden',
 									index % 2 === 1 && 'lg:order-1',
 								)}>
-								<div className='flex h-full items-center justify-center px-6 text-center text-sm text-slate-500'>
-									Media slot for this row
-								</div>
+								{media('h-full w-full')}
 							</GlassCard>
 						</div>
 					)
@@ -183,7 +200,7 @@ export function ProcessSteps({
 			summary:
 				'Three to five steps is the range where this section still reads quickly.',
 			detail: [
-				'The number is decorative and greyed back',
+				'The number is decorative and grayed back',
 				'Titles stay short and active',
 				'Summaries carry the actual explanation',
 			],
@@ -482,6 +499,8 @@ export function TabsShowcase({
 		title: string
 		body: string
 		points: string[]
+		/** Real screenshot. Falls back to an empty media slot when absent. */
+		image?: string
 	}[]
 	/** Where the tab list sits and how the active tab is marked. */
 	tabStyle?: 'pills' | 'underline' | 'side'
@@ -552,9 +571,21 @@ export function TabsShowcase({
 									))}
 								</ul>
 							</div>
-							<div className='flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-white/3 px-6 text-center text-sm text-slate-500'>
-								Media slot for this panel
-							</div>
+							{item.image ? (
+								<div className='relative aspect-video overflow-hidden rounded-lg border border-white/10'>
+									<Image
+										src={item.image}
+										alt=''
+										fill
+										sizes='(min-width: 1024px) 32rem, 100vw'
+										className='object-cover'
+									/>
+								</div>
+							) : (
+								<div className='flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-white/3 px-6 text-center text-sm text-slate-500'>
+									Media slot for this panel
+								</div>
+							)}
 						</GlassCard>
 					</TabsContent>
 				))}

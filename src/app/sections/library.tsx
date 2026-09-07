@@ -2,6 +2,7 @@ import {
 	AnnouncementBar,
 	ArticleCard,
 	AuthorBio,
+	AuthPanel,
 	BeforeAfter,
 	BentoGrid,
 	Breadcrumbs,
@@ -13,7 +14,9 @@ import {
 	ClientLogo,
 	ComparisonTable,
 	ContactSplit,
+	Countdown,
 	CtaBand,
+	DetailCard,
 	FaqAccordion,
 	FeatureCard,
 	FeatureRows,
@@ -28,6 +31,7 @@ import {
 	MediaCard,
 	MediaGallery,
 	MediaMosaic,
+	Notice,
 	PageHero,
 	Pagination,
 	PricingTiers,
@@ -57,24 +61,6 @@ import {
 	sampleRelated,
 	sampleTestimonials,
 } from '@/components/sections'
-import {
-	AboutTemplate,
-	BlogPostTemplate,
-	CaseStudyDetailTemplate,
-	ComparisonTemplate,
-	ContactTemplate,
-	HomeTemplate,
-	IndexListingTemplate,
-	IndustryDetailTemplate,
-	LandingTemplate,
-	LegalTemplate,
-	NotFoundTemplate,
-	PricingTemplate,
-	ResourceTemplate,
-	ServiceDetailTemplate,
-	SolutionDetailTemplate,
-	ThankYouTemplate,
-} from '@/components/page-templates'
 import { Badge } from '@/components/ui/badge'
 import { Highlight } from '@/components/ui/highlight'
 import { PaginationDemo } from './pagination-demo'
@@ -122,13 +108,13 @@ export const library: Group[] = [
 							? 'Full-Width Bar'
 							: design === 'floating'
 								? 'Floating Pill'
-								: 'Two Rows, Centred Nav',
+								: 'Two Rows, Centered Nav',
 					preview: (
 						<>
 							<SiteHeader design={design} />
-							<div className='hero-grid flex min-h-screen items-center justify-center'>
-								<p className='text-sm text-slate-500'>
-									Page content sits under the fixed header.
+							<div className='flex min-h-screen items-center justify-center'>
+								<p className='text-sm text-slate-600'>
+									Page content sits under this.
 								</p>
 							</div>
 						</>
@@ -146,9 +132,18 @@ export const library: Group[] = [
 						design === 'columns'
 							? 'Brand Then Columns'
 							: design === 'centered'
-								? 'Centred'
+								? 'Centered'
 								: 'Brand Left, Ruled Columns',
-					preview: <SiteFooter design={design} />,
+					preview: (
+						<div className='flex min-h-screen flex-col'>
+							<div className='flex flex-1 items-center justify-center'>
+								<p className='text-sm text-slate-600'>
+									The content sits above the fixed footer.
+								</p>
+							</div>
+							<SiteFooter design={design} />
+						</div>
+					),
 				})),
 			},
 		],
@@ -162,7 +157,7 @@ export const library: Group[] = [
 				slug: 'hero',
 				name: 'Hero',
 				description:
-					'The opening block of a page. Three shapes: centred copy, copy beside media, or copy over numbers.',
+					'The opening block of a page. Three shapes: centered copy, copy beside media, or copy over numbers.',
 				variants: [
 					{
 						id: 'centered',
@@ -210,7 +205,7 @@ export const library: Group[] = [
 				slug: 'section-heading',
 				name: 'Section Heading',
 				description:
-					'Eyebrow, title and description in three arrangements: stacked, split, or centred under a rule.',
+					'Eyebrow, title and description in three arrangements: stacked, split, or centered under a rule.',
 				variants: [
 					{
 						id: 'stacked',
@@ -251,7 +246,7 @@ export const library: Group[] = [
 					},
 					{
 						id: 'rule',
-						name: 'Centred Under A Rule',
+						name: 'Centered Under A Rule',
 						preview: (
 							<Section>
 								<SectionHeading
@@ -259,7 +254,7 @@ export const library: Group[] = [
 									eyebrow='Eyebrow'
 									title={
 										<>
-											Centred, larger, under an{' '}
+											Centered, larger, under an{' '}
 											<Highlight>accent rule</Highlight>
 										</>
 									}
@@ -319,8 +314,8 @@ export const library: Group[] = [
 								<AnnouncementBar />
 								<Section>
 									<p className='text-slate-500'>
-										Edge to edge, centred, tinted with the accent. Dismissing it
-										removes it for the session.
+										Edge to edge, centered, tinted with the accent. Dismissing
+										it removes it for the session.
 									</p>
 								</Section>
 							</>
@@ -413,7 +408,7 @@ export const library: Group[] = [
 				slug: 'spotlight',
 				name: 'Spotlight',
 				description:
-					'One featured thing with media, a summary, labelled details, and a link through.',
+					'One featured thing with media, a summary, labeled details, and a link through.',
 				variants: [
 					{ id: 'split', name: 'Split', preview: <Spotlight /> },
 					{
@@ -472,7 +467,7 @@ export const library: Group[] = [
 					},
 					{
 						id: 'bare',
-						name: 'Bare Centred',
+						name: 'Bare Centered',
 						preview: (
 							<Section>
 								<div className='mx-auto max-w-2xl'>
@@ -509,7 +504,7 @@ export const library: Group[] = [
 					},
 					{
 						id: 'bare',
-						name: 'Bare Centred',
+						name: 'Bare Centered',
 						preview: (
 							<Section>
 								<div className='mx-auto max-w-4xl'>
@@ -811,7 +806,7 @@ export const library: Group[] = [
 						heading === 'above'
 							? 'Heading Above, Left'
 							: heading === 'centered'
-								? 'Heading Above, Centred'
+								? 'Heading Above, Centered'
 								: 'Heading Beside, Sticky',
 					preview: (
 						<Grid
@@ -854,7 +849,7 @@ export const library: Group[] = [
 							<Carousel
 								eyebrow='Carousel'
 								title='Arrows floating on the track edges'
-								description='Arrows sit over the slides and appear on hover, with the dots centred underneath.'
+								description='Arrows sit over the slides and appear on hover, with the dots centered underneath.'
 								controls='overlay'
 								label='Testimonials'>
 								{sampleTestimonials.map((item, index) => (
@@ -889,7 +884,7 @@ export const library: Group[] = [
 				variants: [
 					{
 						id: 'centered',
-						name: 'Centred Label',
+						name: 'Centered Label',
 						preview: (
 							<Marquee eyebrow='Trusted by'>
 								{exampleLogos.map((logo) => (
@@ -1114,7 +1109,7 @@ export const library: Group[] = [
 			{
 				slug: 'capability-chips',
 				name: 'Chips',
-				description: 'Compact labelled list, for a stack or a capability set.',
+				description: 'Compact labeled list, for a stack or a capability set.',
 				variants: [
 					{
 						id: 'outline',
@@ -1300,7 +1295,7 @@ export const library: Group[] = [
 					},
 					{
 						id: 'centered',
-						name: 'Centred Stack',
+						name: 'Centered Stack',
 						preview: (
 							<Section>
 								<AuthorBio design='centered' />
@@ -1369,7 +1364,7 @@ export const library: Group[] = [
 						design === 'card'
 							? 'Accent Panel'
 							: design === 'centered'
-								? 'Centred, No Card'
+								? 'Centered, No Card'
 								: 'Copy Left, Buttons Right',
 					preview: (
 						<CtaBand
@@ -1462,7 +1457,7 @@ export const library: Group[] = [
 					},
 					{
 						id: 'banner',
-						name: 'Centred Tinted Banner',
+						name: 'Centered Tinted Banner',
 						preview: <LeadCapture design='banner' />,
 					},
 					{
@@ -1549,7 +1544,7 @@ export const library: Group[] = [
 					id: design,
 					name:
 						design === 'numbers'
-							? 'Centred Numbers'
+							? 'Centered Numbers'
 							: design === 'compact'
 								? 'Prev / Next Only'
 								: 'Edges Spread',
@@ -1559,116 +1554,75 @@ export const library: Group[] = [
 		],
 	},
 	{
-		id: 'templates',
-		label: 'Page templates',
-		kind: 'template',
+		id: 'states',
+		label: 'Page states',
+		kind: 'section',
 		entries: [
 			{
-				slug: 'tpl-home',
-				name: 'Home',
+				slug: 'detail-card',
+				name: 'Detail Card',
 				description:
-					'Split hero, stat band, logo strip, feature grid, spotlight, testimonial, CTA.',
-				preview: <HomeTemplate />,
+					'Labelled facts beside a single call to action. The variants move the facts.',
+				variants: (['card', 'rows', 'inline'] as const).map((variant) => ({
+					id: variant,
+					name:
+						variant === 'card'
+							? 'Panel Beside Copy'
+							: variant === 'rows'
+								? 'Ruled Rows'
+								: 'Facts Across The Top',
+					preview: <DetailCard variant={variant} />,
+				})),
 			},
 			{
-				slug: 'tpl-service-detail',
-				name: 'Service Detail',
+				slug: 'countdown',
+				name: 'Countdown',
 				description:
-					'Page hero, feature rows, process steps, comparison table, FAQ, CTA.',
-				preview: <ServiceDetailTemplate />,
+					'Time remaining until a launch. The variants reframe each unit.',
+				variants: (['boxed', 'bare', 'inline'] as const).map((variant) => ({
+					id: variant,
+					name:
+						variant === 'boxed'
+							? 'Boxed Units'
+							: variant === 'bare'
+								? 'Ruled, No Boxes'
+								: 'Inline Row',
+					preview: <Countdown variant={variant} />,
+				})),
 			},
 			{
-				slug: 'tpl-solution-detail',
-				name: 'Solution Detail',
-				description: 'Page hero, before/after, feature grid, spotlight, CTA.',
-				preview: <SolutionDetailTemplate />,
-			},
-			{
-				slug: 'tpl-industry-detail',
-				name: 'Industry Detail',
+				slug: 'auth-panel',
+				name: 'Auth Panel',
 				description:
-					'Stat hero, pain points, feature grid, spotlight, FAQ, CTA.',
-				preview: <IndustryDetailTemplate />,
+					'Sign in with an optional proof column. The variants change the framing.',
+				variants: (['split', 'centered', 'card'] as const).map((variant) => ({
+					id: variant,
+					name:
+						variant === 'split'
+							? 'Form Left, Proof Right'
+							: variant === 'centered'
+								? 'Centered, No Card'
+								: 'Centered Card',
+					preview: <AuthPanel variant={variant} />,
+				})),
 			},
 			{
-				slug: 'tpl-case-study-detail',
-				name: 'Case Study Detail',
+				slug: 'notice',
+				name: 'Notice',
 				description:
-					'Breadcrumbs, media hero, challenge/approach/delivered, chips, stats, related.',
-				preview: <CaseStudyDetailTemplate />,
-			},
-			{
-				slug: 'tpl-index-listing',
-				name: 'Index / Listing',
-				description:
-					'Page hero plus card grids, in project and article variants.',
-				preview: <IndexListingTemplate />,
-			},
-			{
-				slug: 'tpl-blog-post',
-				name: 'Blog Post',
-				description:
-					'Article hero, prose, callout, lead capture, related rail.',
-				preview: <BlogPostTemplate />,
-			},
-			{
-				slug: 'tpl-about',
-				name: 'About',
-				description: 'Hero with stats, story, team grid, logo strip, CTA.',
-				preview: <AboutTemplate />,
-			},
-			{
-				slug: 'tpl-contact',
-				name: 'Contact',
-				description:
-					'Contact split with form slot and expectations, then an FAQ.',
-				preview: <ContactTemplate />,
-			},
-			{
-				slug: 'tpl-pricing',
-				name: 'Pricing',
-				description: 'Page hero, tiers, comparison, testimonials, FAQ, CTA.',
-				preview: <PricingTemplate />,
-			},
-			{
-				slug: 'tpl-landing',
-				name: 'Campaign Landing',
-				description:
-					'Stripped chrome, one offer, proof, and a single conversion path.',
-				preview: <LandingTemplate />,
-			},
-			{
-				slug: 'tpl-legal',
-				name: 'Legal',
-				description: 'Narrow prose template for privacy policy and terms.',
-				preview: <LegalTemplate />,
-			},
-			{
-				slug: 'tpl-not-found',
-				name: 'Not Found',
-				description: 'On-brand 404 with routes back into the site.',
-				preview: <NotFoundTemplate />,
-			},
-			{
-				slug: 'tpl-thank-you',
-				name: 'Thank You',
-				description:
-					'Post-submission confirmation with next steps and somewhere to go meanwhile.',
-				preview: <ThankYouTemplate />,
-			},
-			{
-				slug: 'tpl-resource',
-				name: 'Resource / Lead Magnet',
-				description:
-					'Gated download with a single form, proof underneath, and no competing links.',
-				preview: <ResourceTemplate />,
-			},
-			{
-				slug: 'tpl-comparison',
-				name: 'Comparison',
-				description:
-					'Head to head page built on the comparison table, before/after, and a split CTA.',
-				preview: <ComparisonTemplate />,
+					'Full-screen confirmation, error, or status page. The variants change the mark.',
+				variants: (['confirmation', 'code', 'plain'] as const).map(
+					(variant) => ({
+						id: variant,
+						name:
+							variant === 'confirmation'
+								? 'Icon Mark'
+								: variant === 'code'
+									? 'Large Code'
+									: 'No Mark',
+						preview: <Notice variant={variant} />,
+					}),
+				),
 			},
 		],
 	},

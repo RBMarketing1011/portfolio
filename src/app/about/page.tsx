@@ -1,15 +1,15 @@
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import {
 	CtaBand,
+	FeatureCard,
+	Grid,
 	PageHero,
+	ProcessSteps,
+	ProseBlock,
 	Section,
 	SectionHeading,
 } from '@/components/sections'
-import { Button } from '@/components/ui/button'
-import { GlassCard } from '@/components/ui/glass-card'
 import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
-import { principles, processSteps } from '@/lib/site-content'
+import { deliverySteps, principles } from '@/lib/site-content'
 
 export const metadata = buildMetadata({
 	title: 'About Us',
@@ -32,23 +32,25 @@ export default function AboutPage() {
 				eyebrow='About us'
 				title='We are the people who ask why before we ask what.'
 				description='ReynoldsBuilt exists because too many businesses buy software that does not fit and hire consultants who never build anything. We do both halves, and we do them in the right order.'
+				actions={[
+					{ label: 'Book An Assessment', href: '/contact' },
+					{ label: 'See The Work', href: '/case-studies' },
+				]}
 			/>
 
 			<Section>
-				<div className='grid gap-14 lg:grid-cols-[1.2fr_1fr]'>
-					<div className='max-w-2xl space-y-6 text-lg leading-8 text-slate-300'>
-						<h2 className='font-display text-3xl font-semibold text-white'>
-							Consultants who ship
-						</h2>
+				<SectionHeading
+					eyebrow='Who we are'
+					title='Consultants who ship'
+					description='Most businesses we meet are running on a mix of good software, bad software, and a spreadsheet that quietly holds the whole thing together.'
+				/>
+				<div className='mt-12 max-w-3xl'>
+					<ProseBlock>
 						<p>
-							Most businesses we meet are running on a mix of good software, bad
-							software, and a spreadsheet that quietly holds the whole thing
-							together. Nobody planned it that way. It accumulated.
-						</p>
-						<p>
-							The usual options are both bad. A strategy firm will produce a
-							deck and leave. A dev shop will build exactly what you asked for,
-							whether or not it was the right thing to ask for.
+							Nobody planned it that way. It accumulated. The usual options are
+							both bad: a strategy firm will produce a deck and leave, and a dev
+							shop will build exactly what you asked for, whether or not it was
+							the right thing to ask for.
 						</p>
 						<p>
 							We start by walking your operation end to end. Every process,
@@ -60,56 +62,30 @@ export default function AboutPage() {
 							After that, we build it. The same people who mapped the process
 							write the code, which means nothing gets lost in translation.
 						</p>
-					</div>
-
-					<GlassCard variant='accent' className='h-fit p-8'>
-						<h2 className='font-display text-xl font-semibold text-white'>
-							What we actually do
-						</h2>
-						<ul className='mt-6 space-y-5'>
-							{processSteps.map((step) => (
-								<li key={step.number} className='flex gap-4'>
-									<span className='font-display text-lg font-semibold text-brand/50'>
-										{step.number}
-									</span>
-									<span>
-										<span className='block font-medium text-white'>
-											{step.title}
-										</span>
-										<span className='mt-1 block text-sm leading-6 text-slate-400'>
-											{step.summary}
-										</span>
-									</span>
-								</li>
-							))}
-						</ul>
-						<Button
-							asChild
-							className='mt-8 w-full bg-brand font-bold text-ink hover:bg-brand-strong'>
-							<Link href='/process'>
-								See The Full Process <ArrowRight />
-							</Link>
-						</Button>
-					</GlassCard>
+					</ProseBlock>
 				</div>
 			</Section>
 
-			<Section className='border-t border-white/10 bg-[#060d18]'>
-				<SectionHeading
-					eyebrow='How we operate'
-					title='Four things we will not compromise on'
-				/>
-				<div className='mt-12 grid gap-5 sm:grid-cols-2'>
-					{principles.map((principle) => (
-						<GlassCard key={principle.title} className='p-7'>
-							<h3 className='font-display text-lg font-semibold text-white'>
-								{principle.title}
-							</h3>
-							<p className='mt-3 leading-7 text-slate-400'>{principle.body}</p>
-						</GlassCard>
-					))}
-				</div>
-			</Section>
+			<ProcessSteps
+				eyebrow='What we actually do'
+				title='Four steps, and you can stop after any of them'
+				description='The assessment stands on its own. If it says do not build anything, that is a legitimate outcome and the roadmap is still yours.'
+				steps={deliverySteps}
+			/>
+
+			<Grid
+				eyebrow='How we operate'
+				title='Four things we will not compromise on'
+				description='These are the reasons projects finish, and the reasons we occasionally turn work down.'
+				columns={2}>
+				{principles.map((principle) => (
+					<FeatureCard
+						key={principle.title}
+						title={principle.title}
+						blurb={principle.body}
+					/>
+				))}
+			</Grid>
 
 			<CtaBand />
 		</>

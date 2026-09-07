@@ -62,7 +62,7 @@ export function SectionHeading({
 		)
 	}
 
-	// Centred under a short accent rule, for the opening of a major block.
+	// Centered under a short accent rule, for the opening of a major block.
 	if (variant === 'rule') {
 		return (
 			<div className='mx-auto max-w-3xl text-center'>
@@ -111,42 +111,71 @@ export function SectionHeading({
 }
 
 export function PageHero({
-	eyebrow,
-	title,
-	description,
+	eyebrow = 'Eyebrow Badge',
+	title = 'This is the page hero heading, and it runs about this long',
+	description = 'This is the hero description. It sits under the heading, holds two or three lines at this width, and explains what the page covers.',
 	actions,
 	stats,
 	children,
+	variant = 'left',
 }: {
-	eyebrow: string
+	eyebrow?: string
 	/** Accepts markup so part of the headline can be wrapped in <Highlight>. */
-	title: React.ReactNode
-	description: string
+	title?: React.ReactNode
+	description?: string
 	/** First action renders solid, second outlined. */
 	actions?: { label: string; href: string }[]
 	stats?: { value: string; label: string }[]
 	children?: React.ReactNode
+	/** How the opening block is aligned. */
+	variant?: 'left' | 'centered' | 'compact'
 }) {
 	const buttons = actions?.slice(0, 2) ?? []
 	const figures = stats?.slice(0, 3) ?? []
+	const centered = variant === 'centered'
 
 	return (
-		<section className='hero-grid border-b border-white/10 px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-24 lg:pt-44'>
-			<div className='mx-auto max-w-6xl text-center sm:text-left'>
+		<section
+			className={cn(
+				'px-6 sm:px-10 lg:px-16',
+				variant === 'compact'
+					? 'pb-10 pt-28 lg:pb-14 lg:pt-32'
+					: 'pb-16 pt-36 lg:pb-24 lg:pt-44',
+			)}>
+			<div
+				className={cn(
+					'mx-auto max-w-6xl',
+					centered ? 'text-center' : 'text-center sm:text-left',
+				)}>
 				<Badge className='uppercase tracking-widest'>{eyebrow}</Badge>
-				<h1 className='mx-auto mt-6 max-w-4xl font-display text-4xl font-semibold leading-[1.08] text-white sm:mx-0 sm:text-6xl'>
+				<h1
+					className={cn(
+						'mx-auto mt-6 max-w-4xl font-display font-semibold leading-[1.08] text-white',
+						variant === 'compact'
+							? 'text-3xl sm:text-4xl'
+							: 'text-4xl sm:text-6xl',
+						!centered && 'sm:mx-0',
+					)}>
 					{title}
 				</h1>
-				<p className='mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 sm:mx-0'>
+				<p
+					className={cn(
+						'mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300',
+						!centered && 'sm:mx-0',
+					)}>
 					{description}
 				</p>
 
 				{buttons.length > 0 && (
-					<div className='mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap'>
+					<div
+						className={cn(
+							'mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap',
+							centered && 'sm:justify-center',
+						)}>
 						{buttons.map((action, index) =>
 							index === 0 ? (
 								<Button
-									key={action.href}
+									key={action.label}
 									asChild
 									size='lg'
 									className='w-full bg-brand font-bold text-ink hover:bg-brand-strong sm:w-auto'>
@@ -156,7 +185,7 @@ export function PageHero({
 								</Button>
 							) : (
 								<Button
-									key={action.href}
+									key={action.label}
 									asChild
 									size='lg'
 									variant='outline'
@@ -190,14 +219,27 @@ export function PageHero({
 }
 
 export function CheckList({
-	items,
+	items = [
+		'This is a single check list item',
+		'Items run to whatever length they need and wrap onto a second line like this one does',
+		'Add as many or as few as the section calls for',
+		'The icon can be swapped per instance',
+	],
 	icon: Icon = Check,
+	variant = 'stacked',
 }: {
-	items: string[]
+	items?: string[]
 	icon?: LucideIcon
+	/** How the list is arranged. */
+	variant?: 'stacked' | 'columns' | 'inline'
 }) {
 	return (
-		<ul className='space-y-3'>
+		<ul
+			className={cn(
+				variant === 'stacked' && 'space-y-3',
+				variant === 'columns' && 'grid gap-3 sm:grid-cols-2',
+				variant === 'inline' && 'flex flex-wrap gap-x-6 gap-y-3',
+			)}>
 			{items.map((item) => (
 				<li key={item} className='flex gap-3 text-slate-300'>
 					<Icon className='mt-1 size-4 shrink-0 text-brand' />
@@ -211,10 +253,16 @@ export function CheckList({
 export function CtaBand({
 	title = 'Find out what should actually be built.',
 	description = 'Start with an assessment. We walk your business end to end and show you where automation and AI pay off, ranked by what they are worth.',
+	actions = [
+		{ label: 'Book An Assessment', href: '/contact' },
+		{ label: 'See What We Have Built', href: '/case-studies' },
+	],
 	design = 'card',
 }: {
 	title?: string
 	description?: string
+	/** First action renders solid, second outlined. */
+	actions?: { label: string; href: string }[]
 	/** How the band is framed and where the buttons sit. */
 	design?: 'card' | 'centered' | 'split'
 }) {
@@ -225,21 +273,28 @@ export function CtaBand({
 				design === 'centered' && 'justify-center',
 				design === 'split' ? 'lg:justify-end' : 'mt-9',
 			)}>
-			<Button
-				asChild
-				size='lg'
-				className='w-full bg-brand font-bold text-ink hover:bg-brand-strong sm:w-auto'>
-				<Link href='/contact'>
-					Book An Assessment <ArrowRight />
-				</Link>
-			</Button>
-			<Button
-				asChild
-				size='lg'
-				variant='outline'
-				className='w-full border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white sm:w-auto'>
-				<Link href='/case-studies'>See What We Have Built</Link>
-			</Button>
+			{actions.slice(0, 2).map((action, index) =>
+				index === 0 ? (
+					<Button
+						key={action.label}
+						asChild
+						size='lg'
+						className='w-full bg-brand font-bold text-ink hover:bg-brand-strong sm:w-auto'>
+						<Link href={action.href}>
+							{action.label} <ArrowRight />
+						</Link>
+					</Button>
+				) : (
+					<Button
+						key={action.label}
+						asChild
+						size='lg'
+						variant='outline'
+						className='w-full border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white sm:w-auto'>
+						<Link href={action.href}>{action.label}</Link>
+					</Button>
+				),
+			)}
 		</div>
 	)
 
@@ -267,7 +322,7 @@ export function CtaBand({
 
 	if (design === 'centered') {
 		return (
-			<Section className='border-y border-white/10 text-center'>
+			<Section className='text-center'>
 				{heading}
 				{body}
 				{buttons}
@@ -277,7 +332,7 @@ export function CtaBand({
 
 	if (design === 'split') {
 		return (
-			<Section className='border-t border-white/10'>
+			<Section>
 				<GlassCard className='grid items-center gap-8 p-10 sm:p-14 lg:grid-cols-[1.4fr_1fr]'>
 					<div>
 						{heading}
@@ -290,7 +345,7 @@ export function CtaBand({
 	}
 
 	return (
-		<Section className='border-t border-white/10'>
+		<Section>
 			<GlassCard
 				variant='accent'
 				className='p-10 text-center sm:p-14 sm:text-left'>

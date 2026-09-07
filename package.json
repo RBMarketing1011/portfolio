@@ -6,7 +6,10 @@
 		"dev": "next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint"
+		"lint": "next lint",
+		"db:up": "node scripts/ensure-mongo.cjs",
+		"db:down": "docker compose down",
+		"db:seed": "node --env-file=.env scripts/seed-templates.mjs"
 	},
 	"dependencies": {
 		"@radix-ui/react-aspect-ratio": "^1.1.3",
@@ -21,6 +24,7 @@
 		"cmdk": "^1.1.1",
 		"cn": "^0.2.5",
 		"lucide-react": "^0.476.0",
+		"mongodb": "^7.6.0",
 		"motion": "^12.4.7",
 		"next": "15.3.8",
 		"next-themes": "^0.4.6",
@@ -29,7 +33,8 @@
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
 		"tailwind-merge": "^3.0.2",
-		"tailwindcss-animate": "^1.0.7"
+		"tailwindcss-animate": "^1.0.7",
+		"zod": "^4.5.4"
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3",

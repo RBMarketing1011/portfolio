@@ -65,3 +65,5 @@ export {
 } from './media'
 export { FilterBar, Pagination, TableOfContents } from './navigation'
 export { RoiCalculator, AnnouncementBar } from './interactive'
+// Whole-page states: detail panels, countdowns, auth, and confirmation screens.
+export { DetailCard, Countdown, AuthPanel, Notice } from './states'

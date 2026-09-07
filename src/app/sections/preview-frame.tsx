@@ -18,6 +18,12 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { BackgroundDrawer } from './background-drawer'
+import {
+	readBackground,
+	writeBackground,
+	type BackgroundSettings,
+} from './background-settings'
 import { SettingsDialog } from './settings-dialog'
 import {
 	readSettings,
@@ -25,42 +31,45 @@ import {
 	type ThemeSettings,
 } from './theme-settings'
 
-// A null width means fill the stage, which is what Desktop does.
+// Devices widest first, sized to Tailwind's breakpoints. A null width fills the stage.
 const viewports = [
 	{
 		id: 'desktop',
 		label: 'Desktop',
-		icon: Monitor,
 		width: null,
+		icon: Monitor,
 		rotate: false,
 	},
-	{ id: 'laptop', label: 'Laptop', icon: Laptop, width: 1280, rotate: false },
+	{ id: 'laptop', label: 'Laptop', width: 1280, icon: Laptop, rotate: false },
 	{
 		id: 'tablet-landscape',
 		label: 'Tablet Landscape',
+		width: 1024,
 		icon: Tablet,
-		width: 1194,
 		rotate: true,
 	},
-	{ id: 'tablet', label: 'Tablet', icon: Tablet, width: 834, rotate: false },
+	{ id: 'tablet', label: 'Tablet', width: 768, icon: Tablet, rotate: false },
 	{
 		id: 'mobile-landscape',
 		label: 'Mobile Landscape',
+		width: 640,
 		icon: Smartphone,
-		width: 844,
 		rotate: true,
 	},
 	{
 		id: 'mobile',
 		label: 'Mobile',
-		icon: Smartphone,
 		width: 390,
+		icon: Smartphone,
 		rotate: false,
 	},
 ] as const
 
 const MIN_WIDTH = 280
 const MAX_WIDTH = 3840
+const HANDLE_WIDTH = 12
+const clampWidth = (value: number, max = MAX_WIDTH) =>
+	Math.min(Math.max(Math.round(value), MIN_WIDTH), max)
 
 export function PreviewFrame({
 	slug,
@@ -77,6 +86,12 @@ export function PreviewFrame({
 	const stageRef = useRef<HTMLDivElement>(null)
 	const [stage, setStage] = useState({ width: 0, height: 0 })
 	const [draftWidth, setDraftWidth] = useState<string | null>(null)
+	const [drag, setDrag] = useState<{
+		side: 'left' | 'right'
+		startX: number
+		startWidth: number
+	} | null>(null)
+	const [dragWidth, setDragWidth] = useState<number | null>(null)
 
 	// Desktop resolves to a measured pixel width so the frame animates px to px.
 	useEffect(() => {
@@ -100,6 +115,7 @@ export function PreviewFrame({
 	)
 
 	const settings = readSettings(new URLSearchParams(params.toString()))
+	const background = readBackground(new URLSearchParams(params.toString()))
 	// A variant id from a previous entry would leave the select showing nothing.
 	const requestedVariant = params.get('v')
 	const variantId = variants.some((item) => item.id === requestedVariant)
@@ -129,6 +145,9 @@ export function PreviewFrame({
 	const applySettings = (value: ThemeSettings) =>
 		push(writeSettings(new URLSearchParams(params.toString()), value))
 
+	const applyBackground = (value: BackgroundSettings) =>
+		push(writeBackground(new URLSearchParams(params.toString()), value))
+
 	const commitDraft = () => {
 		if (draftWidth === null) return
 		const parsed = Number(draftWidth)
@@ -136,7 +155,7 @@ export function PreviewFrame({
 			setDraftWidth(null)
 			return
 		}
-		setWidth(Math.min(Math.max(parsed, MIN_WIDTH), MAX_WIDTH))
+		setWidth(clampWidth(parsed))
 	}
 
 	// `w` drives the wrapper, not the page, so it never reaches the frame.
@@ -146,8 +165,82 @@ export function PreviewFrame({
 
 	const measured = stage.width > 0
 	const frameWidth = requestedWidth ?? stage.width
-	const shownWidth =
-		draftWidth ?? String(Math.round(requestedWidth ?? stage.width))
+	const liveWidth = dragWidth ?? frameWidth
+	const shownWidth = draftWidth ?? String(Math.round(liveWidth))
+	// The frame is centered, so each edge accounts for half of any width change.
+	const edgeOffset = Math.max(0, (stage.width - liveWidth) / 2)
+
+	const startDrag =
+		(side: 'left' | 'right') => (event: React.PointerEvent<HTMLDivElement>) => {
+			if (event.button !== 0) return
+			event.preventDefault()
+			event.currentTarget.setPointerCapture(event.pointerId)
+			setDrag({ side, startX: event.clientX, startWidth: frameWidth })
+			setDragWidth(frameWidth)
+		}
+
+	const moveDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (!drag) return
+		const delta =
+			(event.clientX - drag.startX) * (drag.side === 'left' ? -2 : 2)
+		// Never past the visible stage, but a preset wider than the stage can stay put.
+		const max = Math.max(stage.width, drag.startWidth)
+		setDragWidth(clampWidth(drag.startWidth + delta, max))
+	}
+
+	const endDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+		if (!drag) return
+		event.currentTarget.releasePointerCapture(event.pointerId)
+		const committed = dragWidth
+		setDrag(null)
+		setDragWidth(null)
+		if (committed !== null) setWidth(committed)
+	}
+
+	const nudge =
+		(side: 'left' | 'right') =>
+		(event: React.KeyboardEvent<HTMLDivElement>) => {
+			const step = event.shiftKey ? 100 : 20
+			const max = Math.max(stage.width, frameWidth)
+			const grow = side === 'left' ? 'ArrowLeft' : 'ArrowRight'
+			const shrink = side === 'left' ? 'ArrowRight' : 'ArrowLeft'
+			if (event.key === grow) setWidth(clampWidth(frameWidth + step * 2, max))
+			else if (event.key === shrink)
+				setWidth(clampWidth(frameWidth - step * 2, max))
+			else if (event.key === 'Home') setWidth(MIN_WIDTH)
+			else if (event.key === 'End') setWidth(null)
+			else return
+			event.preventDefault()
+		}
+
+	const handle = (side: 'left' | 'right') => (
+		<div
+			role='separator'
+			aria-orientation='vertical'
+			aria-label={`Drag to resize the preview from the ${side}`}
+			aria-valuenow={Math.round(liveWidth)}
+			aria-valuemin={MIN_WIDTH}
+			aria-valuemax={MAX_WIDTH}
+			tabIndex={0}
+			onPointerDown={startDrag(side)}
+			onPointerMove={moveDrag}
+			onPointerUp={endDrag}
+			onPointerCancel={endDrag}
+			onKeyDown={nudge(side)}
+			// Sits in the gutter beside the frame so it never covers the preview's scrollbar,
+			// and tucks against the stage edge once the frame fills it.
+			style={{ [side]: Math.max(0, edgeOffset - HANDLE_WIDTH) }}
+			className='group absolute inset-y-0 z-20 flex w-3 cursor-col-resize touch-none items-center justify-center focus:outline-none'>
+			<span
+				className={cn(
+					'h-14 w-1 rounded-full transition-colors',
+					drag?.side === side
+						? 'bg-brand'
+						: 'bg-white/20 group-hover:bg-brand/70 group-focus-visible:bg-brand',
+				)}
+			/>
+		</div>
+	)
 
 	return (
 		<TooltipProvider>
@@ -176,11 +269,9 @@ export function PreviewFrame({
 								</TooltipTrigger>
 								<TooltipContent side='bottom'>
 									{viewport.label}
-									{viewport.width ? (
-										<span className='ml-1.5 text-slate-500'>
-											{viewport.width}px
-										</span>
-									) : null}
+									<span className='ml-1.5 text-slate-500'>
+										{viewport.width ?? Math.round(stage.width)}px
+									</span>
 								</TooltipContent>
 							</Tooltip>
 						)
@@ -230,7 +321,7 @@ export function PreviewFrame({
 						</Select>
 					)}
 
-					<div className='ml-2 shrink-0 border-l border-white/10 pl-2'>
+					<div className='ml-2 flex shrink-0 items-center gap-1 border-l border-white/10 pl-2'>
 						<SettingsDialog settings={settings} onChange={applySettings} />
 					</div>
 				</div>
@@ -245,16 +336,23 @@ export function PreviewFrame({
 							src={`/section-preview/${slug}${frameQuery ? `?${frameQuery}` : ''}`}
 							title={`${name} preview`}
 							className={cn(
-								'mx-auto block bg-ink motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-out',
-								requestedWidth !== null && 'border-x border-white/10',
+								'mx-auto block bg-ink',
+								!drag &&
+									'motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-out',
+								liveWidth < stage.width && 'border-x border-white/10',
 							)}
 							style={{
-								width: measured ? frameWidth : '100%',
+								width: measured ? liveWidth : '100%',
 								height: stage.height || '100%',
 							}}
 						/>
 						<ScrollBar orientation='horizontal' />
 					</ScrollArea>
+
+					{/* Keeps the pointer out of the iframe for the whole drag. */}
+					{drag && <div className='absolute inset-0 z-10 cursor-col-resize' />}
+					{measured && handle('left')}
+					{measured && handle('right')}
 				</div>
 			</div>
 		</TooltipProvider>

@@ -2,9 +2,14 @@
 
 import { usePathname } from 'next/navigation'
 
-// The section library and its preview frames render chrome as previewable sections,
-// so they opt out of the real header and footer. Remove alongside /sections.
-const bareRoutes = ['/sections', '/section-preview']
+// The section library, the builder, and both preview surfaces render their own
+// chrome, so they opt out of the real header and footer.
+const bareRoutes = [
+	'/sections',
+	'/section-preview',
+	'/page-preview',
+	'/preview',
+]
 
 export function AppShell({
 	header,
@@ -16,9 +21,11 @@ export function AppShell({
 	children: React.ReactNode
 }) {
 	const pathname = usePathname()
+	const isBare = bareRoutes.some(
+		(route) => pathname === route || pathname.startsWith(`${route}/`),
+	)
 
-	if (bareRoutes.some((route) => pathname.startsWith(route)))
-		return <>{children}</>
+	if (isBare) return <>{children}</>
 
 	return (
 		<>

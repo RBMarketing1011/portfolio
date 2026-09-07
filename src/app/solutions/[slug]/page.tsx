@@ -1,21 +1,17 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowRight, Check, X } from 'lucide-react'
 import {
+	BeforeAfter,
 	CheckList,
 	CtaBand,
+	FaqAccordion,
+	FeatureCard,
+	Grid,
 	PageHero,
+	ProseBlock,
+	RelatedCard,
 	Section,
 	SectionHeading,
 } from '@/components/sections'
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from '@/components/ui/accordion'
-import { Button } from '@/components/ui/button'
-import { GlassCard } from '@/components/ui/glass-card'
 import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
 import { solutions } from '@/lib/site-content'
 
@@ -73,118 +69,79 @@ export default async function SolutionPage({
 			<PageHero
 				eyebrow={solution.name}
 				title={solution.headline}
-				description={solution.blurb}>
-				<Button
-					asChild
-					size='lg'
-					className='mt-9 bg-brand font-bold text-ink hover:bg-brand-strong'>
-					<Link href='/contact'>
-						Talk Through Your Process <ArrowRight />
-					</Link>
-				</Button>
-			</PageHero>
+				description={solution.blurb}
+				actions={[
+					{ label: 'Talk Through Your Process', href: '/contact' },
+					{ label: 'See The Work', href: '/case-studies' },
+				]}
+			/>
 
 			<Section>
-				<div className='grid gap-14 lg:grid-cols-[1.3fr_1fr]'>
-					<div className='max-w-2xl space-y-6 text-lg leading-8 text-slate-300'>
+				<SectionHeading
+					eyebrow='The context'
+					title={`Why ${solution.name.toLowerCase()} keeps coming up`}
+				/>
+				<div className='mt-12 max-w-3xl'>
+					<ProseBlock>
 						{solution.intro.map((paragraph) => (
 							<p key={paragraph}>{paragraph}</p>
 						))}
-					</div>
-
-					<GlassCard className='h-fit p-8'>
-						<h2 className='font-display text-lg font-semibold text-white'>
-							Problems this solves
-						</h2>
-						<ul className='mt-6 space-y-4'>
-							{solution.problems.map((problem) => (
-								<li key={problem} className='flex gap-3 text-slate-400'>
-									<X className='mt-1 size-4 shrink-0 text-red-400/70' />
-									<span className='leading-7'>{problem}</span>
-								</li>
-							))}
-						</ul>
-					</GlassCard>
+					</ProseBlock>
 				</div>
 			</Section>
 
-			<Section className='border-y border-white/10 bg-[#060d18]'>
-				<SectionHeading eyebrow='What we build' title='What this looks like' />
-				<div className='mt-12 grid gap-5 md:grid-cols-2'>
-					{solution.whatWeBuild.map((item) => (
-						<GlassCard key={item.title} className='p-7'>
-							<h3 className='font-display text-lg font-semibold text-white'>
-								{item.title}
-							</h3>
-							<p className='mt-3 leading-7 text-slate-400'>{item.body}</p>
-						</GlassCard>
-					))}
-				</div>
-			</Section>
+			<BeforeAfter
+				variant='rows'
+				eyebrow='The shift'
+				title='What this replaces, and what replaces it'
+				beforeLabel='Problems this solves'
+				afterLabel='What changes'
+				before={solution.problems}
+				after={solution.outcomes}
+			/>
+
+			<Grid
+				eyebrow='What we build'
+				title='What this looks like in practice'
+				description='Scope moves with the business, but this is the shape of nearly every build in this category.'
+				columns={2}>
+				{solution.whatWeBuild.map((item) => (
+					<FeatureCard key={item.title} title={item.title} blurb={item.body} />
+				))}
+			</Grid>
 
 			<Section>
-				<div className='grid gap-12 md:grid-cols-2'>
-					<GlassCard variant='accent' className='p-8'>
-						<h2 className='font-display text-xl font-semibold text-white'>
-							What changes
-						</h2>
-						<div className='mt-6'>
-							<CheckList items={solution.outcomes} />
-						</div>
-					</GlassCard>
-
-					<GlassCard className='p-8'>
-						<h2 className='font-display text-xl font-semibold text-white'>
-							This is a good fit if
-						</h2>
-						<ul className='mt-6 space-y-4'>
-							{solution.goodFit.map((item) => (
-								<li key={item} className='flex gap-3 text-slate-400'>
-									<Check className='mt-1 size-4 shrink-0 text-brand' />
-									<span className='leading-7'>{item}</span>
-								</li>
-							))}
-						</ul>
-					</GlassCard>
+				<SectionHeading
+					eyebrow='Fit'
+					title='This is a good fit if'
+					description='If none of these are true, we will say so on the first call rather than three weeks in.'
+				/>
+				<div className='mt-12 max-w-3xl'>
+					<CheckList items={solution.goodFit} />
 				</div>
 			</Section>
 
-			<Section className='border-t border-white/10 bg-[#060d18]'>
-				<SectionHeading eyebrow='Questions' title='Common questions' />
-				<Accordion type='single' collapsible className='mt-10 max-w-3xl'>
-					{solution.faqs.map((faq) => (
-						<AccordionItem
-							key={faq.question}
-							value={faq.question}
-							className='border-white/10'>
-							<AccordionTrigger className='text-left font-display text-base text-white hover:no-underline'>
-								{faq.question}
-							</AccordionTrigger>
-							<AccordionContent className='text-base leading-7 text-slate-400'>
-								{faq.answer}
-							</AccordionContent>
-						</AccordionItem>
-					))}
-				</Accordion>
-			</Section>
+			<FaqAccordion
+				eyebrow='Questions'
+				title='Common questions'
+				description={`What people ask before committing to a ${solution.name.toLowerCase()} build.`}
+				faqs={solution.faqs}
+			/>
 
-			<Section>
-				<h2 className='font-display text-2xl font-semibold text-white'>
-					Other solutions
-				</h2>
-				<div className='mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-					{others.map((item) => (
-						<GlassCard key={item.slug} interactive asChild>
-							<Link href={`/solutions/${item.slug}`} className='p-5'>
-								<item.icon className='size-5 text-brand' />
-								<span className='mt-3 block font-medium text-white'>
-									{item.name}
-								</span>
-							</Link>
-						</GlassCard>
-					))}
-				</div>
-			</Section>
+			<Grid
+				eyebrow='Keep looking'
+				title='Other solutions'
+				description='Most engagements end up touching two or three of these.'>
+				{others.map((item) => (
+					<RelatedCard
+						key={item.slug}
+						title={item.name}
+						meta='Solution'
+						description={item.blurb}
+						href={`/solutions/${item.slug}`}
+					/>
+				))}
+			</Grid>
 
 			<CtaBand />
 		</>

@@ -1,17 +1,22 @@
-import Link from 'next/link'
+import { Fragment } from 'react'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
-import { CtaBand, Section } from '@/components/sections'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { GlassCard } from '@/components/ui/glass-card'
-import { Separator } from '@/components/ui/separator'
+import {
+	AuthorBio,
+	CtaBand,
+	Grid,
+	PageHero,
+	ProseBlock,
+	RelatedCard,
+	Section,
+	TableOfContents,
+} from '@/components/sections'
 import {
 	JsonLd,
 	articleSchema,
 	breadcrumbSchema,
 	buildMetadata,
 } from '@/lib/seo'
+import { site } from '@/lib/site'
 import { insights } from '@/lib/site-content'
 
 export function generateStaticParams() {
@@ -42,6 +47,12 @@ const formatter = new Intl.DateTimeFormat('en-US', {
 	day: 'numeric',
 })
 
+const headingId = (heading: string) =>
+	heading
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '')
+
 export default async function BlogArticle({
 	params,
 }: {
@@ -66,75 +77,70 @@ export default async function BlogArticle({
 				]}
 			/>
 
-			<section className='hero-grid border-b border-white/10 px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pt-44'>
-				<div className='mx-auto max-w-3xl'>
-					<Button
-						asChild
-						variant='ghost'
-						className='mb-8 px-0 text-brand hover:bg-transparent hover:text-brand-strong'>
-						<Link href='/blog'>
-							<ArrowLeft /> All Articles
-						</Link>
-					</Button>
-					<Badge variant='outline' className='border-brand/30 text-brand'>
-						{insight.category}
-					</Badge>
-					<h1 className='mt-5 font-display text-4xl font-semibold leading-tight text-white sm:text-5xl'>
-						{insight.title}
-					</h1>
-					<p className='mt-6 text-lg leading-8 text-slate-300'>
-						{insight.excerpt}
-					</p>
-					<div className='mt-6 flex items-center gap-3 text-sm text-slate-500'>
-						<time dateTime={insight.date}>
-							{formatter.format(new Date(insight.date))}
-						</time>
-						<span aria-hidden>·</span>
-						<span>{insight.readTime} read</span>
-					</div>
-				</div>
-			</section>
+			<PageHero
+				eyebrow={insight.category}
+				title={insight.title}
+				description={insight.excerpt}
+				actions={[
+					{ label: 'Book An Assessment', href: '/contact' },
+					{ label: 'All Articles', href: '/blog' },
+				]}
+				stats={[
+					{
+						value: formatter.format(new Date(insight.date)),
+						label: 'Published',
+					},
+					{ value: insight.readTime, label: 'Read time' },
+					{ value: insight.category, label: 'Category' },
+				]}
+			/>
 
 			<Section>
-				<article className='mx-auto max-w-3xl'>
-					{insight.body.map((block) => (
-						<section key={block.heading} className='mb-10'>
-							<h2 className='font-display text-2xl font-semibold text-white'>
-								{block.heading}
-							</h2>
-							{block.paragraphs.map((paragraph) => (
-								<p
-									key={paragraph}
-									className='mt-4 text-lg leading-8 text-slate-400'>
-									{paragraph}
-								</p>
+				<div className='grid gap-14 lg:grid-cols-[16rem_1fr]'>
+					<TableOfContents
+						items={insight.body.map((block) => ({
+							id: headingId(block.heading),
+							label: block.heading,
+						}))}
+					/>
+					<div className='min-w-0 max-w-3xl'>
+						<ProseBlock>
+							{insight.body.map((block) => (
+								/* Flat children: ProseBlock styles direct descendants only. */
+								<Fragment key={block.heading}>
+									<h2 id={headingId(block.heading)}>{block.heading}</h2>
+									{block.paragraphs.map((paragraph) => (
+										<p key={paragraph}>{paragraph}</p>
+									))}
+								</Fragment>
 							))}
-						</section>
-					))}
-
-					<Separator className='my-12 bg-white/10' />
-
-					<h2 className='font-display text-xl font-semibold text-white'>
-						Keep reading
-					</h2>
-					<ul className='mt-6 space-y-4'>
-						{more.map((item) => (
-							<li key={item.slug}>
-								<GlassCard interactive asChild>
-									<Link href={`/blog/${item.slug}`} className='block p-5'>
-										<span className='text-sm font-medium text-brand'>
-											{item.category}
-										</span>
-										<span className='mt-1 block font-display font-semibold text-white'>
-											{item.title}
-										</span>
-									</Link>
-								</GlassCard>
-							</li>
-						))}
-					</ul>
-				</article>
+						</ProseBlock>
+						<AuthorBio
+							className='mt-14'
+							name={site.name}
+							role='AI, automation, and custom software'
+							bio='We audit an entire operation before building anything, then build what the business actually needs. Everything here comes out of real engagements.'
+							href='/about'
+							linkLabel='About the studio'
+						/>
+					</div>
+				</div>
 			</Section>
+
+			<Grid
+				eyebrow='Keep reading'
+				title='More from the blog'
+				description='Written for the person who has to make the call, not the person writing the spec.'>
+				{more.map((item) => (
+					<RelatedCard
+						key={item.slug}
+						title={item.title}
+						meta={`${item.category} · ${item.readTime}`}
+						description={item.excerpt}
+						href={`/blog/${item.slug}`}
+					/>
+				))}
+			</Grid>
 
 			<CtaBand />
 		</>

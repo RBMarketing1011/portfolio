@@ -102,7 +102,9 @@ export default function SiteFooter({
 
 	if (design === 'centered') {
 		return (
-			<footer className='border-t border-white/10 bg-ink px-6 py-16 text-center sm:px-10 lg:px-16'>
+			<footer
+				data-surface='footer'
+				className='border-t border-white/10 px-6 py-16 text-center sm:px-10 lg:px-16'>
 				<div className='mx-auto max-w-6xl'>
 					<div className='flex flex-col items-center'>{brand}</div>
 					<div className='mt-12 grid gap-10 sm:grid-cols-3'>{linkColumns}</div>
@@ -115,7 +117,9 @@ export default function SiteFooter({
 
 	if (design === 'split') {
 		return (
-			<footer className='border-t border-white/10 bg-ink px-6 py-16 sm:px-10 lg:px-16'>
+			<footer
+				data-surface='footer'
+				className='border-t border-white/10 px-6 py-16 sm:px-10 lg:px-16'>
 				<div className='mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1fr_1.4fr]'>
 					{brand}
 					<div className='grid gap-8 sm:grid-cols-3'>{linkColumns}</div>
@@ -128,7 +132,9 @@ export default function SiteFooter({
 	}
 
 	return (
-		<footer className='border-t border-white/10 bg-ink px-6 py-16 sm:px-10 lg:px-16'>
+		<footer
+			data-surface='footer'
+			className='border-t border-white/10 px-6 py-16 sm:px-10 lg:px-16'>
 			<div className='mx-auto max-w-6xl'>
 				<div className='grid gap-12 md:grid-cols-[1.5fr_repeat(3,1fr)]'>
 					{brand}

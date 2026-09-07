@@ -1,9 +1,10 @@
 import { Suspense } from 'react'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { BuilderProvider } from '@/lib/builder/builder-context'
+import { loadTemplates } from '@/lib/builder/load-templates'
 import { LibraryNav } from './library-nav'
-import { library } from './library'
+import { entryVariants, library } from './library'
 
-export default function SectionsLayout({
+export default async function SectionsLayout({
 	children,
 }: {
 	children: React.ReactNode
@@ -11,36 +12,28 @@ export default function SectionsLayout({
 	const navGroups = library.map((group) => ({
 		id: group.id,
 		label: group.label,
+		kind: group.kind,
 		entries: group.entries.map((entry) => ({
 			slug: entry.slug,
 			name: entry.name,
-			built: Boolean(entry.preview),
+			// Most entries carry variants now rather than a single preview.
+			built: entryVariants(entry).length > 0,
 		})),
 	}))
 
-	const built = navGroups
-		.flatMap((g) => g.entries)
-		.filter((e) => e.built).length
-	const total = navGroups.flatMap((g) => g.entries).length
+	const templates = await loadTemplates()
 
 	return (
-		<div className='flex'>
-			<aside className='sticky top-0 h-screen w-64 shrink-0 border-r border-white/10'>
-				<ScrollArea className='h-full'>
-					<div className='p-4'>
-						<p className='px-2 text-sm text-slate-500'>
-							{built} of {total} built
-						</p>
-						<div className='mt-5'>
-							<Suspense fallback={null}>
-								<LibraryNav groups={navGroups} />
-							</Suspense>
-						</div>
-					</div>
-				</ScrollArea>
-			</aside>
+		<BuilderProvider>
+			<div className='flex'>
+				<aside className='sticky top-0 flex h-screen w-72 shrink-0 flex-col border-r border-white/10'>
+					<Suspense fallback={null}>
+						<LibraryNav groups={navGroups} templates={templates} />
+					</Suspense>
+				</aside>
 
-			<main className='min-w-0 flex-1'>{children}</main>
-		</div>
+				<main className='min-w-0 flex-1'>{children}</main>
+			</div>
+		</BuilderProvider>
 	)
 }

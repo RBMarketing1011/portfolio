@@ -2,10 +2,17 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
-import { ArrowRight, Menu } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowRight, ChevronDown, Menu } from 'lucide-react'
 import { Wordmark } from '@/components/brand'
+import { useHeaderOptions } from '@/components/header-options'
 import { Button } from '@/components/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
 	Accordion,
 	AccordionContent,
@@ -36,6 +43,7 @@ import {
 	services,
 	solutions,
 } from '@/lib/site-content'
+import { cn } from '@/lib/utils'
 
 const panelClass = 'w-full p-3 md:w-full'
 
@@ -96,6 +104,7 @@ function PromoPanel({
 		<NavigationMenuLink asChild>
 			<Link
 				href={href}
+				data-menu-feature
 				className='flex h-full flex-col justify-between rounded-lg border border-brand/20 bg-linear-to-br from-brand/15 via-panel to-panel p-5 transition-colors hover:border-brand/45'>
 				<div>
 					<p className='eyebrow'>{eyebrow}</p>
@@ -123,7 +132,137 @@ function PromoPanel({
 	)
 }
 
+// Same destinations as the mega menu, flattened into plain dropdown lists.
+const simpleMenus = [
+	{
+		label: 'Industries',
+		links: industries.map((item) => ({
+			href: `/industries/${item.slug}`,
+			label: item.name,
+		})),
+	},
+	{
+		label: 'Solutions',
+		links: solutions.map((item) => ({
+			href: `/solutions/${item.slug}`,
+			label: item.name,
+		})),
+	},
+	{
+		label: 'Services',
+		links: services.map((item) => ({
+			href: `/services#${item.slug}`,
+			label: item.name,
+		})),
+	},
+	{
+		label: 'Portfolio',
+		links: projects.map((item) => ({
+			href: `/portfolio#${item.slug}`,
+			label: item.name,
+		})),
+	},
+	{
+		label: 'Case Studies',
+		links: projects.map((item) => ({
+			href: `/case-studies/${item.slug}`,
+			label: item.name,
+		})),
+	},
+	{
+		label: 'Blog',
+		links: [
+			...insightCategories.map((category) => ({
+				href: '/blog',
+				label: category,
+			})),
+			{ href: '/blog', label: 'All articles' },
+		],
+	},
+]
+
+// Radix dropdowns are click-only, so the open state is driven by pointer here to
+// match the mega menu. The delay stops the panel flickering on the gap below the trigger.
+function HoverDropdown({
+	label,
+	links,
+}: {
+	label: string
+	links: { href: string; label: string }[]
+}) {
+	const [open, setOpen] = useState(false)
+	const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	const cancelClose = () => {
+		if (timer.current) clearTimeout(timer.current)
+		timer.current = null
+	}
+	const scheduleClose = () => {
+		cancelClose()
+		timer.current = setTimeout(() => setOpen(false), 120)
+	}
+
+	useEffect(() => cancelClose, [])
+
+	return (
+		<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+			<DropdownMenuTrigger
+				onPointerEnter={() => {
+					cancelClose()
+					setOpen(true)
+				}}
+				onPointerLeave={scheduleClose}
+				className={cn(plainLinkClass, 'gap-1 data-[state=open]:text-white')}>
+				{label}
+				<ChevronDown className='size-3 transition-transform duration-200 group-data-[state=open]:rotate-180' />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				align='start'
+				sideOffset={10}
+				onPointerEnter={cancelClose}
+				onPointerLeave={scheduleClose}
+				// Hover menus must not pull focus back to the trigger on close.
+				onCloseAutoFocus={(event) => event.preventDefault()}
+				className='w-64 border-white/10 bg-popover'>
+				{links.map((link) => (
+					<DropdownMenuItem key={`${link.href}-${link.label}`} asChild>
+						<Link
+							href={link.href}
+							className='cursor-pointer text-slate-300 focus:bg-white/5 focus:text-white'>
+							{link.label}
+						</Link>
+					</DropdownMenuItem>
+				))}
+			</DropdownMenuContent>
+		</DropdownMenu>
+	)
+}
+
 function DesktopNav() {
+	const { megaMenu } = useHeaderOptions()
+
+	if (!megaMenu) {
+		return (
+			<div className='hidden items-center lg:flex'>
+				<Link href='/about' className={plainLinkClass}>
+					About Us
+				</Link>
+
+				{simpleMenus.map((menu) => (
+					<HoverDropdown
+						key={menu.label}
+						label={menu.label}
+						links={menu.links}
+					/>
+				))}
+
+				<Link href='/sections' className={plainLinkClass}>
+					Sections
+				</Link>
+			</div>
+		)
+	}
+
 	return (
 		<NavigationMenu className='static hidden lg:block'>
 			<NavigationMenuList className='gap-0'>
@@ -263,30 +402,46 @@ function DesktopNav() {
 						Portfolio
 					</NavigationMenuTrigger>
 					<NavigationMenuContent className={panelClass}>
-						<div className='grid gap-3 md:grid-cols-3'>
-							{projects.map((project) => (
-								<NavigationMenuLink asChild key={project.slug}>
-									<Link
-										href={`/portfolio#${project.slug}`}
-										className='group rounded-lg p-2 transition-colors hover:bg-white/5'>
-										<span className='relative block h-24 overflow-hidden rounded-md border border-white/10 bg-ink'>
-											<Image
-												src={project.image}
-												alt=''
-												fill
-												sizes='240px'
-												className='object-cover object-top transition-transform duration-300 group-hover:scale-105'
-											/>
-										</span>
-										<span className='mt-2.5 block text-sm font-medium text-white'>
-											{project.name}
-										</span>
-										<span className='mt-0.5 block text-xs text-slate-400'>
-											{project.category}
-										</span>
-									</Link>
-								</NavigationMenuLink>
-							))}
+						<div className='grid gap-3 md:grid-cols-[1fr_1fr_17rem]'>
+							{[projects.slice(0, 3), projects.slice(3)].map(
+								(column, index) => (
+									<div key={index} className='grid content-start gap-3'>
+										{column.map((project) => (
+											<NavigationMenuLink asChild key={project.slug}>
+												<Link
+													href={`/portfolio#${project.slug}`}
+													className='group rounded-lg p-2 transition-colors hover:bg-white/5'>
+													<span className='relative block h-24 overflow-hidden rounded-md border border-white/10 bg-ink'>
+														<Image
+															src={project.image}
+															alt=''
+															fill
+															sizes='240px'
+															className='object-cover object-top transition-transform duration-300 group-hover:scale-105'
+														/>
+													</span>
+													<span className='mt-2.5 block text-sm font-medium text-white'>
+														{project.name}
+													</span>
+													<span className='mt-0.5 block text-xs text-slate-400'>
+														{project.category}
+													</span>
+												</Link>
+											</NavigationMenuLink>
+										))}
+									</div>
+								),
+							)}
+							{featuredProjects[0] && (
+								<PromoPanel
+									eyebrow='Featured'
+									title={featuredProjects[0].name}
+									body={featuredProjects[0].summary}
+									href={`/portfolio#${featuredProjects[0].slug}`}
+									cta='View the build'
+									image={featuredProjects[0].image}
+								/>
+							)}
 						</div>
 					</NavigationMenuContent>
 				</NavigationMenuItem>
@@ -517,6 +672,21 @@ function MobileNav() {
 	)
 }
 
+// The tinted surface lives on its own clipped layer so the pattern can overhang
+// the edges without the header cropping the mega menu that opens below it.
+function Surface({ className }: { className?: string }) {
+	return (
+		<div
+			data-surface='header'
+			aria-hidden
+			className={cn(
+				'header-fade pointer-events-none absolute inset-0 -z-10 overflow-hidden',
+				className,
+			)}
+		/>
+	)
+}
+
 export default function SiteHeader({
 	design = 'bar',
 }: {
@@ -535,9 +705,11 @@ export default function SiteHeader({
 		return (
 			<header className='fixed inset-x-0 top-0 z-50 px-4 pt-4 sm:px-6 lg:px-10'>
 				<nav
-					className='header-fade relative mx-auto flex max-w-7xl items-center justify-between gap-6 rounded-full border border-white/12 px-5 py-2.5 shadow-[0_8px_32px_-12px_color-mix(in_srgb,var(--color-ink)_80%,transparent)] backdrop-blur-md'
+					className='relative mx-auto flex max-w-7xl items-center justify-between gap-6 rounded-full border border-white/12 px-5 py-2.5 shadow-[0_8px_32px_-12px_color-mix(in_srgb,var(--color-ink)_80%,transparent)] backdrop-blur-md'
 					aria-label='Main'>
+					<Surface className='rounded-full' />
 					<Wordmark />
+					{/* The pill is the positioned ancestor, so the menu already matches its width. */}
 					<DesktopNav />
 					<div className='flex items-center gap-2'>
 						{cta}
@@ -550,7 +722,8 @@ export default function SiteHeader({
 
 	if (design === 'stacked') {
 		return (
-			<header className='header-fade fixed inset-x-0 top-0 z-50 border-b border-white/10 backdrop-blur-md'>
+			<header className='fixed inset-x-0 top-0 z-50 border-b border-white/10 backdrop-blur-md'>
+				<Surface />
 				<div className='mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-3 sm:px-6 lg:px-10'>
 					<Wordmark />
 					<div className='flex items-center gap-2'>
@@ -559,9 +732,10 @@ export default function SiteHeader({
 					</div>
 				</div>
 				<nav
-					className='relative hidden border-t border-white/8 px-4 sm:px-6 lg:block lg:px-10'
+					className='hidden border-t border-white/8 px-4 sm:px-6 lg:block lg:px-10'
 					aria-label='Main'>
-					<div className='mx-auto flex max-w-7xl justify-center'>
+					{/* Positioned here so the menu spans the content row and opens from its bottom. */}
+					<div className='relative mx-auto flex max-w-7xl justify-center'>
 						<DesktopNav />
 					</div>
 				</nav>
@@ -570,9 +744,11 @@ export default function SiteHeader({
 	}
 
 	return (
-		<header className='header-fade fixed inset-x-0 top-0 z-50 border-b border-white/10 px-4 py-3 backdrop-blur-md sm:px-6 lg:px-10'>
+		<header className='fixed inset-x-0 top-0 z-50 border-b border-white/10 px-4 backdrop-blur-md sm:px-6 lg:px-10'>
+			<Surface />
+			{/* Carries the row's padding so the menu spans logo to CTA and opens from the header's edge. */}
 			<nav
-				className='relative mx-auto flex max-w-7xl items-center justify-between gap-6'
+				className='relative mx-auto flex max-w-7xl items-center justify-between gap-6 py-3'
 				aria-label='Main'>
 				<Wordmark />
 				<DesktopNav />

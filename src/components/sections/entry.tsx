@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ChevronRight } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
+import { cn } from '@/lib/utils'
 
 type Action = { label: string; href: string }
 
@@ -75,6 +76,7 @@ export function SplitHero({
 	mediaSrc,
 	mediaLabel = 'Main Image',
 	backdrop = [],
+	variant = 'split',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
@@ -85,11 +87,25 @@ export function SplitHero({
 	mediaLabel?: string
 	/** Slot images, in the order of backdropLayouts. Empty slots render numbered placeholders. */
 	backdrop?: string[]
+	/** Which side the media sits on, or stacked beneath centered copy. */
+	variant?: 'split' | 'reversed' | 'stacked'
 }) {
+	const stacked = variant === 'stacked'
+
 	return (
-		<section className='hero-grid relative overflow-hidden border-b border-white/10 px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-24 lg:pt-44'>
-			<div className='mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-2'>
-				<div className='text-center sm:text-left'>
+		<section className='relative overflow-hidden px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-24 lg:pt-44'>
+			<div
+				className={cn(
+					'mx-auto grid max-w-6xl items-center gap-14',
+					!stacked && 'lg:grid-cols-2',
+				)}>
+				<div
+					className={cn(
+						stacked
+							? 'mx-auto max-w-3xl text-center'
+							: 'text-center sm:text-left',
+						variant === 'reversed' && 'lg:order-2',
+					)}>
 					<Badge className='uppercase tracking-widest'>{eyebrow}</Badge>
 					<h1 className='mt-6 font-display text-4xl font-semibold leading-[1.08] text-white sm:text-5xl'>
 						{title}
@@ -100,7 +116,7 @@ export function SplitHero({
 							{actions.slice(0, 2).map((action, index) =>
 								index === 0 ? (
 									<Button
-										key={action.href}
+										key={action.label}
 										asChild
 										size='lg'
 										className='w-full bg-brand font-bold text-ink hover:bg-brand-strong sm:w-auto'>
@@ -110,7 +126,7 @@ export function SplitHero({
 									</Button>
 								) : (
 									<Button
-										key={action.href}
+										key={action.label}
 										asChild
 										size='lg'
 										variant='outline'
@@ -126,7 +142,11 @@ export function SplitHero({
 				{/* Backdrop tiles sit behind the primary and are clipped by the section where they bleed.
 				    The wrapper matches the primary card's box, so tile percentages are unchanged and
 				    the whole cluster scales as one piece rather than each tile individually. */}
-				<div className='relative mx-4 mb-12 mt-16 sm:mx-10 lg:mx-6 lg:my-0'>
+				<div
+					className={cn(
+						'relative mx-4 mb-12 mt-16 sm:mx-10 lg:mx-6 lg:my-0',
+						variant === 'reversed' && 'lg:order-1',
+					)}>
 					<div className='absolute inset-0 z-0 hidden scale-85 sm:block lg:scale-100'>
 						{backdropLayouts.map((layout, index) => {
 							const { brightness, shadow, z, ...position } = layout
@@ -197,6 +217,7 @@ export function StatHero({
 	],
 	linkLabel = 'See What All The Hype Is About',
 	linkHref = '/case-studies',
+	variant = 'cards',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
@@ -205,28 +226,62 @@ export function StatHero({
 	/** Pass null to drop the link entirely. */
 	linkLabel?: string | null
 	linkHref?: string
+	/** How the stat row is drawn against the copy. */
+	variant?: 'cards' | 'divided' | 'centered'
 }) {
+	const centered = variant === 'centered'
+
 	return (
-		<section className='hero-grid border-b border-white/10 px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-20 lg:pt-44'>
-			<div className='mx-auto max-w-6xl text-center sm:text-left'>
+		<section className='px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-20 lg:pt-44'>
+			<div
+				className={cn(
+					'mx-auto max-w-6xl',
+					centered ? 'text-center' : 'text-center sm:text-left',
+				)}>
 				<Badge className='uppercase tracking-widest'>{eyebrow}</Badge>
-				<h1 className='mx-auto mt-6 max-w-4xl font-display text-4xl font-semibold leading-[1.08] text-white sm:mx-0 sm:text-6xl'>
+				<h1
+					className={cn(
+						'mx-auto mt-6 max-w-4xl font-display text-4xl font-semibold leading-[1.08] text-white sm:text-6xl',
+						!centered && 'sm:mx-0',
+					)}>
 					{title}
 				</h1>
-				<p className='mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300 sm:mx-0'>
+				<p
+					className={cn(
+						'mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300',
+						!centered && 'sm:mx-0',
+					)}>
 					{description}
 				</p>
-				<dl className='mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
-					{stats.map((stat) => (
-						<GlassCard key={stat.label} className='p-7'>
-							<dt className='font-display text-4xl font-semibold text-brand'>
-								{stat.value}
-							</dt>
-							<dd className='mt-3 text-sm leading-6 text-slate-400'>
-								{stat.label}
-							</dd>
-						</GlassCard>
-					))}
+				<dl
+					className={cn(
+						'mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4',
+						variant === 'divided' &&
+							'gap-0 divide-y divide-white/10 border-y border-white/10 sm:divide-x sm:divide-y-0',
+					)}>
+					{stats.map((stat) =>
+						variant === 'cards' ? (
+							<GlassCard key={stat.label} className='p-7'>
+								<dt className='font-display text-4xl font-semibold text-brand'>
+									{stat.value}
+								</dt>
+								<dd className='mt-3 text-sm leading-6 text-slate-400'>
+									{stat.label}
+								</dd>
+							</GlassCard>
+						) : (
+							<div
+								key={stat.label}
+								className={cn('p-7', centered && 'text-center')}>
+								<dt className='font-display text-4xl font-semibold text-brand'>
+									{stat.value}
+								</dt>
+								<dd className='mt-3 text-sm leading-6 text-slate-400'>
+									{stat.label}
+								</dd>
+							</div>
+						),
+					)}
 				</dl>
 
 				{linkLabel && (

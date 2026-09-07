@@ -164,7 +164,7 @@ export function ContactSplit({
 	)
 
 	return (
-		<section className='hero-grid border-b border-white/10 px-6 pb-20 pt-36 sm:px-10 lg:px-16 lg:pt-44'>
+		<section className='px-6 pb-20 pt-36 sm:px-10 lg:px-16 lg:pt-44'>
 			<div
 				className={cn(
 					'mx-auto max-w-6xl gap-14',
@@ -532,7 +532,7 @@ export function SplitCta({
 	const rows = design === 'rows'
 
 	return (
-		<Section className='border-t border-white/10'>
+		<Section>
 			<div
 				className={cn(
 					design === 'cards' && 'grid gap-5 lg:grid-cols-2',

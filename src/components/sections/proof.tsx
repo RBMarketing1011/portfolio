@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import {
 	ArrowDown,
@@ -64,7 +65,7 @@ export function StatBand({
 	// Numbers only, split by rules. The quietest of the three.
 	if (variant === 'divided') {
 		return (
-			<Section className='border-y border-white/10'>
+			<Section>
 				<dl className='grid divide-y divide-white/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0'>
 					{stats.map((stat) => (
 						<div
@@ -84,7 +85,7 @@ export function StatBand({
 	}
 
 	return (
-		<Section className='border-y border-white/10'>
+		<Section>
 			<dl className='grid gap-10 text-center sm:grid-cols-3 sm:text-left'>
 				{stats.map((stat) => {
 					const Icon = stat.icon ?? Gauge
@@ -146,10 +147,10 @@ export function LogoStrip({
 		)
 	}
 
-	// No card, just rules above and below. Sits quietly between two heavier sections.
+	// No card, just the logos on the page. Sits quietly between two heavier sections.
 	if (variant === 'bare') {
 		return (
-			<Section className='border-y border-white/10'>
+			<Section>
 				<p className='eyebrow text-center'>{eyebrow}</p>
 				{list}
 			</Section>
@@ -169,12 +170,12 @@ export function LogoStrip({
 export function Spotlight({
 	eyebrow = 'Spotlight',
 	title = 'This is the spotlight heading',
-	summary = 'This is the spotlight summary. One paragraph on what is being featured and why it matters, then the labelled blocks underneath carry the specifics.',
+	summary = 'This is the spotlight summary. One paragraph on what is being featured and why it matters, then the labeled blocks underneath carry the specifics.',
 	details = [
 		{
 			label: 'Detail Label',
 			value:
-				'This is a labelled detail line. Two of these sit under the summary as short blocks.',
+				'This is a labeled detail line. Two of these sit under the summary as short blocks.',
 		},
 		{
 			label: 'Detail Label',
@@ -184,6 +185,8 @@ export function Spotlight({
 	],
 	href = '/case-studies',
 	linkLabel = 'Read More',
+	mediaSrc,
+	mediaAlt = '',
 	mediaLabel = 'Media slot: screenshot, video, or photo',
 	variant = 'split',
 }: {
@@ -193,10 +196,21 @@ export function Spotlight({
 	details?: { label: string; value: string }[]
 	href?: string
 	linkLabel?: string
+	/** Real screenshot. Falls back to the placeholder label when absent. */
+	mediaSrc?: string
+	mediaAlt?: string
 	mediaLabel?: string
 	variant?: 'split' | 'stacked' | 'overlap'
 }) {
-	const media = (
+	const media = mediaSrc ? (
+		<Image
+			src={mediaSrc}
+			alt={mediaAlt}
+			fill
+			sizes='(min-width: 1024px) 40rem, 90vw'
+			className='object-cover'
+		/>
+	) : (
 		<div className='flex h-full items-center justify-center px-6 text-center text-sm text-slate-500'>
 			{mediaLabel}
 		</div>
@@ -225,7 +239,7 @@ export function Spotlight({
 		</Button>
 	)
 
-	// Centred copy above full-bleed media, for when the visual is the argument.
+	// Centered copy above full-bleed media, for when the visual is the argument.
 	if (variant === 'stacked') {
 		return (
 			<Section>
@@ -237,7 +251,9 @@ export function Spotlight({
 					<p className='mt-5 leading-8 text-slate-400'>{summary}</p>
 					{cta}
 				</div>
-				<GlassCard className='mt-14 aspect-21/9 w-full'>{media}</GlassCard>
+				<GlassCard className='relative mt-14 aspect-21/9 w-full overflow-hidden'>
+					{media}
+				</GlassCard>
 				{details.length > 0 && (
 					<dl className='mt-10 grid gap-8 sm:grid-cols-2'>
 						{details.map((detail, index) => (
@@ -261,7 +277,9 @@ export function Spotlight({
 		return (
 			<Section>
 				<div className='relative'>
-					<GlassCard className='aspect-21/9 w-full'>{media}</GlassCard>
+					<GlassCard className='relative aspect-21/9 w-full overflow-hidden'>
+						{media}
+					</GlassCard>
 					<GlassCard
 						variant='accent'
 						className='relative -mt-16 ml-0 w-full p-8 sm:p-10 lg:absolute lg:inset-y-12 lg:right-10 lg:mt-0 lg:w-[26rem] lg:overflow-y-auto'>
@@ -280,7 +298,9 @@ export function Spotlight({
 	return (
 		<Section>
 			<div className='grid items-center gap-12 lg:grid-cols-2'>
-				<GlassCard className='aspect-video w-full'>{media}</GlassCard>
+				<GlassCard className='relative aspect-video w-full overflow-hidden'>
+					{media}
+				</GlassCard>
 				<div>
 					<p className='eyebrow'>{eyebrow}</p>
 					<h2 className='mt-4 font-display text-3xl font-semibold leading-tight text-white sm:text-4xl'>

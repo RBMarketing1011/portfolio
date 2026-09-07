@@ -41,7 +41,7 @@ export function TestimonialCard({
 		</>
 	)
 
-	// No card at all: an oversized quote mark and centred copy.
+	// No card at all: an oversized quote mark and centered copy.
 	if (variant === 'bare') {
 		return (
 			<figure
@@ -128,6 +128,8 @@ export type CaseStudyItem = {
 	client: string
 	summary: string
 	href: string
+	/** Real screenshot. Falls back to an empty media slot when absent. */
+	image?: string
 }
 
 export function CaseStudyCard({
@@ -136,6 +138,7 @@ export function CaseStudyCard({
 	client = 'Client',
 	summary = 'This is the card summary. Two lines is the sweet spot before the grid starts to feel heavy.',
 	href = '/case-studies',
+	image,
 	variant = 'stacked',
 	className,
 }: Partial<CaseStudyItem> & {
@@ -150,12 +153,46 @@ export function CaseStudyCard({
 		</div>
 	)
 
+	const media = (radius: string) =>
+		image ? (
+			<span
+				className={cn(
+					'relative block aspect-video w-full overflow-hidden border border-white/10',
+					radius,
+				)}>
+				<Image
+					src={image}
+					alt=''
+					fill
+					sizes='(min-width: 1024px) 24rem, 100vw'
+					className='object-cover transition-transform duration-500 group-hover:scale-105'
+				/>
+			</span>
+		) : (
+			<span
+				className={cn(
+					'block aspect-video w-full border border-white/10 bg-white/3',
+					radius,
+				)}
+			/>
+		)
+
 	// Copy sits on the media behind a scrim instead of beneath it.
 	if (variant === 'overlay') {
 		return (
 			<GlassCard interactive asChild className={cn('group', className)}>
 				<Link href={href} className='relative block aspect-4/3 overflow-hidden'>
-					<span className='absolute inset-0 bg-white/4' />
+					{image ? (
+						<Image
+							src={image}
+							alt=''
+							fill
+							sizes='(min-width: 1024px) 24rem, 100vw'
+							className='object-cover'
+						/>
+					) : (
+						<span className='absolute inset-0 bg-white/4' />
+					)}
 					<span className='absolute inset-0 bg-linear-to-t from-ink via-ink/70 to-transparent' />
 					<span className='absolute inset-x-0 bottom-0 p-7'>
 						{meta}
@@ -178,9 +215,9 @@ export function CaseStudyCard({
 	// Landscape row for index pages that would rather list than tile.
 	if (variant === 'row') {
 		return (
-			<GlassCard interactive asChild className={className}>
+			<GlassCard interactive asChild className={cn('group', className)}>
 				<Link href={href} className='grid gap-6 p-6 sm:grid-cols-[14rem_1fr]'>
-					<span className='block aspect-video w-full rounded-lg border border-white/10 bg-white/3' />
+					{media('rounded-lg')}
 					<span className='flex flex-col justify-center'>
 						{meta}
 						<span className='mt-3 block font-display text-xl font-semibold text-white'>
@@ -199,9 +236,9 @@ export function CaseStudyCard({
 	}
 
 	return (
-		<GlassCard interactive asChild className={className}>
+		<GlassCard interactive asChild className={cn('group', className)}>
 			<Link href={href} className='flex flex-col p-7'>
-				<div className='aspect-video w-full rounded-lg border border-white/10 bg-white/3' />
+				{media('rounded-lg')}
 				<div className='mt-6'>{meta}</div>
 				<h3 className='mt-3 font-display text-xl font-semibold text-white'>
 					{name}
@@ -460,14 +497,25 @@ export type Logo = {
 }
 
 export function ClientLogo({
-	name,
+	name = 'Client Name',
 	mark,
 	src,
+	variant = 'wordmark',
 	className,
-}: Logo & { className?: string }) {
+}: Partial<Logo> & {
+	/** How the logo reads when there is no image. */
+	variant?: 'wordmark' | 'boxed' | 'muted'
+	className?: string
+}) {
 	if (src) {
 		return (
-			<span className={cn('flex h-10 items-center', className)}>
+			<span
+				className={cn(
+					'flex h-10 items-center',
+					variant === 'boxed' && 'rounded-lg border border-white/10 px-4',
+					variant === 'muted' && 'opacity-60',
+					className,
+				)}>
 				<Image
 					src={src}
 					alt={name}
@@ -482,7 +530,12 @@ export function ClientLogo({
 	return (
 		<span
 			className={cn(
-				'flex items-center gap-2.5 text-slate-500 transition-colors hover:text-slate-300',
+				'flex items-center gap-2.5 transition-colors',
+				variant === 'boxed' &&
+					'rounded-lg border border-white/10 px-4 py-2 text-slate-400 hover:text-white',
+				variant === 'muted'
+					? 'text-slate-600 hover:text-slate-400'
+					: variant === 'wordmark' && 'text-slate-500 hover:text-slate-300',
 				className,
 			)}>
 			{mark && (

@@ -140,7 +140,8 @@ export const industries: Industry[] = [
 		],
 		faqs: [
 			{
-				question: 'We already have a shop management system. Does this replace it?',
+				question:
+					'We already have a shop management system. Does this replace it?',
 				answer:
 					'No. In most cases we sit alongside it and fix the customer-facing and scheduling layer, which is usually where the money is leaking.',
 			},
@@ -196,7 +197,8 @@ export const industries: Industry[] = [
 		],
 		faqs: [
 			{
-				question: 'Our crews turn over constantly. Is training software worth it?',
+				question:
+					'Our crews turn over constantly. Is training software worth it?',
 				answer:
 					'High turnover is the argument for it, not against it. The higher your turnover, the more expensive it is to have onboarding depend on a specific experienced person being available.',
 			},
@@ -257,7 +259,8 @@ export const industries: Industry[] = [
 					'Yes. In most agency builds the client never sees our name anywhere. The portal and reporting run under your brand and domain.',
 			},
 			{
-				question: 'We use a lot of different ad platforms. Can you pull them all in?',
+				question:
+					'We use a lot of different ad platforms. Can you pull them all in?',
 				answer:
 					'Generally yes, wherever the platform exposes an API. Part of the assessment is confirming which sources can be automated and which will need a different approach.',
 			},
@@ -397,7 +400,8 @@ export const solutions: Solution[] = [
 		icon: FileSearch,
 		name: 'AI Operations Audit',
 		blurb: 'A full walkthrough of your business and a ranked build roadmap.',
-		headline: 'Find out what should actually be built before you build anything.',
+		headline:
+			'Find out what should actually be built before you build anything.',
 		intro: [
 			'The most expensive software mistake is not a bad build. It is a good build of the wrong thing. The audit exists to make that mistake very hard to make.',
 			'We spend time inside your operation, talking to the people doing the work rather than only the people describing it. We follow information from the moment it enters the business to the moment it produces an invoice, and we write down every place a human is doing something a system should be doing.',
@@ -441,7 +445,8 @@ export const solutions: Solution[] = [
 		],
 		faqs: [
 			{
-				question: 'What happens if the audit says we should not build anything?',
+				question:
+					'What happens if the audit says we should not build anything?',
 				answer:
 					'Then we tell you that, and you have saved a great deal of money. It happens, and it is a legitimate outcome.',
 			},
@@ -1027,6 +1032,9 @@ export const processSteps: ProcessStep[] = [
 	},
 ]
 
+// ProcessSteps is a client component, so the icon cannot cross the boundary.
+export const deliverySteps = processSteps.map(({ icon, ...step }) => step)
+
 export type Project = {
 	slug: string
 	name: string
@@ -1042,7 +1050,6 @@ export type Project = {
 	capabilities: string[]
 	stack: string[]
 }
-
 export const projects: Project[] = [
 	{
 		slug: 'leadsnearme-platform',
@@ -1090,7 +1097,11 @@ export const projects: Project[] = [
 			'Shop-side calendar built for fast changes',
 			'Automated confirmations and reminders',
 		],
-		capabilities: ['Scheduling', 'Customer self-service', 'Workflow automation'],
+		capabilities: [
+			'Scheduling',
+			'Customer self-service',
+			'Workflow automation',
+		],
 		stack: ['Next.js', 'TypeScript', 'PostgreSQL', 'Tailwind CSS'],
 	},
 	{
@@ -1425,8 +1436,7 @@ export const faqs = [
 	},
 	{
 		question: 'Who owns what you build?',
-		answer:
-			'You do. The code, the systems, and the documentation are yours.',
+		answer: 'You do. The code, the systems, and the documentation are yours.',
 	},
 	{
 		question: 'What size businesses do you work with?',
@@ -1439,7 +1449,11 @@ export const capabilityGroups = [
 	{
 		icon: Plug,
 		title: 'Systems integration',
-		items: ['API integrations', 'Data synchronization', 'Legacy system bridges'],
+		items: [
+			'API integrations',
+			'Data synchronization',
+			'Legacy system bridges',
+		],
 	},
 	{
 		icon: Boxes,

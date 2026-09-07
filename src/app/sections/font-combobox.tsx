@@ -20,7 +20,7 @@ const categories: (FontCategory | 'All')[] = [
 	'Handwriting',
 ]
 
-// The catalogue is ~1,900 entries; rendering a slice keeps the list responsive.
+// The catalog is ~1,900 entries; rendering a slice keeps the list responsive.
 const VISIBLE = 80
 
 export function FontCombobox({

@@ -85,23 +85,30 @@ export function Masonry({
 	title,
 	description,
 	columns = 3,
+	heading = 'above',
 	className,
 	children,
 }: HeadingProps & {
 	columns?: keyof typeof masonryColumns
+	/** Where the heading block sits against the columns. */
+	heading?: 'above' | 'centered' | 'bare'
 	className?: string
 	children: React.ReactNode
 }) {
-	const hasHeading = Boolean(eyebrow || title || description)
+	const hasHeading =
+		heading !== 'bare' && Boolean(eyebrow || title || description)
 
 	return (
 		<Section className={className}>
 			{hasHeading && (
-				<SectionHeading
-					eyebrow={eyebrow}
-					title={title}
-					description={description}
-				/>
+				<div className={cn(heading === 'centered' && 'mx-auto max-w-3xl')}>
+					<SectionHeading
+						eyebrow={eyebrow}
+						title={title}
+						description={description}
+						align={heading === 'centered' ? 'center' : 'left'}
+					/>
+				</div>
 			)}
 			{/* CSS columns rather than grid, so each item keeps its own height. */}
 			<div

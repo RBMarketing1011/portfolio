@@ -17,7 +17,8 @@ export function ProseBlock({
 	return (
 		<div
 			className={cn(
-				'max-w-3xl text-lg leading-8 text-slate-300',
+				// mx-auto is a no-op when nested in a max-w-3xl column, and centers it standalone.
+				'mx-auto max-w-3xl px-6 text-lg leading-8 text-slate-300 sm:px-0',
 				'[&>h2]:mt-14 [&>h2]:font-display [&>h2]:text-2xl [&>h2]:font-semibold [&>h2]:text-white',
 				'[&>h3]:mt-10 [&>h3]:font-display [&>h3]:text-xl [&>h3]:font-semibold [&>h3]:text-white',
 				headings === 'ruled' &&
@@ -46,7 +47,7 @@ export function ProseBlock({
 					</p>
 					<ul>
 						<li>This is a list item inside prose</li>
-						<li>Markers pick up the brand colour automatically</li>
+						<li>Markers pick up the brand color automatically</li>
 						<li>Ordered lists are styled the same way</li>
 					</ul>
 					<blockquote>
