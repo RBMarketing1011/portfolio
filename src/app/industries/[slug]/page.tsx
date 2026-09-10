@@ -11,7 +11,13 @@ import {
 	Section,
 	SectionHeading,
 } from '@/components/sections'
-import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
+import {
+	JsonLd,
+	breadcrumbSchema,
+	buildMetadata,
+	faqPageSchema,
+	serviceSchema,
+} from '@/lib/seo'
 import { industries } from '@/lib/site-content'
 
 export function generateStaticParams() {
@@ -54,14 +60,13 @@ export default async function IndustryPage({
 						{ name: 'Industries', path: '/industries' },
 						{ name: industry.name, path: `/industries/${industry.slug}` },
 					]),
-					{
-						'@type': 'FAQPage',
-						mainEntity: industry.faqs.map((faq) => ({
-							'@type': 'Question',
-							name: faq.question,
-							acceptedAnswer: { '@type': 'Answer', text: faq.answer },
-						})),
-					},
+					serviceSchema({
+						path: `/industries/${industry.slug}`,
+						name: `AI and automation for ${industry.name}`,
+						description: industry.blurb,
+						serviceType: 'Business process automation',
+					}),
+					faqPageSchema(`/industries/${industry.slug}`, industry.faqs),
 				]}
 			/>
 

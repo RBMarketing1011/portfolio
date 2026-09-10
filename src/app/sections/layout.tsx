@@ -4,6 +4,11 @@ import { loadTemplates } from '@/lib/builder/load-templates'
 import { LibraryNav } from './library-nav'
 import { entryVariants, library } from './library'
 
+export const metadata = {
+	title: 'Section Library',
+	robots: { index: false, follow: false },
+}
+
 export default async function SectionsLayout({
 	children,
 }: {

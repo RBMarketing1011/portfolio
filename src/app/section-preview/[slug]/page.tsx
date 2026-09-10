@@ -14,6 +14,11 @@ export function generateStaticParams() {
 	)
 }
 
+export const metadata = {
+	title: 'Section Preview',
+	robots: { index: false, follow: false },
+}
+
 export default async function SectionPreviewFrame({
 	params,
 	searchParams,

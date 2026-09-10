@@ -12,7 +12,13 @@ import {
 	Section,
 	SectionHeading,
 } from '@/components/sections'
-import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
+import {
+	JsonLd,
+	breadcrumbSchema,
+	buildMetadata,
+	faqPageSchema,
+	serviceSchema,
+} from '@/lib/seo'
 import { solutions } from '@/lib/site-content'
 
 export function generateStaticParams() {
@@ -55,14 +61,13 @@ export default async function SolutionPage({
 						{ name: 'Solutions', path: '/solutions' },
 						{ name: solution.name, path: `/solutions/${solution.slug}` },
 					]),
-					{
-						'@type': 'FAQPage',
-						mainEntity: solution.faqs.map((faq) => ({
-							'@type': 'Question',
-							name: faq.question,
-							acceptedAnswer: { '@type': 'Answer', text: faq.answer },
-						})),
-					},
+					serviceSchema({
+						path: `/solutions/${solution.slug}`,
+						name: solution.name,
+						description: solution.blurb,
+						serviceType: solution.name,
+					}),
+					faqPageSchema(`/solutions/${solution.slug}`, solution.faqs),
 				]}
 			/>
 

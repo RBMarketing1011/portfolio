@@ -16,7 +16,7 @@ ${site.name} (${site.domain}) is an AI, automation, and custom software consulta
 ${services
 	.map(
 		(service) =>
-			`- [${service.name}](${baseUrl}/services#${service.slug}): ${service.summary}`,
+			`- [${service.name}](${baseUrl}/services/${service.slug}): ${service.summary}`,
 	)
 	.join('\n')}
 
@@ -25,7 +25,7 @@ ${services
 ${projects
 	.map(
 		(project) =>
-			`- [${project.name}](${baseUrl}/work/${project.slug}): ${project.summary}`,
+			`- [${project.name}](${baseUrl}/case-studies/${project.slug}): ${project.summary}`,
 	)
 	.join('\n')}
 
@@ -34,18 +34,22 @@ ${projects
 ${insights
 	.map(
 		(insight) =>
-			`- [${insight.title}](${baseUrl}/insights/${insight.slug}): ${insight.excerpt}`,
+			`- [${insight.title}](${baseUrl}/blog/${insight.slug}): ${insight.excerpt}`,
 	)
 	.join('\n')}
 
 ## Key pages
 
 - [Services](${baseUrl}/services): What we do and what each engagement delivers.
+- [Solutions](${baseUrl}/solutions): The named problems we solve and how we build for each.
+- [Industries](${baseUrl}/industries): How the work changes by the kind of business you run.
 - [Process](${baseUrl}/process): How an engagement runs, from assessment to ongoing support.
-- [Work](${baseUrl}/work): Case studies of shipped software.
-- [Insights](${baseUrl}/insights): Writing on applied AI, automation, and build strategy.
+- [Portfolio](${baseUrl}/portfolio): Screens from the software we have shipped.
+- [Case studies](${baseUrl}/case-studies): Case studies of shipped software.
+- [Blog](${baseUrl}/blog): Writing on applied AI, automation, and build strategy.
 - [About](${baseUrl}/about): Who we are and how we operate.
 - [Contact](${baseUrl}/contact): Book an assessment.
+- [Sitemap](${baseUrl}/sitemap.xml): Every page on the site, grouped and described.
 
 ## FAQ
 
@@ -53,7 +57,7 @@ ${faqs.map((faq) => `### ${faq.question}\n${faq.answer}`).join('\n\n')}
 
 ## Contact
 
-- Email: ${site.email}
+- Contact form: ${baseUrl}/contact
 - Website: ${baseUrl}
 `
 

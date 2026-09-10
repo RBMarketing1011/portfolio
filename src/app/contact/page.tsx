@@ -1,7 +1,6 @@
 import ContactForm from '@/components/contact-form'
 import { ContactSplit, FaqAccordion } from '@/components/sections'
-import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
-import { site } from '@/lib/site'
+import { JsonLd, breadcrumbSchema, buildMetadata, pageSchema } from '@/lib/seo'
 import { faqs } from '@/lib/site-content'
 
 export const metadata = buildMetadata({
@@ -15,17 +14,25 @@ export default function ContactPage() {
 	return (
 		<>
 			<JsonLd
-				schema={breadcrumbSchema([
-					{ name: 'Home', path: '/' },
-					{ name: 'Contact', path: '/contact' },
-				])}
+				schema={[
+					breadcrumbSchema([
+						{ name: 'Home', path: '/' },
+						{ name: 'Contact', path: '/contact' },
+					]),
+					pageSchema({
+						path: '/contact',
+						name: 'Contact',
+						description:
+							'Book an AI and automation assessment for your operation.',
+						type: 'ContactPage',
+					}),
+				]}
 			/>
 
 			<ContactSplit
 				eyebrow='Contact'
 				title='Tell us what is slowing your team down.'
 				description='Bring the process that costs you the most time. We will tell you honestly whether it is worth automating, rebuilding, or leaving alone.'
-				email={site.email}
 				steps={[
 					{
 						title: '1. A short conversation',
@@ -40,7 +47,7 @@ export default function ContactPage() {
 						body: 'What to build, in what order, and what each piece is worth. Yours to keep.',
 					},
 				]}
-				form={<ContactForm />}
+				form={<ContactForm siteKey={process.env.CLOUDFLARE_SITE_KEY ?? ''} />}
 			/>
 
 			<FaqAccordion

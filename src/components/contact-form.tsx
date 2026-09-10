@@ -1,7 +1,8 @@
 'use client'
 
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useRef, useState } from 'react'
 import { AlertCircle, CheckCircle2, Loader2, Send } from 'lucide-react'
+import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,9 +15,11 @@ const fieldClass =
 
 const labelClass = 'text-sm font-medium text-white'
 
-export default function ContactForm() {
+export default function ContactForm({ siteKey }: { siteKey: string }) {
 	const [status, setStatus] = useState<FormStatus>('idle')
 	const [message, setMessage] = useState('')
+	const [token, setToken] = useState<string | null>(null)
+	const turnstile = useRef<TurnstileHandle>(null)
 
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault()
@@ -27,8 +30,14 @@ export default function ContactForm() {
 			const response = await fetch('/api/contact', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(Object.fromEntries(new FormData(form))),
+				body: JSON.stringify({
+					...Object.fromEntries(new FormData(form)),
+					'cf-turnstile-response': token,
+				}),
 			})
+
+			// The token is spent whether or not the send succeeded.
+			turnstile.current?.reset()
 
 			if (!response.ok) {
 				const data = await response.json().catch(() => null)
@@ -40,6 +49,7 @@ export default function ContactForm() {
 			form.reset()
 			setStatus('success')
 		} catch {
+			turnstile.current?.reset()
 			setMessage('Could not reach the server. Please try again.')
 			setStatus('error')
 		}
@@ -148,10 +158,26 @@ export default function ContactForm() {
 				</p>
 			)}
 
+			{siteKey ? (
+				<Turnstile
+					ref={turnstile}
+					siteKey={siteKey}
+					action='contact'
+					onToken={setToken}
+				/>
+			) : (
+				<p
+					role='alert'
+					className='flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-red-300'>
+					<AlertCircle className='mt-0.5 size-4 shrink-0' />
+					Verification is not configured, so this form cannot be submitted.
+				</p>
+			)}
+
 			<Button
 				type='submit'
 				size='lg'
-				disabled={status === 'sending'}
+				disabled={status === 'sending' || !token}
 				className='w-full bg-brand font-bold text-ink hover:bg-brand-strong'>
 				{status === 'sending' ? (
 					<>

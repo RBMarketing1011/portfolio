@@ -35,11 +35,12 @@ import {
 	SheetTrigger,
 } from '@/components/ui/sheet'
 import {
+	caseStudyHighlights,
 	featuredProjects,
 	industries,
-	insightCategories,
+	insightTopics,
 	insights,
-	projects,
+	serviceName,
 	services,
 	solutions,
 } from '@/lib/site-content'
@@ -151,30 +152,26 @@ const simpleMenus = [
 	{
 		label: 'Services',
 		links: services.map((item) => ({
-			href: `/services#${item.slug}`,
-			label: item.name,
-		})),
-	},
-	{
-		label: 'Portfolio',
-		links: projects.map((item) => ({
-			href: `/portfolio#${item.slug}`,
+			href: `/services/${item.slug}`,
 			label: item.name,
 		})),
 	},
 	{
 		label: 'Case Studies',
-		links: projects.map((item) => ({
-			href: `/case-studies/${item.slug}`,
-			label: item.name,
-		})),
+		links: [
+			...caseStudyHighlights.map((item) => ({
+				href: `/case-studies/${item.slug}`,
+				label: item.name,
+			})),
+			{ href: '/case-studies', label: 'All case studies' },
+		],
 	},
 	{
 		label: 'Blog',
 		links: [
-			...insightCategories.map((category) => ({
-				href: '/blog',
-				label: category,
+			...insightTopics.map((topic) => ({
+				href: `/blog/topics/${topic.slug}`,
+				label: topic.category,
 			})),
 			{ href: '/blog', label: 'All articles' },
 		],
@@ -256,8 +253,8 @@ function DesktopNav() {
 					/>
 				))}
 
-				<Link href='/sections' className={plainLinkClass}>
-					Sections
+				<Link href='/portfolio' className={plainLinkClass}>
+					Portfolio
 				</Link>
 			</div>
 		)
@@ -349,7 +346,7 @@ function DesktopNav() {
 								eyebrow='Start here'
 								title='AI & Automation Assessment'
 								body='We walk your entire operation and hand you a ranked roadmap of what to build first.'
-								href='/services#ai-automation-assessment'
+								href='/services/ai-automation-assessment'
 								cta='See what you get'
 							/>
 						</div>
@@ -366,7 +363,7 @@ function DesktopNav() {
 								{services.slice(0, 2).map((service) => (
 									<li key={service.slug}>
 										<MenuLink
-											href={`/services#${service.slug}`}
+											href={`/services/${service.slug}`}
 											icon={service.icon}
 											title={service.name}
 											blurb={service.tagline}
@@ -378,7 +375,7 @@ function DesktopNav() {
 								{services.slice(2).map((service) => (
 									<li key={service.slug}>
 										<MenuLink
-											href={`/services#${service.slug}`}
+											href={`/services/${service.slug}`}
 											icon={service.icon}
 											title={service.name}
 											blurb={service.tagline}
@@ -398,52 +395,11 @@ function DesktopNav() {
 				</NavigationMenuItem>
 
 				<NavigationMenuItem>
-					<NavigationMenuTrigger className={triggerClass}>
-						Portfolio
-					</NavigationMenuTrigger>
-					<NavigationMenuContent className={panelClass}>
-						<div className='grid gap-3 md:grid-cols-[1fr_1fr_17rem]'>
-							{[projects.slice(0, 3), projects.slice(3)].map(
-								(column, index) => (
-									<div key={index} className='grid content-start gap-3'>
-										{column.map((project) => (
-											<NavigationMenuLink asChild key={project.slug}>
-												<Link
-													href={`/portfolio#${project.slug}`}
-													className='group rounded-lg p-2 transition-colors hover:bg-white/5'>
-													<span className='relative block h-24 overflow-hidden rounded-md border border-white/10 bg-ink'>
-														<Image
-															src={project.image}
-															alt=''
-															fill
-															sizes='240px'
-															className='object-cover object-top transition-transform duration-300 group-hover:scale-105'
-														/>
-													</span>
-													<span className='mt-2.5 block text-sm font-medium text-white'>
-														{project.name}
-													</span>
-													<span className='mt-0.5 block text-xs text-slate-400'>
-														{project.category}
-													</span>
-												</Link>
-											</NavigationMenuLink>
-										))}
-									</div>
-								),
-							)}
-							{featuredProjects[0] && (
-								<PromoPanel
-									eyebrow='Featured'
-									title={featuredProjects[0].name}
-									body={featuredProjects[0].summary}
-									href={`/portfolio#${featuredProjects[0].slug}`}
-									cta='View the build'
-									image={featuredProjects[0].image}
-								/>
-							)}
-						</div>
-					</NavigationMenuContent>
+					<NavigationMenuLink asChild>
+						<Link href='/portfolio' className={plainLinkClass}>
+							Portfolio
+						</Link>
+					</NavigationMenuLink>
 				</NavigationMenuItem>
 
 				<NavigationMenuItem>
@@ -453,15 +409,22 @@ function DesktopNav() {
 					<NavigationMenuContent className={panelClass}>
 						<div className='grid gap-2 md:grid-cols-[1fr_17rem]'>
 							<ul className='space-y-1'>
-								{projects.map((project) => (
+								{caseStudyHighlights.map((project) => (
 									<li key={project.slug}>
 										<MenuLink
 											href={`/case-studies/${project.slug}`}
 											title={project.name}
-											blurb={project.summary}
+											blurb={serviceName(project.service)}
 										/>
 									</li>
 								))}
+								<li>
+									<MenuLink
+										href='/case-studies'
+										title='All case studies'
+										blurb='Every engagement, filterable by service'
+									/>
+								</li>
 							</ul>
 							{featuredProjects[0] && (
 								<PromoPanel
@@ -486,13 +449,16 @@ function DesktopNav() {
 							<div className='p-3'>
 								<p className='eyebrow'>Topics</p>
 								<ul className='mt-4 space-y-1'>
-									{insightCategories.map((category) => (
-										<li key={category}>
+									{insightTopics.map((topic) => (
+										<li key={topic.slug}>
 											<NavigationMenuLink asChild>
 												<Link
-													href='/blog'
-													className='block rounded-md px-2 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white'>
-													{category}
+													href={`/blog/topics/${topic.slug}`}
+												className='flex w-full flex-row items-center justify-between gap-3 rounded-md px-2 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white'>
+													{topic.category}
+													<span className='text-xs tabular-nums text-slate-600'>
+														{topic.posts.length}
+													</span>
 												</Link>
 											</NavigationMenuLink>
 										</li>
@@ -531,15 +497,6 @@ function DesktopNav() {
 						</div>
 					</NavigationMenuContent>
 				</NavigationMenuItem>
-
-				{/* Internal build tool; remove before production. */}
-				<NavigationMenuItem>
-					<NavigationMenuLink asChild>
-						<Link href='/sections' className={plainLinkClass}>
-							Sections
-						</Link>
-					</NavigationMenuLink>
-				</NavigationMenuItem>
 			</NavigationMenuList>
 		</NavigationMenu>
 	)
@@ -567,30 +524,29 @@ function MobileNav() {
 		{
 			label: 'Services',
 			items: services.map((s) => ({
-				href: `/services#${s.slug}`,
+				href: `/services/${s.slug}`,
 				label: s.name,
 			})),
 		},
 		{
-			label: 'Portfolio',
-			items: projects.map((p) => ({
-				href: `/portfolio#${p.slug}`,
-				label: p.name,
-			})),
-		},
-		{
 			label: 'Case Studies',
-			items: projects.map((p) => ({
-				href: `/case-studies/${p.slug}`,
-				label: p.name,
-			})),
+			items: [
+				...caseStudyHighlights.map((p) => ({
+					href: `/case-studies/${p.slug}`,
+					label: p.name,
+				})),
+				{ href: '/case-studies', label: 'All case studies' },
+			],
 		},
 		{
 			label: 'Blog',
-			items: insights.map((i) => ({
-				href: `/blog/${i.slug}`,
-				label: i.title,
-			})),
+			items: [
+				...insightTopics.map((topic) => ({
+					href: `/blog/topics/${topic.slug}`,
+					label: `${topic.category} (${topic.posts.length})`,
+				})),
+				{ href: '/blog', label: 'All articles' },
+			],
 		},
 	]
 
@@ -649,13 +605,12 @@ function MobileNav() {
 						))}
 					</Accordion>
 
-					{/* Internal build tool; remove before production. */}
 					<div className='border-b border-white/10'>
 						<Link
-							href='/sections'
+							href='/portfolio'
 							onClick={close}
 							className='flex items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium text-white transition-all outline-none hover:underline'>
-							Sections
+							Portfolio
 						</Link>
 					</div>
 

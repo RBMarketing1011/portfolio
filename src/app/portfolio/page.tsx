@@ -1,12 +1,24 @@
+import { CaseStudyFilter } from '@/components/case-study-filter'
 import {
-	CaseStudyCard,
 	CtaBand,
-	Grid,
 	MediaGallery,
 	PageHero,
+	Section,
+	SectionHeading,
 } from '@/components/sections'
-import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
-import { projects } from '@/lib/site-content'
+import {
+	JsonLd,
+	breadcrumbSchema,
+	buildMetadata,
+	collectionSchema,
+} from '@/lib/seo'
+import {
+	projects,
+	projectsForService,
+	serviceName,
+	services,
+	shippedProjects,
+} from '@/lib/site-content'
 
 export const metadata = buildMetadata({
 	title: 'Portfolio',
@@ -16,13 +28,30 @@ export const metadata = buildMetadata({
 })
 
 export default function PortfolioPage() {
+	const withWork = services.filter(
+		(service) => projectsForService(service.slug).length > 0,
+	)
+	const categories = ['All', ...withWork.map((service) => service.name)]
+
 	return (
 		<>
 			<JsonLd
-				schema={breadcrumbSchema([
-					{ name: 'Home', path: '/' },
-					{ name: 'Portfolio', path: '/portfolio' },
-				])}
+				schema={[
+					breadcrumbSchema([
+						{ name: 'Home', path: '/' },
+						{ name: 'Portfolio', path: '/portfolio' },
+					]),
+					collectionSchema({
+						path: '/portfolio',
+						name: 'Portfolio',
+						description:
+							'Platforms, portals, scheduling products, and training systems we have shipped.',
+						items: shippedProjects.map((project) => ({
+							name: project.name,
+							path: `/case-studies/${project.slug}`,
+						})),
+					}),
+				]}
 			/>
 
 			<PageHero
@@ -39,29 +68,31 @@ export default function PortfolioPage() {
 				eyebrow='The builds'
 				title='What these actually look like'
 				description='Pick a project to see the interface the team uses every day.'
-				items={projects.map((project) => ({
-					src: project.image,
+				items={shippedProjects.map((project) => ({
+					src: project.image as string,
 					alt: `${project.name} interface`,
 					caption: `${project.name} — ${project.summary}`,
 				}))}
 			/>
 
-			<Grid
-				eyebrow='Every project'
-				title='The full list'
-				description='Each one links through to the problem, the approach, and what shipped.'>
-				{projects.map((project) => (
-					<CaseStudyCard
-						key={project.slug}
-						name={project.name}
-						category={project.category}
-						client={project.client}
-						summary={project.summary}
-						image={project.image}
-						href={`/case-studies/${project.slug}`}
-					/>
-				))}
-			</Grid>
+			<Section className='pb-0 lg:pb-0'>
+				<SectionHeading
+					eyebrow='Every engagement'
+					title='The full list'
+					description='Builds and assessments together. Each one links through to the problem, the approach, and what happened next.'
+				/>
+			</Section>
+
+			<CaseStudyFilter
+				filters={categories}
+				items={projects.map((project) => ({
+					slug: project.slug,
+					name: project.name,
+					service: serviceName(project.service),
+					category: project.category,
+					summary: project.summary,
+				}))}
+			/>
 
 			<CtaBand />
 		</>

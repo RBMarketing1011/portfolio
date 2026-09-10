@@ -29,8 +29,8 @@ const columns = [
 		heading: 'Resources',
 		links: [
 			{ href: '/blog', label: 'Blog' },
-			{ href: '/llms.txt', label: 'llms.txt' },
 			{ href: '/sitemap.xml', label: 'Sitemap' },
+			{ href: '/llms.txt', label: 'llms.txt' },
 		],
 	},
 ]
@@ -55,9 +55,9 @@ export default function SiteFooter({
 				asChild
 				variant='outline'
 				className='mt-6 border-white/15 bg-transparent text-slate-200 hover:bg-white/5 hover:text-white'>
-				<a href={`mailto:${site.email}`}>
-					<Mail /> {site.email}
-				</a>
+				<Link href='/contact'>
+					<Mail /> Get In Touch
+				</Link>
 			</Button>
 		</div>
 	)

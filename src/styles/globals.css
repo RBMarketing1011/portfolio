@@ -132,8 +132,14 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+	/* The base colour lives on <html> so the fixed .site-backdrop, which paints in
+	   the negative z layer, is not covered by the body background. */
+	html {
+		@apply bg-background;
+	}
 	body {
-		@apply bg-background text-foreground;
+		@apply text-foreground;
+		background-color: transparent;
 		font-family: var(--font-body), sans-serif;
 	}
 }
@@ -189,31 +195,47 @@
 .font-display {
 	font-family: var(--font-heading), sans-serif;
 }
-/* Layer order is top-down: grid lines sit above the diagonal wash.
-   Colours are mixed from the brand and ink tokens so the grid follows theming. */
+
+/* One surface definition, shared by the fixed page backdrop and the mobile nav
+   sheet. Layer order is top-down: the crosshatch sits above the diagonal wash.
+   Colours are mixed from the brand and ink tokens so both follow theming. */
+:root {
+	--hatch-rule: color-mix(in srgb, var(--color-brand) 7%, transparent);
+	--hatch-image:
+		repeating-linear-gradient(
+			45deg,
+			var(--hatch-rule) 0 1px,
+			transparent 1px 22px
+		),
+		repeating-linear-gradient(
+			-45deg,
+			var(--hatch-rule) 0 1px,
+			transparent 1px 22px
+		);
+	--hatch-wash: linear-gradient(
+		135deg,
+		color-mix(in srgb, var(--color-brand-strong) 28%, transparent) 0%,
+		color-mix(in srgb, var(--color-brand) 14%, transparent) 28%,
+		color-mix(in srgb, var(--color-ink) 60%, transparent) 62%,
+		color-mix(in srgb, var(--color-ink) 95%, transparent) 100%
+	);
+}
+
+/* Pinned to the viewport rather than the document, so the page scrolls over a
+   backdrop that never moves. Negative z keeps it behind every section. */
+.site-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: -10;
+	pointer-events: none;
+	background-color: var(--color-ink);
+	background-image: var(--hatch-image), var(--hatch-wash);
+	background-repeat: repeat, repeat, no-repeat;
+}
+
 .hero-grid {
 	background-color: var(--color-ink);
-	background-image:
-		linear-gradient(
-			color-mix(in srgb, var(--color-brand) 7%, transparent) 1px,
-			transparent 1px
-		),
-		linear-gradient(
-			90deg,
-			color-mix(in srgb, var(--color-brand) 7%, transparent) 1px,
-			transparent 1px
-		),
-		linear-gradient(
-			135deg,
-			color-mix(in srgb, var(--color-brand-strong) 28%, transparent) 0%,
-			color-mix(in srgb, var(--color-brand) 14%, transparent) 28%,
-			color-mix(in srgb, var(--color-ink) 60%, transparent) 62%,
-			color-mix(in srgb, var(--color-ink) 95%, transparent) 100%
-		);
-	background-size:
-		44px 44px,
-		44px 44px,
-		100% 100%;
+	background-image: var(--hatch-image), var(--hatch-wash);
 	background-repeat: repeat, repeat, no-repeat;
 }
 /* Translucent base keeps the backdrop blur working under the horizontal wash.

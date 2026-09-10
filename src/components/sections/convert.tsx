@@ -124,7 +124,7 @@ export function ContactSplit({
 			body: 'Three steps is enough. More reads like a process document.',
 		},
 	],
-	email = 'hello@example.com',
+	email,
 	form,
 	layout = 'split',
 }: {
@@ -132,6 +132,7 @@ export function ContactSplit({
 	title?: string
 	description?: string
 	steps?: { title: string; body: string }[]
+	/** Omitted renders no address at all, which is the default for the live site. */
 	email?: string
 	form?: React.ReactNode
 	/** Where the form sits relative to the copy. */
@@ -154,14 +155,14 @@ export function ContactSplit({
 		</GlassCard>
 	)
 
-	const mailLink = (
+	const mailLink = email ? (
 		<a
 			href={`mailto:${email}`}
 			className='mt-12 inline-flex items-center gap-3 text-slate-300 transition-colors hover:text-white'>
 			<Mail className='size-5 text-brand' />
 			{email}
 		</a>
-	)
+	) : null
 
 	return (
 		<section className='px-6 pb-20 pt-36 sm:px-10 lg:px-16 lg:pt-44'>

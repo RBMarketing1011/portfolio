@@ -14,7 +14,7 @@ import {
 	SectionHeading,
 } from '@/components/sections'
 import { Highlight } from '@/components/ui/highlight'
-import { JsonLd, faqSchema } from '@/lib/seo'
+import { JsonLd, faqSchema, pageSchema } from '@/lib/seo'
 import {
 	deliverySteps,
 	faqs,
@@ -30,7 +30,17 @@ import {
 export default function Home() {
 	return (
 		<>
-			<JsonLd schema={faqSchema} />
+			<JsonLd
+				schema={[
+					pageSchema({
+						path: '/',
+						name: 'AI, Automation & Custom Software Consultancy',
+						description:
+							'ReynoldsBuilt audits your entire operation, shows you exactly what should be built, and then builds it.',
+					}),
+					faqSchema,
+				]}
+			/>
 
 			<PageHero
 				eyebrow='AI · Automation · Custom Software'

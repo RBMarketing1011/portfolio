@@ -1,24 +1,35 @@
+import { Fragment } from 'react'
 import { notFound } from 'next/navigation'
+import { X } from 'lucide-react'
 import {
+	Carousel,
 	CheckList,
 	Chips,
 	CtaBand,
-	Grid,
 	MediaCard,
 	PageHero,
 	ProseBlock,
 	RelatedCard,
 	Section,
 	SectionHeading,
+	StatBand,
+	TableOfContents,
 	VideoPlayer,
 } from '@/components/sections'
+import { GlassCard } from '@/components/ui/glass-card'
 import {
 	JsonLd,
 	breadcrumbSchema,
 	buildMetadata,
 	caseStudySchema,
 } from '@/lib/seo'
-import { projects } from '@/lib/site-content'
+import { projects, projectsForService, serviceName } from '@/lib/site-content'
+
+const headingId = (heading: string) =>
+	heading
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-|-$/g, '')
 
 export function generateStaticParams() {
 	return projects.map((project) => ({ slug: project.slug }))
@@ -38,6 +49,7 @@ export async function generateMetadata({
 		description: project.summary,
 		path: `/case-studies/${project.slug}`,
 		type: 'article',
+		image: project.image,
 	})
 }
 
@@ -50,7 +62,10 @@ export default async function CaseStudyPage({
 	const project = projects.find((item) => item.slug === slug)
 	if (!project) notFound()
 
-	const more = projects.filter((item) => item.slug !== project.slug).slice(0, 3)
+	// Related work stays within the same service, so the comparison is like for like.
+	const more = projectsForService(project.service).filter(
+		(item) => item.slug !== project.slug,
+	)
 
 	return (
 		<>
@@ -76,9 +91,11 @@ export default async function CaseStudyPage({
 				stats={[
 					{ value: project.client, label: 'Client' },
 					{ value: project.category, label: 'Engagement' },
-					{ value: project.stack[0], label: 'Built on' },
+					{ value: serviceName(project.service), label: 'Service' },
 				]}
 			/>
+
+			{project.stats && <StatBand variant='cards' stats={project.stats} />}
 
 			{project.video ? (
 				<VideoPlayer
@@ -90,13 +107,15 @@ export default async function CaseStudyPage({
 					caption={`${project.name} — ${project.category}`}
 				/>
 			) : (
-				<Section>
-					<MediaCard
-						src={project.image}
-						alt={`${project.name} interface`}
-						caption={`${project.name} — ${project.category}`}
-					/>
-				</Section>
+				project.image && (
+					<Section>
+						<MediaCard
+							src={project.image}
+							alt={`${project.name} interface`}
+							caption={`${project.name} — ${project.category}`}
+						/>
+					</Section>
+				)
 			)}
 
 			<Section>
@@ -106,8 +125,71 @@ export default async function CaseStudyPage({
 						<p>{project.challenge}</p>
 					</ProseBlock>
 				</div>
+			</Section>
 
-				<div className='mt-16 grid gap-12 lg:grid-cols-2'>
+			{project.sections && (
+				<Section>
+					<div className='grid gap-14 lg:grid-cols-[16rem_1fr]'>
+						<TableOfContents
+							items={project.sections.map((block) => ({
+								id: headingId(block.heading),
+								label: block.heading,
+							}))}
+						/>
+						<div className='min-w-0 max-w-3xl'>
+							<ProseBlock>
+								{project.sections.map((block) => (
+									/* Flat children: ProseBlock styles direct descendants only. */
+									<Fragment key={block.heading}>
+										<h2 id={headingId(block.heading)}>{block.heading}</h2>
+										{block.paragraphs.map((paragraph) => (
+											<p key={paragraph}>{paragraph}</p>
+										))}
+									</Fragment>
+								))}
+							</ProseBlock>
+						</div>
+					</div>
+				</Section>
+			)}
+
+			{project.comparison && (
+				<Section>
+					<SectionHeading
+						eyebrow='The decision'
+						title='What they planned against what we recommended'
+						description='The assessment exists to make this comparison before the money is committed, not after.'
+						variant='split'
+					/>
+					<div className='mt-12 grid gap-5 lg:grid-cols-2'>
+						{[project.comparison.planned, project.comparison.recommended].map(
+							(column, index) => (
+								<GlassCard
+									key={column.title}
+									variant={index === 1 ? 'accent' : 'default'}
+									className='p-8'>
+									<h3 className='font-display text-xl font-semibold text-white'>
+										{column.title}
+									</h3>
+									<p className='mt-2 text-sm leading-6 text-slate-400'>
+										{column.caption}
+									</p>
+									<div className='mt-7'>
+										{/* Ticks would read as endorsement beside the rejected plan. */}
+										<CheckList
+											icon={index === 0 ? X : undefined}
+											items={column.points}
+										/>
+									</div>
+								</GlassCard>
+							),
+						)}
+					</div>
+				</Section>
+			)}
+
+			<Section>
+				<div className='grid gap-12 lg:grid-cols-2'>
 					<div>
 						<h2 className='font-display text-2xl font-semibold text-white'>
 							How we went at it
@@ -118,7 +200,7 @@ export default async function CaseStudyPage({
 					</div>
 					<div>
 						<h2 className='font-display text-2xl font-semibold text-white'>
-							What exists now
+							{project.outcome ? 'What we handed over' : 'What exists now'}
 						</h2>
 						<div className='mt-6'>
 							<CheckList items={project.delivered} />
@@ -126,26 +208,42 @@ export default async function CaseStudyPage({
 					</div>
 				</div>
 
+				{project.outcome && (
+					<div className='mt-16 border-t border-white/10 pt-12'>
+						<h2 className='font-display text-2xl font-semibold text-white'>
+							What happened next
+						</h2>
+						<div className='mt-6 max-w-3xl'>
+							<CheckList items={project.outcome} />
+						</div>
+					</div>
+				)}
+
 				<div className='mt-16 grid gap-10 border-t border-white/10 pt-12 sm:grid-cols-2'>
 					<Chips label='Capabilities' items={project.capabilities} />
-					<Chips label='Stack' items={project.stack} />
+					<Chips label={project.stackLabel ?? 'Stack'} items={project.stack} />
 				</div>
 			</Section>
 
-			<Grid
-				eyebrow='More work'
-				title='Other builds worth a look'
-				description='Different sectors, the same underlying problem.'>
-				{more.map((item) => (
-					<RelatedCard
-						key={item.slug}
-						title={item.name}
-						meta={item.category}
-						description={item.summary}
-						href={`/case-studies/${item.slug}`}
-					/>
-				))}
-			</Grid>
+			{more.length > 0 && (
+				<Carousel
+					eyebrow='More work'
+					title='Other builds worth a look'
+					description={`More ${serviceName(project.service)} engagements, with the problem and the result written down.`}
+					label={`Other ${serviceName(project.service)} case studies`}
+					controls='below'
+					size='md'>
+					{more.map((item) => (
+						<RelatedCard
+							key={item.slug}
+							title={item.name}
+							meta={item.category}
+							description={item.summary}
+							href={`/case-studies/${item.slug}`}
+						/>
+					))}
+				</Carousel>
+			)}
 
 			<CtaBand />
 		</>

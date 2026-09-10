@@ -33,7 +33,7 @@ export default async function Image() {
 				backgroundColor: '#03080f',
 				fontFamily: 'Space Grotesk',
 			}}>
-			{/* Mirrors .hero-grid: diagonal wash underneath, grid lines on top. */}
+			{/* Mirrors .hero-grid: diagonal wash underneath, crosshatch on top. */}
 			<div
 				style={{
 					position: 'absolute',
@@ -45,6 +45,8 @@ export default async function Image() {
 						'linear-gradient(135deg, rgba(63,178,250,0.28) 0%, rgba(1,151,246,0.14) 28%, rgba(4,22,40,0.6) 62%, rgba(3,8,15,0.95) 100%)',
 				}}
 			/>
+			{/* Satori has no repeating-linear-gradient, so one hairline is tiled per
+			    diagonal. 31px ≈ the 22px CSS spacing measured across the diagonal. */}
 			<div
 				style={{
 					position: 'absolute',
@@ -53,8 +55,8 @@ export default async function Image() {
 					width: '100%',
 					height: '100%',
 					backgroundImage:
-						'linear-gradient(to bottom, rgba(1,151,246,0.07) 1px, transparent 1px), linear-gradient(to right, rgba(1,151,246,0.07) 1px, transparent 1px)',
-					backgroundSize: '44px 44px',
+						'linear-gradient(45deg, transparent 48.5%, rgba(1,151,246,0.07) 48.5%, rgba(1,151,246,0.07) 51.5%, transparent 51.5%), linear-gradient(135deg, transparent 48.5%, rgba(1,151,246,0.07) 48.5%, rgba(1,151,246,0.07) 51.5%, transparent 51.5%)',
+					backgroundSize: '31px 31px',
 				}}
 			/>
 			<div

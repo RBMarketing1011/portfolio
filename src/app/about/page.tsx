@@ -8,7 +8,7 @@ import {
 	Section,
 	SectionHeading,
 } from '@/components/sections'
-import { JsonLd, breadcrumbSchema, buildMetadata } from '@/lib/seo'
+import { JsonLd, breadcrumbSchema, buildMetadata, pageSchema } from '@/lib/seo'
 import { deliverySteps, principles } from '@/lib/site-content'
 
 export const metadata = buildMetadata({
@@ -22,10 +22,19 @@ export default function AboutPage() {
 	return (
 		<>
 			<JsonLd
-				schema={breadcrumbSchema([
-					{ name: 'Home', path: '/' },
-					{ name: 'About Us', path: '/about' },
-				])}
+				schema={[
+					breadcrumbSchema([
+						{ name: 'Home', path: '/' },
+						{ name: 'About Us', path: '/about' },
+					]),
+					pageSchema({
+						path: '/about',
+						name: 'About Us',
+						description:
+							'Who ReynoldsBuilt is, how we operate, and why the assessment comes before the build.',
+						type: 'AboutPage',
+					}),
+				]}
 			/>
 
 			<PageHero

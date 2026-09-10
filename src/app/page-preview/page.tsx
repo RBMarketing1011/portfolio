@@ -4,6 +4,11 @@ import { readSettings } from '@/app/sections/theme-settings'
 import { backgroundCss, themeCss } from '@/app/section-preview/theme'
 import { PreviewCanvas } from './preview-canvas'
 
+export const metadata = {
+	title: 'Page Preview',
+	robots: { index: false, follow: false },
+}
+
 export default async function BuilderPreviewPage({
 	searchParams,
 }: {
