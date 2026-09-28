@@ -155,7 +155,9 @@ export function RoiCalculator({
 						[field.name]: Math.min(max, Math.max(min, next)),
 					}))
 				return (
-					<div key={index} className={cn(bare && !stacked && 'pt-7 first:pt-0')}>
+					<div
+						key={index}
+						className={cn(bare && !stacked && 'pt-7 first:pt-0')}>
 						<div className='flex items-baseline justify-between'>
 							<Label htmlFor={id} className='text-slate-300'>
 								{field.label}
@@ -198,7 +200,10 @@ export function RoiCalculator({
 
 	const result = (
 		<div
-			className={cn('flex flex-col', stacked && 'sm:grid sm:grid-cols-3 sm:gap-8')}>
+			className={cn(
+				'flex flex-col',
+				stacked && 'sm:grid sm:grid-cols-3 sm:gap-8',
+			)}>
 			{badge && <Badge className='uppercase tracking-widest'>{badge}</Badge>}
 			{outputs.map((output, index) => {
 				const computed = evaluateFormula(output.formula, vars)
@@ -208,18 +213,14 @@ export function RoiCalculator({
 						key={index}
 						className={cn(
 							// A featured first row already clears the badge with its own padding.
-							index === 0
-								? badge && !output.featured && 'mt-6'
-								: 'mt-8',
+							index === 0 ? badge && !output.featured && 'mt-6' : 'mt-8',
 							output.featured && 'border-t border-white/10 pt-8',
 						)}>
 						<p className='text-sm text-slate-400'>{output.label}</p>
 						<p
 							className={cn(
 								'mt-2 font-display font-semibold tabular-nums',
-								output.featured
-									? 'text-5xl text-brand'
-									: 'text-3xl text-white',
+								output.featured ? 'text-5xl text-brand' : 'text-3xl text-white',
 							)}>
 							{computed === null
 								? '—'
@@ -240,9 +241,7 @@ export function RoiCalculator({
 			})}
 
 			<div className={cn(stacked && 'sm:col-span-3')}>
-				{action?.label && (
-					<ActionButton action={action} className='mt-8' />
-				)}
+				{action?.label && <ActionButton action={action} className='mt-8' />}
 				{footnote && (
 					<p className='mt-4 text-xs leading-5 text-slate-500'>{footnote}</p>
 				)}
@@ -264,7 +263,11 @@ export function RoiCalculator({
 					stacked && 'space-y-8',
 					bare && 'grid gap-14 lg:grid-cols-[1fr_1.1fr]',
 				)}>
-				{bare ? inputPanel : <GlassCard className='p-8'>{inputPanel}</GlassCard>}
+				{bare ? (
+					inputPanel
+				) : (
+					<GlassCard className='p-8'>{inputPanel}</GlassCard>
+				)}
 				{bare ? (
 					<div className='border-l-2 border-brand pl-8'>{result}</div>
 				) : (

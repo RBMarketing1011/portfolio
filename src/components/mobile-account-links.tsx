@@ -25,10 +25,7 @@ export function MobileAccountLinks({
 	return (
 		<>
 			<div className='border-b border-white/10'>
-				<Link
-					href='/builder/sites'
-					onClick={onNavigate}
-					className={className}>
+				<Link href='/builder/sites' onClick={onNavigate} className={className}>
 					My Sites
 				</Link>
 			</div>

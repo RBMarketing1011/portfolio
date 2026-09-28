@@ -40,8 +40,7 @@ export function FilterBar({
 	const options = filters.map((filter) => {
 		const label = typeof filter === 'string' ? filter : (filter?.label ?? '')
 		// Unset means the label doubles as the value, which is the common case.
-		const value =
-			typeof filter === 'string' ? filter : (filter?.value || label)
+		const value = typeof filter === 'string' ? filter : filter?.value || label
 		return { label, value }
 	})
 
@@ -178,7 +177,7 @@ export function Pagination({
 				<PaginationEllipsis />
 			</PaginationItem>
 		) : (
-				<PaginationItem key={`page-${index}`}>
+			<PaginationItem key={`page-${index}`}>
 				<PaginationLink
 					{...linkProps(item)}
 					isActive={item === page}

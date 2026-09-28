@@ -39,7 +39,11 @@ const { csrfToken } = await (await call('/api/auth/csrf')).json()
 const requested = await call('/api/auth/signin/nodemailer', {
 	method: 'POST',
 	headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-	body: new URLSearchParams({ email, csrfToken, callbackUrl: `${BASE}/builder/sites` }),
+	body: new URLSearchParams({
+		email,
+		csrfToken,
+		callbackUrl: `${BASE}/builder/sites`,
+	}),
 })
 record('link request accepted', requested.status < 400, `${requested.status}`)
 
@@ -69,8 +73,7 @@ const used = await call(
 )
 record(
 	'forged token is refused',
-	used.status >= 300 &&
-		(used.headers.get('location') ?? '').includes('error'),
+	used.status >= 300 && (used.headers.get('location') ?? '').includes('error'),
 	`${used.status} -> ${(used.headers.get('location') ?? '').slice(0, 60)}`,
 )
 

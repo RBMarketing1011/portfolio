@@ -63,11 +63,7 @@ for (const file of program.getSourceFiles()) {
 }
 
 // Top-level schema field keys, read from the real schema objects.
-const {
-	loadSchema,
-	fieldKeys,
-	listShapes,
-} = require('./load-schema.cjs')
+const { loadSchema, fieldKeys, listShapes } = require('./load-schema.cjs')
 
 const schemaFields = new Map()
 const variantProps = new Map()

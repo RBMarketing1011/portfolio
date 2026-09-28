@@ -19,8 +19,7 @@ export default async function AccountPage() {
 					Account
 				</h1>
 				<p className='mt-3 leading-7 text-slate-400'>
-					Signed in as{' '}
-					<span className='text-white'>{session.user.email}</span>
+					Signed in as <span className='text-white'>{session.user.email}</span>
 				</p>
 				<PasswordForm />
 			</div>

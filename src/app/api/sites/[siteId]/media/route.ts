@@ -12,7 +12,11 @@ const registerSchema = z.object({
 	name: z.string().min(1).max(200),
 	url: z.string().url().max(2000),
 	pathname: z.string().min(1).max(500),
-	bytes: z.number().int().nonnegative().max(12 * 1024 * 1024),
+	bytes: z
+		.number()
+		.int()
+		.nonnegative()
+		.max(12 * 1024 * 1024),
 	contentType: z.string().max(100),
 })
 

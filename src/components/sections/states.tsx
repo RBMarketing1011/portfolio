@@ -51,9 +51,7 @@ export function DetailCard({
 
 	const actionBlock = (
 		<>
-			{action?.label && (
-				<ActionButton action={action} className='w-full' />
-			)}
+			{action?.label && <ActionButton action={action} className='w-full' />}
 			{showNote && note && (
 				<p className='mt-4 text-center text-sm text-slate-500'>{note}</p>
 			)}
@@ -77,7 +75,7 @@ export function DetailCard({
 								</div>
 							))}
 						</dl>
-							<div className='mt-8'>{actionBlock}</div>
+						<div className='mt-8'>{actionBlock}</div>
 					</GlassCard>
 				</div>
 			</Section>
@@ -197,9 +195,9 @@ export function Countdown({
 				))}
 			</dl>
 
-				{showNote && note && (
-					<p className='mt-12 text-sm text-slate-500'>{note}</p>
-				)}
+			{showNote && note && (
+				<p className='mt-12 text-sm text-slate-500'>{note}</p>
+			)}
 		</Section>
 	)
 }
@@ -311,8 +309,7 @@ export function AuthPanel({
 				{form}
 			</div>
 			{/* Proof panel: the only job of the second column is to justify the sign in. */}
-			<div
-				className='relative hidden items-center border-l border-white/10 bg-white/2 px-16 lg:flex'>
+			<div className='relative hidden items-center border-l border-white/10 bg-white/2 px-16 lg:flex'>
 				{asideImage && (
 					<>
 						<Image
@@ -420,10 +417,7 @@ export function Notice({
 					</dl>
 				)}
 
-				<ActionRow
-					actions={actions}
-					className='mt-12 sm:justify-center'
-				/>
+				<ActionRow actions={actions} className='mt-12 sm:justify-center' />
 			</div>
 		</section>
 	)

@@ -130,8 +130,8 @@ export function ClaimLocalSite({
 						You have a site built in this browser
 					</p>
 					<p className='mt-1 text-sm text-slate-400'>
-						{pages} {pages === 1 ? 'page' : 'pages'}, plus any images. Import
-						it to keep it on your account. Nothing is deleted until the import
+						{pages} {pages === 1 ? 'page' : 'pages'}, plus any images. Import it
+						to keep it on your account. Nothing is deleted until the import
 						succeeds.
 					</p>
 					{error && <p className='mt-2 text-sm text-destructive'>{error}</p>}

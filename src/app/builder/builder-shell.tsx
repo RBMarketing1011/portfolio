@@ -13,5 +13,9 @@ export function BuilderShell({ children }: { children: React.ReactNode }) {
 
 	// Remounting on a site change throws away the previous site's undo history,
 	// which is correct: it does not belong to the new one.
-	return <BuilderProvider key={siteId} siteId={siteId}>{children}</BuilderProvider>
+	return (
+		<BuilderProvider key={siteId} siteId={siteId}>
+			{children}
+		</BuilderProvider>
+	)
 }

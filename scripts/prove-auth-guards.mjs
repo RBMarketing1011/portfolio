@@ -60,8 +60,7 @@ async function signUpAndIn(email, password) {
 }
 
 const results = []
-const record = (name, pass, detail = '') =>
-	results.push({ name, pass, detail })
+const record = (name, pass, detail = '') => results.push({ name, pass, detail })
 
 const a = await signUpAndIn(`a_${rand()}@example.test`, 'password-aaaa-1111')
 const b = await signUpAndIn(`b_${rand()}@example.test`, 'password-bbbb-2222')
@@ -163,12 +162,18 @@ const stale = await a.call(`/api/sites/${site.id}`, {
 	headers: { 'Content-Type': 'application/json' },
 	body: JSON.stringify({ name: 'stale write', rev: 999 }),
 })
-record('stale revision is rejected', stale.status === 409, `got ${stale.status}`)
+record(
+	'stale revision is rejected',
+	stale.status === 409,
+	`got ${stale.status}`,
+)
 
 await a.call(`/api/sites/${site.id}`, { method: 'DELETE' })
 
 const failed = results.filter((r) => !r.pass)
 for (const r of results)
-	console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? `  (${r.detail})` : ''}`)
+	console.log(
+		`${r.pass ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? `  (${r.detail})` : ''}`,
+	)
 console.log(`\n${results.length - failed.length}/${results.length} passed`)
 process.exit(failed.length ? 1 : 0)

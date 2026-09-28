@@ -254,10 +254,8 @@ export function ProcessSteps({
 	)
 
 	const badge = cn(
-		numberStyle === 'solid' &&
-			'border-brand bg-brand font-bold text-ink',
-		numberStyle === 'muted' &&
-			'border-white/15 bg-white/5 text-slate-300',
+		numberStyle === 'solid' && 'border-brand bg-brand font-bold text-ink',
+		numberStyle === 'muted' && 'border-white/15 bg-white/5 text-slate-300',
 		numberStyle === 'outline' && 'border-brand/40 bg-ink text-brand',
 	)
 
@@ -478,9 +476,7 @@ export function BentoGrid({
 						const Icon = tile.icon
 						return (
 							<div key={index} className={cn('bg-ink p-7', spanClass(tile))}>
-								{Icon && (
-									<Icon className='mb-3 size-5 shrink-0 text-brand' />
-								)}
+								{Icon && <Icon className='mb-3 size-5 shrink-0 text-brand' />}
 								{tileBody(tile)}
 							</div>
 						)
@@ -877,7 +873,7 @@ export function Chips({
 						justify,
 					)}>
 					{items.map((item, index) => (
-							<li key={index} className='flex items-center gap-3'>
+						<li key={index} className='flex items-center gap-3'>
 							{item}
 							{index < items.length - 1 && (
 								<span aria-hidden className='text-slate-600'>

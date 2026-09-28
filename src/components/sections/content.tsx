@@ -130,7 +130,12 @@ export function Callout({
 
 	if (design === 'rule') {
 		return (
-			<div className={cn('my-8 border-l-2 border-brand py-1 pl-6', box, className)}>
+			<div
+				className={cn(
+					'my-8 border-l-2 border-brand py-1 pl-6',
+					box,
+					className,
+				)}>
 				<p className='eyebrow'>{label}</p>
 				<div className='mt-2 leading-7 text-slate-300'>{body}</div>
 			</div>
@@ -207,7 +212,13 @@ export function AuthorBio({
 				centered ? 'size-20' : 'size-16',
 			)}>
 			{image ? (
-				<Image src={image} alt={name} fill sizes='5rem' className='object-cover' />
+				<Image
+					src={image}
+					alt={name}
+					fill
+					sizes='5rem'
+					className='object-cover'
+				/>
 			) : (
 				<User
 					className={
@@ -220,7 +231,8 @@ export function AuthorBio({
 	)
 
 	const copy = (
-		<div className={cn(centered ? 'mt-5' : undefined, right && 'sm:text-right')}>
+		<div
+			className={cn(centered ? 'mt-5' : undefined, right && 'sm:text-right')}>
 			<p className='font-display text-lg font-semibold text-white'>{name}</p>
 			<p className='mt-0.5 text-sm font-medium text-brand'>{role}</p>
 			<p className='mt-3 leading-7 text-slate-400'>{bio}</p>
@@ -261,12 +273,7 @@ export function AuthorBio({
 
 	if (design === 'bare') {
 		return (
-			<div
-				className={cn(
-					'max-w-3xl border-t border-white/10 pt-7',
-					row,
-					box,
-				)}>
+			<div className={cn('max-w-3xl border-t border-white/10 pt-7', row, box)}>
 				{avatar}
 				{copy}
 			</div>

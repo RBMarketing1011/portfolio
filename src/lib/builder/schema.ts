@@ -593,9 +593,7 @@ export const sectionSchemas: SectionSchema[] = [
 			list('rows', 'Rows', 'label', [
 				area('label', 'Row label'),
 				{
-					...list('values', 'Selected', 'value', [
-						bool('value', 'Included'),
-					]),
+					...list('values', 'Selected', 'value', [bool('value', 'Included')]),
 					slotsFrom: 'columns',
 					hint: 'One switch per column.',
 				},
@@ -769,11 +767,7 @@ export const sectionSchemas: SectionSchema[] = [
 			{ id: 'centered', label: 'Centered, No Card' },
 			{ id: 'split', label: 'Copy Left, Buttons Right' },
 		],
-		fields: [
-			text('title', 'Heading'),
-			description,
-			actions(),
-		],
+		fields: [text('title', 'Heading'), description, actions()],
 	},
 
 	// -------------------------------------------------------------- content
@@ -856,10 +850,7 @@ export const sectionSchemas: SectionSchema[] = [
 		bare: true,
 		variantProp: 'variant',
 		variants: opts('stacked', 'columns', 'inline'),
-		fields: [
-			list('items', 'Items', 'value', [area('value', 'Text')]),
-			icon(),
-		],
+		fields: [list('items', 'Items', 'value', [area('value', 'Text')]), icon()],
 	},
 
 	// ---------------------------------------------------------------- media
@@ -1256,7 +1247,12 @@ export const sectionSchemas: SectionSchema[] = [
 				],
 			},
 			align('filterAlign', 'Filter alignment'),
-			bool('showPagination', 'Show pagination', 'Hidden under four items.', true),
+			bool(
+				'showPagination',
+				'Show pagination',
+				'Hidden under four items.',
+				true,
+			),
 			num('page', 'Current page', 1, 999),
 			num('totalPages', 'Total pages', 1, 999),
 			{

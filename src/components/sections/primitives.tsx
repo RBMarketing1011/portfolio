@@ -9,12 +9,7 @@ import { cn } from '@/lib/utils'
 export type IconSide = 'before' | 'after'
 export type IconPlacement = IconSide | 'above' | 'below'
 
-export type ActionStyle =
-	| 'primary'
-	| 'outline'
-	| 'secondary'
-	| 'ghost'
-	| 'link'
+export type ActionStyle = 'primary' | 'outline' | 'secondary' | 'ghost' | 'link'
 
 export type Action = {
 	label: string
@@ -89,10 +84,7 @@ export function ActionRow({
 
 	return (
 		<div
-			className={cn(
-				'flex flex-col gap-4 sm:flex-row sm:flex-wrap',
-				className,
-			)}>
+			className={cn('flex flex-col gap-4 sm:flex-row sm:flex-wrap', className)}>
 			{buttons.map((action, index) => (
 				<ActionButton
 					key={`${action.label}-${index}`}

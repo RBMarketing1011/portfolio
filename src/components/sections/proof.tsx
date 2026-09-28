@@ -193,9 +193,7 @@ export function Spotlight({
 				'Swap the labels to suit: challenge and outcome, problem and result, before and after.',
 		},
 	],
-	actions = [
-		{ label: 'Read More', href: '/case-studies', icon: ArrowRight },
-	],
+	actions = [{ label: 'Read More', href: '/case-studies', icon: ArrowRight }],
 	mediaSrc,
 	mediaAlt = '',
 	mediaLabel = 'Media slot: screenshot, video, or photo',
@@ -382,7 +380,10 @@ export function BeforeAfter({
 			text: 'This is the matching line describing the new process',
 			icon: Check,
 		},
-		{ text: 'Each one answers the problem directly across from it', icon: Check },
+		{
+			text: 'Each one answers the problem directly across from it',
+			icon: Check,
+		},
 		{ text: 'Specific beats abstract in both columns', icon: Check },
 		{ text: 'The contrast is the whole point of the section', icon: Check },
 	],

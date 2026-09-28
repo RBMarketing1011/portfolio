@@ -515,9 +515,7 @@ export function MediaMosaic({
 					</div>
 				)}
 				{rest.map((item, index) => (
-					<div
-						key={index}
-						className='aspect-square sm:aspect-auto'>
+					<div key={index} className='aspect-square sm:aspect-auto'>
 						<MediaCard fill {...item} />
 					</div>
 				))}
@@ -559,8 +557,7 @@ export function ImageCompare({
 			{points.length > 0 && (
 				<ul className='mt-7 space-y-3'>
 					{points.map((point, index) => {
-						const text =
-							typeof point === 'string' ? point : (point?.text ?? '')
+						const text = typeof point === 'string' ? point : (point?.text ?? '')
 						const Glyph =
 							typeof point === 'string' ? Check : (point?.icon ?? Check)
 						return (
@@ -582,66 +579,66 @@ export function ImageCompare({
 				'group/compare relative w-full overflow-hidden rounded-xl border border-white/10 bg-ink',
 				beside ? (layout === 'text-right' ? 'lg:order-1' : '') : 'mt-12',
 			)}>
+			<Image
+				src={after.src}
+				alt={after.alt ?? ''}
+				fill
+				sizes='(min-width: 1024px) 72rem, 100vw'
+				onLoad={(event) => {
+					const { naturalWidth, naturalHeight } = event.currentTarget
+					if (naturalWidth && naturalHeight)
+						setRatio(naturalWidth / naturalHeight)
+				}}
+				className='object-cover'
+			/>
+			{/* Clipping the top layer is what produces the wipe. */}
+			<div
+				className='absolute inset-0'
+				style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
 				<Image
-					src={after.src}
-					alt={after.alt ?? ''}
+					src={before.src}
+					alt={before.alt ?? ''}
 					fill
 					sizes='(min-width: 1024px) 72rem, 100vw'
-					onLoad={(event) => {
-						const { naturalWidth, naturalHeight } = event.currentTarget
-						if (naturalWidth && naturalHeight)
-							setRatio(naturalWidth / naturalHeight)
-					}}
 					className='object-cover'
 				/>
-				{/* Clipping the top layer is what produces the wipe. */}
-				<div
-					className='absolute inset-0'
-					style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}>
-					<Image
-						src={before.src}
-						alt={before.alt ?? ''}
-						fill
-						sizes='(min-width: 1024px) 72rem, 100vw'
-						className='object-cover'
-					/>
-				</div>
-
-				{before.label && (
-					<span className='pointer-events-none absolute left-4 top-4 rounded-md bg-ink/75 px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-slate-200 backdrop-blur'>
-						{before.label}
-					</span>
-				)}
-				{after.label && (
-					<span className='pointer-events-none absolute right-4 top-4 rounded-md bg-ink/75 px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-slate-200 backdrop-blur'>
-						{after.label}
-					</span>
-				)}
-
-				<div
-					className='pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-brand'
-					style={{ left: `${position}%` }}
-				/>
-				<span
-					className='pointer-events-none absolute top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-ink/80 text-white backdrop-blur group-has-focus-visible/compare:ring-2 group-has-focus-visible/compare:ring-white'
-					style={{ left: `${position}%` }}>
-					<ChevronLeft className='size-4' />
-					<ChevronRight className='size-4' />
-				</span>
-
-				{/* Transparent native range keeps drag, keyboard, and a11y for free. */}
-				<input
-					type='range'
-					min={0}
-					max={100}
-					step={0.1}
-					value={position}
-					onChange={(event) => setPosition(Number(event.target.value))}
-					aria-label='Compare position'
-					aria-valuetext={`${Math.round(position)}% ${before.label ?? 'before'}`}
-					className='absolute inset-0 size-full cursor-ew-resize appearance-none bg-transparent focus:outline-none [&::-moz-range-thumb]:h-full [&::-moz-range-thumb]:w-11 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-transparent [&::-webkit-slider-thumb]:h-full [&::-webkit-slider-thumb]:w-11 [&::-webkit-slider-thumb]:appearance-none'
-				/>
 			</div>
+
+			{before.label && (
+				<span className='pointer-events-none absolute left-4 top-4 rounded-md bg-ink/75 px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-slate-200 backdrop-blur'>
+					{before.label}
+				</span>
+			)}
+			{after.label && (
+				<span className='pointer-events-none absolute right-4 top-4 rounded-md bg-ink/75 px-2.5 py-1 text-xs font-semibold uppercase tracking-widest text-slate-200 backdrop-blur'>
+					{after.label}
+				</span>
+			)}
+
+			<div
+				className='pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-brand'
+				style={{ left: `${position}%` }}
+			/>
+			<span
+				className='pointer-events-none absolute top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-ink/80 text-white backdrop-blur group-has-focus-visible/compare:ring-2 group-has-focus-visible/compare:ring-white'
+				style={{ left: `${position}%` }}>
+				<ChevronLeft className='size-4' />
+				<ChevronRight className='size-4' />
+			</span>
+
+			{/* Transparent native range keeps drag, keyboard, and a11y for free. */}
+			<input
+				type='range'
+				min={0}
+				max={100}
+				step={0.1}
+				value={position}
+				onChange={(event) => setPosition(Number(event.target.value))}
+				aria-label='Compare position'
+				aria-valuetext={`${Math.round(position)}% ${before.label ?? 'before'}`}
+				className='absolute inset-0 size-full cursor-ew-resize appearance-none bg-transparent focus:outline-none [&::-moz-range-thumb]:h-full [&::-moz-range-thumb]:w-11 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-transparent [&::-webkit-slider-thumb]:h-full [&::-webkit-slider-thumb]:w-11 [&::-webkit-slider-thumb]:appearance-none'
+			/>
+		</div>
 	)
 
 	if (beside) {

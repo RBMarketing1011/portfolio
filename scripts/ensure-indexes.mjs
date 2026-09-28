@@ -14,10 +14,20 @@ const db = client.db()
 await db.collection('users').createIndex({ email: 1 }, { unique: true })
 await db.collection('sites').createIndex({ ownerId: 1, updatedAt: -1 })
 await db.collection('sites').createIndex({ 'media.pathname': 1 })
-await db.collection('sessions').createIndex({ sessionToken: 1 }, { unique: true })
-await db.collection('accounts').createIndex({ provider: 1, providerAccountId: 1 })
+await db
+	.collection('sessions')
+	.createIndex({ sessionToken: 1 }, { unique: true })
+await db
+	.collection('accounts')
+	.createIndex({ provider: 1, providerAccountId: 1 })
 
 const names = await db.listCollections().toArray()
-console.log('indexes ensured on:', names.map((c) => c.name).sort().join(', '))
+console.log(
+	'indexes ensured on:',
+	names
+		.map((c) => c.name)
+		.sort()
+		.join(', '),
+)
 
 await client.close()

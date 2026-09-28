@@ -376,30 +376,34 @@ export function PricingTiers({
 							</p>
 							<p className='mt-4 leading-7 text-slate-400'>{tier.blurb}</p>
 							<ul className='mt-7 flex-1 space-y-3'>
-							{(tier.features ?? []).map((feature, index) => {
-								const text =
-									typeof feature === 'string' ? feature : (feature?.text ?? '')
-								const Glyph =
-									typeof feature === 'string' ? Check : (feature?.icon ?? Check)
-								return (
-									<li key={index} className='flex gap-3 text-slate-300'>
-										<Glyph className='mt-1 size-4 shrink-0 text-brand' />
-										<span className='leading-7'>{text}</span>
-									</li>
-								)
-							})}
-						</ul>
-						<ActionButton
-							action={{
-								label: tier.cta,
-								href: tier.href,
-								icon: tier.icon,
-								iconPosition: tier.iconPosition,
-								style: tier.style,
-							}}
-							fallbackStyle={tier.featured ? 'primary' : 'outline'}
-							className='mt-8'
-						/>
+								{(tier.features ?? []).map((feature, index) => {
+									const text =
+										typeof feature === 'string'
+											? feature
+											: (feature?.text ?? '')
+									const Glyph =
+										typeof feature === 'string'
+											? Check
+											: (feature?.icon ?? Check)
+									return (
+										<li key={index} className='flex gap-3 text-slate-300'>
+											<Glyph className='mt-1 size-4 shrink-0 text-brand' />
+											<span className='leading-7'>{text}</span>
+										</li>
+									)
+								})}
+							</ul>
+							<ActionButton
+								action={{
+									label: tier.cta,
+									href: tier.href,
+									icon: tier.icon,
+									iconPosition: tier.iconPosition,
+									style: tier.style,
+								}}
+								fallbackStyle={tier.featured ? 'primary' : 'outline'}
+								className='mt-8'
+							/>
 						</>
 					)
 

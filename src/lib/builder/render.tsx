@@ -69,9 +69,7 @@ export function RenderBlock({
 	return (
 		<div
 			data-block-id={block.id}
-			data-selected={
-				selectable && block.id === selectedId ? 'true' : undefined
-			}
+			data-selected={selectable && block.id === selectedId ? 'true' : undefined}
 			data-flash={selectable && block.id === flashId ? 'true' : undefined}
 			style={{ display: 'contents' }}>
 			{element}

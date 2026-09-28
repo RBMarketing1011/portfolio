@@ -31,7 +31,7 @@ export type Field = {
 	/** `range` and `boolean`: what the control shows before anything is stored. */
 	defaultValue?: number | boolean
 	/** `list` only: the shape of one row. */
-	of?: Field[]	/** `list` only: how a row is labeled in the collapsed list. */
+	of?: Field[] /** `list` only: how a row is labeled in the collapsed list. */
 	rowLabel?: string
 	/** `list` only: wording for the add button, when `rowLabel` names a row property. */
 	addLabel?: string

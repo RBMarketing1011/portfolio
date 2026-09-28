@@ -25,7 +25,8 @@ function tokenize(input: string): Token[] {
 		}
 		if (/[A-Za-z_]/.test(char)) {
 			let value = ''
-			while (i < input.length && /[A-Za-z0-9_]/.test(input[i])) value += input[i++]
+			while (i < input.length && /[A-Za-z0-9_]/.test(input[i]))
+				value += input[i++]
 			tokens.push({ kind: 'id', value })
 			continue
 		}
@@ -78,10 +79,7 @@ function parse(tokens: Token[], vars: Record<string, number>) {
 
 	const term = (): number => {
 		let value = factor()
-		while (
-			peek()?.kind === 'op' &&
-			['*', '/', '%'].includes(peek()!.value)
-		) {
+		while (peek()?.kind === 'op' && ['*', '/', '%'].includes(peek()!.value)) {
 			const op = tokens[pos++].value
 			const right = factor()
 			if (op === '*') value *= right

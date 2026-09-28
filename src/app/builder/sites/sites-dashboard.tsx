@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Copy, Loader2, LayoutTemplate, Pencil, Plus, Trash2 } from 'lucide-react'
+import {
+	Copy,
+	Loader2,
+	LayoutTemplate,
+	Pencil,
+	Plus,
+	Trash2,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SITE_KEY } from '@/lib/builder/drivers'
 import { ClaimLocalSite } from './claim-local-site'
@@ -52,7 +59,9 @@ export function SitesDashboard() {
 	}
 
 	const remove = async (id: string, name: string) => {
-		if (!confirm(`Delete "${name}" and everything in it? This cannot be undone.`))
+		if (
+			!confirm(`Delete "${name}" and everything in it? This cannot be undone.`)
+		)
 			return
 		await fetch(`/api/sites/${id}`, { method: 'DELETE' })
 		void refresh()
@@ -143,9 +152,7 @@ export function SitesDashboard() {
 						<li
 							key={item.id}
 							className='group relative rounded-xl border border-white/10 bg-white/3 p-5 transition-colors hover:border-brand/40'>
-							<Link
-								href={`/builder/sites/${item.id}/pages`}
-								className='block'>
+							<Link href={`/builder/sites/${item.id}/pages`} className='block'>
 								<p className='font-display text-lg font-semibold text-white'>
 									{item.name}
 								</p>

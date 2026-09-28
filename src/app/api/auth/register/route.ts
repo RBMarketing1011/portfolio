@@ -30,8 +30,7 @@ export async function POST(request: Request) {
 	if (!parsed.success)
 		return NextResponse.json(
 			{
-				error:
-					'Enter a valid email and a password of at least 10 characters.',
+				error: 'Enter a valid email and a password of at least 10 characters.',
 			},
 			{ status: 400 },
 		)

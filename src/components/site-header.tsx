@@ -458,7 +458,7 @@ function DesktopNav() {
 											<NavigationMenuLink asChild>
 												<Link
 													href={`/blog/topics/${topic.slug}`}
-												className='flex w-full flex-row items-center justify-between gap-3 rounded-md px-2 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white'>
+													className='flex w-full flex-row items-center justify-between gap-3 rounded-md px-2 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white'>
 													{topic.category}
 													<span className='text-xs tabular-nums text-slate-600'>
 														{topic.posts.length}
