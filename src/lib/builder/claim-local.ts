@@ -41,7 +41,8 @@ export async function importLocalSite({
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify({ name, site: parsed.data, look }),
 	})
-	if (!created.ok) throw new Error(created.status === 401 ? 'signed-out' : 'create failed')
+	if (!created.ok)
+		throw new Error(created.status === 401 ? 'signed-out' : 'create failed')
 	const { site } = await created.json()
 
 	// The images live in this browser as data URLs, so they have to be

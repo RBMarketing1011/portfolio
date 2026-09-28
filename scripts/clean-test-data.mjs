@@ -32,8 +32,12 @@ const removedUsers = await db
 
 // A run that was interrupted between the two deletes leaves a site with no owner.
 const owners = new Set(
-	(await db.collection('users').find({}, { projection: { _id: 1 } }).toArray())
-		.map((u) => u._id.toString()),
+	(
+		await db
+			.collection('users')
+			.find({}, { projection: { _id: 1 } })
+			.toArray()
+	).map((u) => u._id.toString()),
 )
 const ownerless = await db
 	.collection('sites')
