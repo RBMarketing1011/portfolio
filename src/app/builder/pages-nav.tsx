@@ -59,11 +59,18 @@ import {
 } from '@/lib/builder/page-schema'
 import type { Block } from '@/lib/builder/types'
 import { globalBackground } from './background-settings'
+import { SaveButton } from './save-button'
 import { AddPageDialog } from './builder/add-page-dialog'
 import { SectionPicker } from './builder/section-picker'
 import { ChromeSettingsDrawer } from './builder/chrome-settings-drawer'
 
-export function PagesNav({ templates }: { templates: Template[] }) {
+export function PagesNav({
+	templates,
+	signedIn = false,
+}: {
+	templates: Template[]
+	signedIn?: boolean
+}) {
 	const router = useRouter()
 	const store = useBuilder()
 	const [addOpen, setAddOpen] = useState(false)
@@ -287,6 +294,11 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 					</ScrollArea>
 				</>
 			)}
+
+			{/* Outside the scroller on purpose: the layer list has to run underneath it. */}
+			<div className='mt-auto shrink-0 border-t border-white/10 p-3'>
+				<SaveButton variant='sidebar' signedIn={signedIn} />
+			</div>
 
 			<AddPageDialog
 				open={addOpen}

@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useSession } from 'next-auth/react'
 import { SlidersHorizontal } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -28,14 +27,15 @@ const tabClass =
 export function LibraryNav({
 	groups,
 	templates,
+	signedIn = false,
 }: {
 	groups: NavGroup[]
 	templates: Template[]
+	signedIn?: boolean
 }) {
 	const pathname = usePathname()
 	const router = useRouter()
 	const params = useSearchParams()
-	const { data: session } = useSession()
 	const navRef = useRef<HTMLElement>(null)
 	// Viewport and theme carry across sections; the variant is per entry, so it does not.
 	const carried = new URLSearchParams(params.toString())
@@ -68,7 +68,7 @@ export function LibraryNav({
 	// there is an account to show it for: signed out goes straight to the builder.
 	const pagesHref = openSite
 		? `${openSite}/pages`
-		: session
+		: signedIn
 			? '/builder/sites'
 			: `/builder/sites/${LOCAL_SITE_ID}/pages`
 	const [settingsSlug, setSettingsSlug] = useState<string | null>(null)
@@ -152,7 +152,7 @@ export function LibraryNav({
 				<TabsContent
 					value='pages'
 					className='flex min-h-0 flex-1 flex-col pt-4'>
-					<PagesNav templates={templates} />
+					<PagesNav templates={templates} signedIn={signedIn} />
 				</TabsContent>
 			</Tabs>
 

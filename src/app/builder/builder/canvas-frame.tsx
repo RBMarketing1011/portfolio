@@ -23,6 +23,7 @@ import {
 	type BackgroundSettings,
 } from '@/app/builder/background-settings'
 import { SettingsDialog } from '@/app/builder/settings-dialog'
+import { SaveButton } from '@/app/builder/save-button'
 import { backgroundCss } from '@/app/section-preview/theme'
 import { useBuilder } from '@/lib/builder/builder-context'
 import {
@@ -80,6 +81,7 @@ export function CanvasFrame({
 	nav,
 	chrome,
 	currentSlug,
+	signedIn,
 	onSelect,
 	onUndo,
 	onRedo,
@@ -90,6 +92,7 @@ export function CanvasFrame({
 	nav: NavPage[]
 	chrome: Chrome
 	currentSlug: string
+	signedIn: boolean
 	onSelect: (id: string | null) => void
 	onUndo: () => void
 	onRedo: () => void
@@ -266,39 +269,44 @@ export function CanvasFrame({
 	return (
 		<TooltipProvider>
 			<div className='flex h-full flex-col'>
-				<div className='flex items-center gap-1 border-b border-white/10 px-3 py-2'>
-					{viewports.map((viewport) => {
-						const active = activeViewport?.id === viewport.id
-						return (
-							<Tooltip key={viewport.id}>
-								<TooltipTrigger asChild>
-									<button
-										type='button'
-										onClick={() => setWidth(viewport.width)}
-										aria-pressed={active}
-										className={cn(
-											'flex size-8 shrink-0 items-center justify-center rounded-md transition-colors',
-											active
-												? 'bg-brand/15 text-brand'
-												: 'text-slate-400 hover:bg-white/5 hover:text-white',
-										)}>
-										<viewport.icon
-											className={cn('size-4', viewport.rotate && 'rotate-90')}
-										/>
-										<span className='sr-only'>{viewport.label}</span>
-									</button>
-								</TooltipTrigger>
-								<TooltipContent side='bottom'>
-									{viewport.label}
-									<span className='ml-1.5 text-slate-500'>
-										{viewport.width ?? Math.round(stage.width)}px
-									</span>
-								</TooltipContent>
-							</Tooltip>
-						)
-					})}
+				<div className='@container flex items-center gap-1 border-b border-white/10 px-3 py-2'>
+					{/* Scrolls rather than pushing the actions out from under the inspector. */}
+					<div className='flex min-w-0 shrink items-center gap-1 overflow-x-auto'>
+						{viewports.map((viewport) => {
+							const active = activeViewport?.id === viewport.id
+							return (
+								<Tooltip key={viewport.id}>
+									<TooltipTrigger asChild>
+										<button
+											type='button'
+											onClick={() => setWidth(viewport.width)}
+											aria-pressed={active}
+											className={cn(
+												'flex size-8 shrink-0 items-center justify-center rounded-md transition-colors',
+												active
+													? 'bg-brand/15 text-brand'
+													: 'text-slate-400 hover:bg-white/5 hover:text-white',
+											)}>
+											<viewport.icon
+												className={cn('size-4', viewport.rotate && 'rotate-90')}
+											/>
+											<span className='sr-only'>{viewport.label}</span>
+										</button>
+									</TooltipTrigger>
+									<TooltipContent side='bottom'>
+										{viewport.label}
+										<span className='ml-1.5 text-slate-500'>
+											{viewport.width ?? Math.round(stage.width)}px
+										</span>
+									</TooltipContent>
+								</Tooltip>
+							)
+						})}
+					</div>
 
-					<div className='mx-auto flex items-center gap-1.5'>
+					{/* Least important control, so it is the first to go when the
+					    inspector squeezes the toolbar. */}
+					<div className='mx-auto hidden shrink-0 items-center gap-1.5 @lg:flex'>
 						<input
 							type='number'
 							min={MIN_WIDTH}
@@ -357,6 +365,7 @@ export function CanvasFrame({
 								Open the site in a new tab
 							</TooltipContent>
 						</Tooltip>
+						<SaveButton variant='toolbar' signedIn={signedIn} />
 					</div>
 				</div>
 

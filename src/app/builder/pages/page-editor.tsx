@@ -15,9 +15,11 @@ import { CanvasFrame } from '../builder/canvas-frame'
 export function PageEditor({
 	pageId,
 	siteId = LOCAL_SITE_ID,
+	signedIn = false,
 }: {
 	pageId: string
 	siteId?: string
+	signedIn?: boolean
 }) {
 	const store = useBuilder()
 	const [colorsOpen, setColorsOpen] = useState(false)
@@ -70,7 +72,6 @@ export function PageEditor({
 			<SaveIndicator
 				state={store.saveState}
 				error={store.saveError}
-				remote={store.remote}
 				onRetry={store.retrySave}
 			/>
 			<main className='min-w-0 flex-1'>
@@ -81,6 +82,7 @@ export function PageEditor({
 					nav={store.pages.filter((p) => p.inHeader)}
 					chrome={store.chrome}
 					currentSlug={page.slug}
+					signedIn={signedIn}
 					onSelect={store.setSelectedId}
 					onUndo={store.undo}
 					onRedo={store.redo}

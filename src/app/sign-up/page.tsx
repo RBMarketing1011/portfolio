@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { Section } from '@/components/sections'
 import { auth } from '@/lib/auth'
@@ -23,7 +24,9 @@ export default async function SignUpPage() {
 				<p className='mt-3 mb-8 leading-7 text-slate-400'>
 					Keep every site you build, on every device.
 				</p>
-				<SignUpForm siteKey={process.env.CLOUDFLARE_SITE_KEY} />
+				<Suspense>
+					<SignUpForm siteKey={process.env.CLOUDFLARE_SITE_KEY} />
+				</Suspense>
 			</div>
 		</Section>
 	)

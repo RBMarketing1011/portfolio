@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { Loader2 } from 'lucide-react'
@@ -13,6 +13,7 @@ import { useRef } from 'react'
 
 export function SignUpForm({ siteKey }: { siteKey?: string }) {
 	const router = useRouter()
+	const next = useSearchParams().get('next') ?? '/builder/sites'
 	const widget = useRef<TurnstileHandle>(null)
 
 	const [email, setEmail] = useState('')
@@ -51,7 +52,7 @@ export function SignUpForm({ siteKey }: { siteKey?: string }) {
 		// Straight in rather than bouncing them to a second form.
 		await signIn('credentials', { email, password, redirect: false })
 		setBusy(false)
-		router.push('/builder/sites')
+		router.push(next)
 		router.refresh()
 	}
 

@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { auth } from '@/lib/auth'
 import { loadTemplates } from '@/lib/builder/load-templates'
 import { BuilderShell } from './builder-shell'
 import { LibraryNav } from './library-nav'
@@ -27,13 +28,20 @@ export default async function SectionsLayout({
 	}))
 
 	const templates = await loadTemplates()
+	// Resolved here rather than with useSession: the nav renders during SSR, where
+	// a client provider higher up the tree is not something it can rely on.
+	const signedIn = Boolean((await auth())?.user?.id)
 
 	return (
 		<BuilderShell>
 			<div className='flex'>
 				<aside className='sticky top-0 flex h-screen w-72 shrink-0 flex-col border-r border-white/10'>
 					<Suspense fallback={null}>
-						<LibraryNav groups={navGroups} templates={templates} />
+						<LibraryNav
+							groups={navGroups}
+							templates={templates}
+							signedIn={signedIn}
+						/>
 					</Suspense>
 				</aside>
 
