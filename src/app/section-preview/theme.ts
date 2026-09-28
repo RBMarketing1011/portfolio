@@ -1,16 +1,16 @@
-import { fontStack } from '@/app/sections/google-fonts'
+import { fontStack } from '@/app/builder/google-fonts'
 import {
 	defaultBackground,
 	type BackgroundSettings,
 	type GlowSettings,
 	type GlowSize,
 	type SurfaceSettings,
-} from '@/app/sections/background-settings'
+} from '@/app/builder/background-settings'
 import {
 	defaultSettings,
 	tintVar,
 	type ThemeSettings,
-} from '@/app/sections/theme-settings'
+} from '@/app/builder/theme-settings'
 
 // Settings arrive from the URL, so nothing but validated hex reaches the stylesheet.
 const safeHex = (value: string, fallback: string) =>

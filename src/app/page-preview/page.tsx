@@ -1,6 +1,6 @@
-import { googleFontHref } from '@/app/sections/google-fonts'
-import { readBackground } from '@/app/sections/background-settings'
-import { readSettings } from '@/app/sections/theme-settings'
+import { googleFontHref } from '@/app/builder/google-fonts'
+import { readBackground } from '@/app/builder/background-settings'
+import { readSettings } from '@/app/builder/theme-settings'
 import { backgroundCss, themeCss } from '@/app/section-preview/theme'
 import { PreviewCanvas } from './preview-canvas'
 

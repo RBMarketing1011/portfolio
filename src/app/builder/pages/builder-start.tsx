@@ -18,7 +18,7 @@ export function BuilderStart({ templates }: { templates: Template[] }) {
 		if (!store.hydrated) return
 		const target =
 			store.pages.find((p) => p.id === store.pageId) ?? store.pages[0]
-		if (target) router.replace(`/sections/pages/${target.id}`)
+		if (target) router.replace(`/builder/pages/${target.id}`)
 	}, [store.hydrated, store.pages, store.pageId, router])
 
 	if (!store.hydrated || store.pages.length > 0) {
@@ -57,7 +57,7 @@ export function BuilderStart({ templates }: { templates: Template[] }) {
 				onCreate={({ name, slug, templateSlug, inHeader }) => {
 					const template = templates.find((t) => t.slug === templateSlug)
 					const id = store.addPage(name, slug, template?.blocks ?? [], inHeader)
-					router.push(`/sections/pages/${id}`)
+					router.push(`/builder/pages/${id}`)
 				}}
 			/>
 		</div>

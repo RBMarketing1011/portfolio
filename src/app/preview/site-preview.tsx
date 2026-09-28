@@ -46,7 +46,7 @@ export function SitePreview() {
 					<Button
 						asChild
 						className='mt-8 bg-brand font-bold text-ink hover:bg-brand-strong'>
-						<Link href='/sections/pages'>Open the builder</Link>
+						<Link href='/builder/pages'>Open the builder</Link>
 					</Button>
 				</div>
 			</div>

@@ -170,7 +170,7 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 													value={`${item.name} ${item.slug}`}
 													onSelect={() => {
 														setPageOpen(false)
-														router.push(`/sections/pages/${item.id}`)
+																router.push(`/builder/pages/${item.id}`)
 													}}>
 													<Check
 														className={cn(
@@ -226,7 +226,7 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 							label={`Delete ${page.name}`}
 							onClick={() => {
 								store.removePage(page.id)
-								router.push('/sections/pages')
+								router.push('/builder/pages')
 							}}
 							className='text-slate-500 hover:text-destructive'>
 							<Trash2 className='size-3.5' />
@@ -293,7 +293,7 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 				onCreate={({ name, slug, templateSlug, inHeader }) => {
 					const template = templates.find((t) => t.slug === templateSlug)
 					const id = store.addPage(name, slug, template?.blocks ?? [], inHeader)
-					router.push(`/sections/pages/${id}`)
+					router.push(`/builder/pages/${id}`)
 				}}
 			/>
 

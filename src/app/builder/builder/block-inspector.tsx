@@ -26,7 +26,6 @@ import {
 	SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { ICON_NAMES, resolveIcon } from '@/lib/builder/icons'
 import { isScalarList } from '@/lib/builder/hydrate'
 import { getSchema } from '@/lib/builder/schema'
 import {
@@ -36,21 +35,12 @@ import {
 	type PaletteToken,
 	type ThemeSettings,
 	type Tint,
-} from '@/app/sections/theme-settings'
+} from '@/app/builder/theme-settings'
 import type { Block, Field } from '@/lib/builder/types'
+import { IconPicker } from './icon-picker'
 import { MediaPicker } from './media-picker'
+import { ProseEditor } from './prose-editor'
 import { SearchSelect } from './search-select'
-
-const iconOptions = ICON_NAMES.map((name) => {
-	const Icon = resolveIcon(name)
-	return {
-		value: name,
-		label: name,
-		icon: Icon ? (
-			<Icon className='size-3.5 shrink-0 text-slate-400' />
-		) : undefined,
-	}
-})
 
 export function BlockInspector({
 	block,
@@ -76,6 +66,8 @@ export function BlockInspector({
 		move: (from: number, to: number) => void
 		setProp: (childId: string, key: string, value: unknown) => void
 		setVariant: (childId: string, variant: string) => void
+		setAllTypes: (type: string) => void
+		setAllVariants: (variant: string) => void
 	}
 }) {
 	const schema = block ? getSchema(block.type) : null
@@ -109,6 +101,7 @@ export function BlockInspector({
 				field={field}
 				value={props[field.key]}
 				theme={theme}
+				siblings={props}
 				onChange={(value) => onPropChange(field.key, value)}
 			/>
 		))
@@ -274,13 +267,60 @@ function ItemsPanel({
 		move: (from: number, to: number) => void
 		setProp: (childId: string, key: string, value: unknown) => void
 		setVariant: (childId: string, variant: string) => void
+		setAllTypes: (type: string) => void
+		setAllVariants: (variant: string) => void
 	}
 }) {
 	const [openId, setOpenId] = useState<string | null>(null)
 	const children = block.children ?? []
 
+	// A collection holds one kind of item, so type and variant belong to the set.
+	const itemType = children[0]?.type ?? accepts[0]
+	const itemSchema = getSchema(itemType)
+	const itemVariant =
+		children[0]?.variant ?? itemSchema?.variants?.[0]?.id ?? ''
+
 	return (
 		<div className='space-y-3 px-4 py-5'>
+			<div className='space-y-3 rounded-lg border border-white/10 bg-white/3 p-3'>
+				<div className='space-y-2'>
+					<Label>Item type</Label>
+					<Select value={itemType} onValueChange={ops.setAllTypes}>
+						<SelectTrigger className='w-full'>
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							{accepts.map((type) => (
+								<SelectItem key={type} value={type}>
+									{getSchema(type)?.label ?? type}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+					<p className='text-xs leading-5 text-slate-500'>
+						Every item in this collection uses this type.
+					</p>
+				</div>
+
+				{itemSchema?.variants && itemSchema.variants.length > 1 && (
+					<div className='space-y-2'>
+						<Label>Item variant</Label>
+						<Select value={itemVariant} onValueChange={ops.setAllVariants}>
+							<SelectTrigger className='w-full'>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								{itemSchema.variants.map((option) => (
+									<SelectItem key={option.id} value={option.id}>
+										{option.label}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</div>
+				)}
+			</div>
+
 			{children.length === 0 && (
 				<p className='text-sm leading-6 text-slate-500'>
 					No items yet. Add one below.
@@ -336,31 +376,13 @@ function ItemsPanel({
 
 						{open && childSchema && (
 							<div className='space-y-4 border-t border-white/10 px-3 py-4'>
-								{childSchema.variants && childSchema.variants.length > 1 && (
-									<div className='space-y-2'>
-										<Label>Variant</Label>
-										<Select
-											value={child.variant ?? childSchema.variants[0].id}
-											onValueChange={(v) => ops.setVariant(child.id, v)}>
-											<SelectTrigger className='w-full'>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												{childSchema.variants.map((option) => (
-													<SelectItem key={option.id} value={option.id}>
-														{option.label}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-									</div>
-								)}
 								{childSchema.fields.map((field) => (
 									<FieldControl
 										key={field.key}
 										field={field}
 										theme={theme}
 										value={(child.props ?? {})[field.key]}
+										siblings={child.props ?? {}}
 										onChange={(value) =>
 											ops.setProp(child.id, field.key, value)
 										}
@@ -372,21 +394,12 @@ function ItemsPanel({
 				)
 			})}
 
-			<div className='space-y-2 border-t border-white/10 pt-4'>
-				<Label>Add item</Label>
-				<Select value='' onValueChange={(type) => ops.add(type)}>
-					<SelectTrigger className='w-full'>
-						<SelectValue placeholder='Pick an item type' />
-					</SelectTrigger>
-					<SelectContent>
-						{accepts.map((type) => (
-							<SelectItem key={type} value={type}>
-								{getSchema(type)?.label ?? type}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select>
-			</div>
+			<button
+				type='button'
+				onClick={() => ops.add(itemType)}
+				className='flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 py-2 text-xs font-medium text-slate-400 transition-colors hover:border-brand/50 hover:text-white'>
+				<Plus className='size-3.5' /> Add {itemSchema?.label ?? 'item'}
+			</button>
 		</div>
 	)
 }
@@ -436,6 +449,7 @@ function FieldControl({
 	value,
 	theme,
 	hideHeader = false,
+	siblings,
 	onChange,
 }: {
 	field: Field
@@ -443,6 +457,8 @@ function FieldControl({
 	theme: ThemeSettings
 	/** Scalar list rows already carry their own label and delete button. */
 	hideHeader?: boolean
+	/** The other props on the same block, for fields that mirror a sibling list. */
+	siblings?: Record<string, unknown>
 	onChange: (value: unknown) => void
 }) {
 	const isSet = value !== undefined && value !== null && value !== ''
@@ -468,9 +484,34 @@ function FieldControl({
 				field={field}
 				value={value}
 				theme={theme}
+				siblings={siblings}
 				onChange={onChange}
 				header={header}
 			/>
+		)
+	}
+
+	if (field.type === 'group') {
+		const row = (value as Record<string, unknown>) ?? {}
+		return (
+			<div className='space-y-2'>
+				{header}
+				<div className='space-y-3 rounded-lg border border-white/10 bg-white/3 p-3'>
+					{(field.of ?? []).map((sub) => (
+						<FieldControl
+							key={sub.key}
+							field={sub}
+							theme={theme}
+							value={row[sub.key]}
+							siblings={row}
+							onChange={(next) => onChange({ ...row, [sub.key]: next })}
+						/>
+					))}
+				</div>
+				{field.hint && (
+					<p className='text-xs leading-5 text-slate-500'>{field.hint}</p>
+				)}
+			</div>
 		)
 	}
 
@@ -524,27 +565,66 @@ function FieldControl({
 						className='border-white/10 bg-white/4 text-sm'
 					/>
 				)
-			case 'boolean':
+			case 'range': {
+				const min = field.min ?? 0
+				const max = field.max ?? 100
+				const current =
+					typeof value === 'number'
+						? value
+						: typeof field.defaultValue === 'number'
+							? field.defaultValue
+							: max
+				return (
+					<div className='flex items-center gap-3'>
+						<input
+							id={`field-${field.key}`}
+							type='range'
+							min={min}
+							max={max}
+							step={field.step ?? 1}
+							value={current}
+							onChange={(event) => onChange(Number(event.target.value))}
+							className='h-1 min-w-0 flex-1 accent-brand'
+						/>
+						<span className='w-12 shrink-0 text-right text-xs tabular-nums text-slate-400'>
+							{current}
+							{field.unit}
+						</span>
+					</div>
+				)
+			}
+			case 'prose':
+				return (
+					<ProseEditor
+						value={value as string | undefined}
+						onChange={onChange}
+					/>
+				)
+			case 'boolean': {
+				// Unset must read the component's own default, not a blanket false.
+				const on =
+					typeof value === 'boolean' ? value : field.defaultValue === true
 				return (
 					<button
 						type='button'
 						role='switch'
-						aria-checked={Boolean(value)}
-						onClick={() => onChange(!value)}
+						aria-checked={on}
+						onClick={() => onChange(!on)}
 						className={cn(
 							'flex h-6 w-11 items-center rounded-full border transition-colors',
-							value
+							on
 								? 'border-brand bg-brand/30 justify-end'
 								: 'border-white/15 bg-white/5 justify-start',
 						)}>
 						<span
 							className={cn(
 								'mx-0.5 size-4 rounded-full transition-colors',
-								value ? 'bg-brand' : 'bg-slate-500',
+								on ? 'bg-brand' : 'bg-slate-500',
 							)}
 						/>
 					</button>
 				)
+			}
 			case 'select': {
 				const options = field.options ?? []
 				if (options.length > 5) {
@@ -577,12 +657,9 @@ function FieldControl({
 			}
 			case 'icon':
 				return (
-					<SearchSelect
+					<IconPicker
 						id={`field-${field.key}`}
 						value={value as string | undefined}
-						placeholder='Default'
-						emptyLabel='No icon found.'
-						options={iconOptions}
 						onChange={onChange}
 					/>
 				)
@@ -625,6 +702,7 @@ function blankValue(field: Field | undefined): unknown {
 		case 'list':
 			return []
 		case 'number':
+		case 'range':
 		case 'select':
 		case 'icon':
 		case 'image':
@@ -635,25 +713,50 @@ function blankValue(field: Field | undefined): unknown {
 	}
 }
 
+/** "Paths" -> "Path", so the add button is the singular of the list's own label. */
+function singular(label: string) {
+	if (/ies$/i.test(label)) return label.slice(0, -3) + 'y'
+	if (/(ses|xes|ches|shes)$/i.test(label)) return label.slice(0, -2)
+	if (/s$/i.test(label) && !/ss$/i.test(label)) return label.slice(0, -1)
+	return label
+}
+
 function ListControl({
 	field,
 	value,
 	theme,
+	siblings,
 	onChange,
 	header,
 }: {
 	field: Field
 	value: unknown
 	theme: ThemeSettings
+	siblings?: Record<string, unknown>
 	onChange: (value: unknown) => void
 	header: React.ReactNode
 }) {
 	const scalar = isScalarList(field)
 	const stored = Array.isArray(value) ? (value as unknown[]) : []
+	// A mirrored list has exactly one slot per row of the list it follows.
+	const mirror = field.slotsFrom
+		? ((siblings?.[field.slotsFrom] as unknown[]) ?? [])
+		: null
+	const slots = mirror ? mirror.length : field.fixed
 	// A fixed list always shows its full set of slots, so the count cannot drift.
-	const rows = field.fixed
-		? Array.from({ length: field.fixed }, (_, i) => stored[i])
+	const rows = slots
+		? Array.from({ length: slots }, (_, i) => stored[i])
 		: stored
+
+	const slotLabel = (index: number) => {
+		if (!mirror) return `${field.label} ${index + 1}`
+		const row = mirror[index]
+		const label =
+			typeof row === 'string'
+				? row
+				: ((row as Record<string, unknown>)?.value as string)
+		return label || `Column ${index + 1}`
+	}
 
 	const setRow = (index: number, next: unknown) => {
 		const copy = [...rows]
@@ -679,14 +782,14 @@ function ListControl({
 						<div className='flex items-center justify-between gap-2'>
 							<span className='text-xs font-medium text-slate-400'>
 								{scalar
-									? `${field.label} ${index + 1}`
+									? slotLabel(index)
 									: String(
 											(row as Record<string, unknown>)?.[
 												field.rowLabel ?? ''
 											] || `Item ${index + 1}`,
 										)}
 							</span>
-							{field.fixed ? (
+							{mirror ? null : field.fixed ? (
 								row !== undefined &&
 								row !== '' && (
 									<button
@@ -728,6 +831,7 @@ function ListControl({
 										field={sub}
 										theme={theme}
 										value={(row as Record<string, unknown>)?.[sub.key]}
+										siblings={row as Record<string, unknown>}
 										onChange={(next) =>
 											setRow(index, {
 												...(row as Record<string, unknown>),
@@ -741,12 +845,13 @@ function ListControl({
 					</div>
 				))}
 			</div>
-			{!field.fixed && (
+			{!field.fixed && !mirror && (
 				<button
 					type='button'
 					onClick={addRow}
 					className='flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 py-2 text-xs font-medium text-slate-400 transition-colors hover:border-brand/50 hover:text-white'>
-					<Plus className='size-3.5' /> Add {field.rowLabel ?? 'item'}
+					<Plus className='size-3.5' /> Add{' '}
+					{field.addLabel ?? singular(field.label)}
 				</button>
 			)}
 			{field.hint && (

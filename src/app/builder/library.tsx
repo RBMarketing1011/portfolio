@@ -63,6 +63,7 @@ import {
 } from '@/components/sections'
 import { Badge } from '@/components/ui/badge'
 import { Highlight } from '@/components/ui/highlight'
+import { anchorId } from '@/lib/builder/ids'
 import { PaginationDemo } from './pagination-demo'
 import SiteFooter from '@/components/site-footer'
 import SiteHeader from '@/components/site-header'
@@ -1323,16 +1324,16 @@ export const library: Group[] = [
 								<TableOfContents design={design} />
 								<div className='space-y-32'>
 									{[
-										'section-one',
-										'section-two',
-										'section-three',
-										'section-four',
-									].map((id, index) => (
-										<div key={id}>
+										'This is the first heading',
+										'This is the second heading',
+										'This is the third heading',
+										'This is the fourth heading',
+									].map((label) => (
+										<div key={label}>
 											<h2
-												id={id}
+												id={anchorId(label)}
 												className='scroll-mt-32 font-display text-2xl font-semibold text-white'>
-												{`This is heading number ${index + 1}`}
+												{label}
 											</h2>
 											<p className='mt-4 leading-8 text-slate-400'>
 												Scroll the preview and the active line on the left

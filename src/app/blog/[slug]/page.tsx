@@ -120,8 +120,7 @@ export default async function BlogArticle({
 							name={site.name}
 							role='AI, automation, and custom software'
 							bio='We audit an entire operation before building anything, then build what the business actually needs. Everything here comes out of real engagements.'
-							href='/about'
-							linkLabel='About the studio'
+							action={{ label: 'About the studio', href: '/about' }}
 						/>
 					</div>
 				</div>

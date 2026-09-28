@@ -21,15 +21,15 @@ import {
 	defaultBackground,
 	writeBackground,
 	type BackgroundSettings,
-} from '@/app/sections/background-settings'
-import { SettingsDialog } from '@/app/sections/settings-dialog'
+} from '@/app/builder/background-settings'
+import { SettingsDialog } from '@/app/builder/settings-dialog'
 import { backgroundCss } from '@/app/section-preview/theme'
 import { useBuilder } from '@/lib/builder/builder-context'
 import {
 	defaultSettings,
 	writeSettings,
 	type ThemeSettings,
-} from '@/app/sections/theme-settings'
+} from '@/app/builder/theme-settings'
 import type { NavPage } from '@/components/built-chrome'
 import type { Chrome } from '@/lib/builder/page-schema'
 import type { Block } from '@/lib/builder/types'
@@ -153,10 +153,14 @@ export function CanvasFrame({
 			if (event.origin !== window.location.origin) return
 			if (event.data?.kind === 'builder:ready') setFrameReady(true)
 			if (event.data?.kind === 'builder:select') onSelect(event.data.id ?? null)
+			if (event.data?.kind === 'builder:duplicate' && event.data.id)
+				store.duplicateSection(event.data.id)
+			if (event.data?.kind === 'builder:remove' && event.data.id)
+				store.removeSection(event.data.id)
 		}
 		window.addEventListener('message', onMessage)
 		return () => window.removeEventListener('message', onMessage)
-	}, [onSelect])
+	}, [onSelect, store])
 
 	useEffect(() => {
 		if (frameReady) post()

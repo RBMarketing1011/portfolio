@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 
 /**
  * Previews must never navigate — following a link would load the whole site,
- * and /sections inside the frame nests the tool in itself.
+ * and /builder inside the frame nests the tool in itself.
  *
  * Listens on document rather than a wrapper because Radix portals (sheet, dialog,
  * dropdown) mount to document.body and would otherwise escape the handler.

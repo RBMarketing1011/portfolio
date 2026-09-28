@@ -9,9 +9,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { BackgroundDrawer } from '@/app/sections/background-drawer'
-import type { BackgroundSettings } from '@/app/sections/background-settings'
-import type { ThemeSettings } from '@/app/sections/theme-settings'
+import { BackgroundDrawer } from '@/app/builder/background-drawer'
+import type { BackgroundSettings } from '@/app/builder/background-settings'
+import type { ThemeSettings } from '@/app/builder/theme-settings'
 import {
 	displaySlug,
 	FOOTER_VARIANT_LABELS,

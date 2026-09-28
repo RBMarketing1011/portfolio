@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 	description: site.description,
 	applicationName: site.name,
 	keywords: [
-		'AI consultant',
+		'AI consulting',
 		'business automation',
 		'workflow automation',
 		'custom software development',

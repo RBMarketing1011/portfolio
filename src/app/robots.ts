@@ -4,7 +4,7 @@ import { baseUrl } from '@/lib/seo'
 // The section library, the builder, and both preview surfaces are internal tools.
 const internal = [
 	'/api/',
-	'/sections/',
+	'/builder/',
 	'/section-preview/',
 	'/page-preview/',
 	'/preview/',

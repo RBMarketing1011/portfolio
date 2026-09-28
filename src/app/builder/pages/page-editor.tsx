@@ -92,6 +92,10 @@ export function PageEditor({ pageId }: { pageId: string }) {
 						selected && store.moveChild(selected.id, from, to),
 					setProp: (childId, key, value) => store.setProp(childId, key, value),
 					setVariant: (childId, variant) => store.setVariant(childId, variant),
+					setAllTypes: (type) =>
+						selected && store.setChildrenType(selected.id, type),
+					setAllVariants: (variant) =>
+						selected && store.setChildrenVariant(selected.id, variant),
 				}}
 				onVariantChange={(variant) =>
 					store.selectedId && store.setVariant(store.selectedId, variant)

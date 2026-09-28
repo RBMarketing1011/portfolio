@@ -57,7 +57,7 @@ export function LibraryNav({
 	}, [pathname])
 
 	const sections = groups.filter((group) => group.kind === 'section')
-	const onPages = pathname.startsWith('/sections/pages')
+	const onPages = pathname.startsWith('/builder/pages')
 	const [settingsSlug, setSettingsSlug] = useState<string | null>(null)
 
 	const renderGroups = (list: NavGroup[], showLabels: boolean) =>
@@ -70,7 +70,7 @@ export function LibraryNav({
 				)}
 				<ul className={cn('space-y-0.5', showLabels && 'mt-2')}>
 					{group.entries.map((entry) => {
-						const href = `/sections/${entry.slug}`
+						const href = `/builder/${entry.slug}`
 						const active = pathname === href
 
 						return (
@@ -119,7 +119,7 @@ export function LibraryNav({
 			<Tabs
 				value={onPages ? 'pages' : 'sections'}
 				onValueChange={(value) =>
-					router.push(value === 'pages' ? '/sections/pages' : '/sections')
+					router.push(value === 'pages' ? '/builder/pages' : '/builder')
 				}
 				className='flex min-h-0 flex-1 flex-col gap-0'>
 				<TabsList className='h-auto w-full shrink-0 gap-4 rounded-none border-b border-white/10 bg-transparent px-4 pt-4'>
