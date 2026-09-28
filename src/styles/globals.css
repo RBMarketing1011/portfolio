@@ -18,6 +18,7 @@
 	--animate-accordion-down: accordion-down 250ms ease-out;
 	--animate-accordion-up: accordion-up 200ms ease-out;
 	--animate-marquee: marquee 45s linear infinite;
+	--animate-ticker: ticker 30s linear infinite;
 
 	/* Track holds two identical copies, so one full width is a seamless loop. */
 	@keyframes marquee {
@@ -26,6 +27,16 @@
 		}
 		to {
 			transform: translateX(calc(-50% - 1.75rem));
+		}
+	}
+
+	/* Each copy carries its own trailing gap, so an exact -50% loops seamlessly. */
+	@keyframes ticker {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(-50%);
 		}
 	}
 

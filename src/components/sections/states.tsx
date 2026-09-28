@@ -1,10 +1,11 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Check, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { cn } from '@/lib/utils'
-import { Section } from './primitives'
+import { ActionButton, ActionRow, Section, type Action } from './primitives'
 
 export function DetailCard({
 	eyebrow = 'Details',
@@ -16,8 +17,12 @@ export function DetailCard({
 		{ label: 'Venue', value: 'Values run to one or two lines' },
 		{ label: 'Price', value: 'The last one is usually the price' },
 	],
-	cta = 'Primary Button',
-	href = '/contact',
+	action = {
+		label: 'Primary Button',
+		href: '/contact',
+		icon: ArrowRight,
+	},
+	showNote = true,
 	note = 'This is the note under the button, for scarcity or reassurance.',
 	variant = 'card',
 }: {
@@ -25,8 +30,9 @@ export function DetailCard({
 	title?: React.ReactNode
 	description?: string
 	details?: { label: string; value: string }[]
-	cta?: string
-	href?: string
+	action?: Action
+	/** Turn the line under the button off without clearing its text. */
+	showNote?: boolean
 	note?: string
 	/** How the facts sit against the copy. */
 	variant?: 'card' | 'rows' | 'inline'
@@ -43,17 +49,12 @@ export function DetailCard({
 		</div>
 	)
 
-	const action = (
+	const actionBlock = (
 		<>
-			<Button
-				asChild
-				size='lg'
-				className='w-full bg-brand font-bold text-ink hover:bg-brand-strong'>
-				<Link href={href}>
-					{cta} <ArrowRight />
-				</Link>
-			</Button>
-			{note && (
+			{action?.label && (
+				<ActionButton action={action} className='w-full' />
+			)}
+			{showNote && note && (
 				<p className='mt-4 text-center text-sm text-slate-500'>{note}</p>
 			)}
 		</>
@@ -67,8 +68,8 @@ export function DetailCard({
 					{copy}
 					<GlassCard variant='accent' className='p-8'>
 						<dl className='space-y-5'>
-							{details.map((row) => (
-								<div key={row.label}>
+							{details.map((row, index) => (
+								<div key={index}>
 									<dt className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
 										{row.label}
 									</dt>
@@ -76,7 +77,7 @@ export function DetailCard({
 								</div>
 							))}
 						</dl>
-						<div className='mt-8'>{action}</div>
+							<div className='mt-8'>{actionBlock}</div>
 					</GlassCard>
 				</div>
 			</Section>
@@ -89,9 +90,9 @@ export function DetailCard({
 			<Section>
 				{copy}
 				<dl className='mt-12 divide-y divide-white/10 border-y border-white/10'>
-					{details.map((row) => (
+					{details.map((row, index) => (
 						<div
-							key={row.label}
+							key={index}
 							className='grid gap-2 py-5 sm:grid-cols-[12rem_1fr] sm:gap-8'>
 							<dt className='text-xs font-semibold uppercase tracking-widest text-slate-500 sm:pt-1'>
 								{row.label}
@@ -100,7 +101,7 @@ export function DetailCard({
 						</div>
 					))}
 				</dl>
-				<div className='mt-10 max-w-sm'>{action}</div>
+				<div className='mx-auto mt-10 w-full max-w-sm'>{actionBlock}</div>
 			</Section>
 		)
 	}
@@ -110,8 +111,8 @@ export function DetailCard({
 		<Section>
 			{copy}
 			<dl className='mt-12 grid gap-8 border-t border-white/10 pt-10 sm:grid-cols-2 lg:grid-cols-4'>
-				{details.map((row) => (
-					<div key={row.label}>
+				{details.map((row, index) => (
+					<div key={index}>
 						<dt className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
 							{row.label}
 						</dt>
@@ -121,7 +122,7 @@ export function DetailCard({
 					</div>
 				))}
 			</dl>
-			<div className='mt-10 max-w-sm'>{action}</div>
+			<div className='mx-auto mt-10 w-full max-w-sm'>{actionBlock}</div>
 		</Section>
 	)
 }
@@ -136,6 +137,7 @@ export function Countdown({
 		{ value: '00', label: 'Minutes' },
 		{ value: '00', label: 'Seconds' },
 	],
+	showNote = true,
 	note = 'This is the closing line, usually a contact address for anyone who cannot wait.',
 	variant = 'boxed',
 }: {
@@ -143,6 +145,8 @@ export function Countdown({
 	title?: React.ReactNode
 	description?: string
 	units?: { value: string; label: string }[]
+	/** Turn the closing line off without clearing its text. */
+	showNote?: boolean
 	note?: string
 	/** How each unit is framed. */
 	variant?: 'boxed' | 'bare' | 'inline'
@@ -170,9 +174,9 @@ export function Countdown({
 						? 'flex max-w-2xl flex-wrap items-baseline justify-center gap-x-8 gap-y-4'
 						: 'grid max-w-lg grid-cols-4 gap-3 sm:gap-5',
 				)}>
-				{units.map((unit) => (
+				{units.map((unit, index) => (
 					<div
-						key={unit.label}
+						key={index}
 						className={cn(
 							inline && 'flex items-baseline gap-2',
 							variant === 'boxed' &&
@@ -193,7 +197,9 @@ export function Countdown({
 				))}
 			</dl>
 
-			{note && <p className='mt-12 text-sm text-slate-500'>{note}</p>}
+				{showNote && note && (
+					<p className='mt-12 text-sm text-slate-500'>{note}</p>
+				)}
 		</Section>
 	)
 }
@@ -210,6 +216,7 @@ export function AuthPanel({
 	asideQuote = 'This is the quote in the proof panel. The only job of this column is to make signing in feel worth it.',
 	asideName = 'Client Name',
 	asideRole = 'Role, Company',
+	asideImage,
 	variant = 'split',
 }: {
 	eyebrow?: string
@@ -223,6 +230,8 @@ export function AuthPanel({
 	asideQuote?: string
 	asideName?: string
 	asideRole?: string
+	/** Sits behind the proof column, dimmed so the quote stays readable. */
+	asideImage?: string
 	/** Whether the proof panel shows, and how the form is framed. */
 	variant?: 'split' | 'centered' | 'card'
 }) {
@@ -252,9 +261,9 @@ export function AuthPanel({
 						<span aria-hidden className='h-px flex-1 bg-white/10' />
 					</div>
 					<div className='mt-8 space-y-3'>
-						{providers.map((provider) => (
+						{providers.map((provider, index) => (
 							<Button
-								key={provider}
+								key={index}
 								asChild
 								variant='outline'
 								className='w-full border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white'>
@@ -287,7 +296,9 @@ export function AuthPanel({
 	if (variant === 'card') {
 		return (
 			<section className='flex min-h-screen items-center justify-center px-6 py-24 sm:px-10'>
-				<GlassCard variant='accent' className='p-8 sm:p-12'>
+				<GlassCard
+					variant='accent'
+					className='w-full max-w-xl p-8 sm:p-12 [&>div]:max-w-none'>
 					{form}
 				</GlassCard>
 			</section>
@@ -300,8 +311,21 @@ export function AuthPanel({
 				{form}
 			</div>
 			{/* Proof panel: the only job of the second column is to justify the sign in. */}
-			<div className='hidden items-center border-l border-white/10 bg-white/2 px-16 lg:flex'>
-				<figure className='w-full max-w-md'>
+			<div
+				className='relative hidden items-center border-l border-white/10 bg-white/2 px-16 lg:flex'>
+				{asideImage && (
+					<>
+						<Image
+							src={asideImage}
+							alt=''
+							fill
+							sizes='50vw'
+							className='object-cover'
+						/>
+						<span aria-hidden className='absolute inset-0 bg-ink/75' />
+					</>
+				)}
+				<figure className='relative w-full max-w-md'>
 					<span
 						aria-hidden
 						className='font-display text-7xl leading-none text-brand/30'>
@@ -331,37 +355,51 @@ export function Notice({
 		{ value: 'Step Three', label: 'This is what to do in the meantime' },
 	],
 	actions = [
-		{ label: 'Primary Button', href: '/' },
+		{ label: 'Primary Button', href: '/', icon: ArrowRight },
 		{ label: 'Secondary Button', href: '/contact' },
 	],
+	iconPosition = 'above',
 	variant = 'confirmation',
 }: {
 	icon?: LucideIcon
+	/** Where the mark sits relative to the heading. */
+	iconPosition?: 'above' | 'before' | 'after'
 	/** Large code above the heading, for error states. */
 	code?: string
 	title?: React.ReactNode
 	description?: string
 	steps?: { value: string; label: string }[]
-	actions?: { label: string; href: string }[]
+	actions?: Action[]
 	/** Whether the mark is an icon, a code, or nothing at all. */
 	variant?: 'confirmation' | 'code' | 'plain'
 }) {
+	// The mark follows the icon field in every variant, not just confirmation.
+	const inline = iconPosition !== 'above'
+	const mark = Icon ? (
+		<span
+			className={
+				inline
+					? 'inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-brand/30 bg-brand/10'
+					: 'mx-auto flex size-16 items-center justify-center rounded-full border border-brand/30 bg-brand/10'
+			}>
+			<Icon className={inline ? 'size-5 text-brand' : 'size-7 text-brand'} />
+		</span>
+	) : null
+
 	return (
 		<section className='flex min-h-screen items-center px-6 py-28 sm:px-10 lg:px-16'>
 			<div className='mx-auto w-full max-w-3xl text-center'>
-				{variant === 'confirmation' && (
-					<span className='mx-auto flex size-16 items-center justify-center rounded-full border border-brand/30 bg-brand/10'>
-						<Icon className='size-7 text-brand' />
-					</span>
-				)}
+				{variant !== 'plain' && !inline && mark}
 				{variant === 'code' && (
 					<p className='font-display text-7xl font-semibold text-brand sm:text-8xl'>
 						{code ?? '404'}
 					</p>
 				)}
 
-				<h1 className='mt-8 font-display text-4xl font-semibold leading-[1.1] text-white sm:text-5xl'>
-					{title}
+				<h1 className='mt-8 flex flex-wrap items-center justify-center gap-4 font-display text-4xl font-semibold leading-[1.1] text-white sm:text-5xl'>
+					{variant !== 'plain' && inline && iconPosition === 'before' && mark}
+					<span>{title}</span>
+					{variant !== 'plain' && inline && iconPosition === 'after' && mark}
 				</h1>
 				{description && (
 					<p className='mx-auto mt-6 max-w-xl text-lg leading-8 text-slate-300'>
@@ -371,8 +409,8 @@ export function Notice({
 
 				{steps.length > 0 && (
 					<dl className='mt-14 grid gap-8 text-left sm:grid-cols-3'>
-						{steps.map((step) => (
-							<div key={step.value}>
+						{steps.map((step, index) => (
+							<div key={index}>
 								<dt className='font-display text-xl font-semibold text-brand'>
 									{step.value}
 								</dt>
@@ -382,32 +420,10 @@ export function Notice({
 					</dl>
 				)}
 
-				{actions.length > 0 && (
-					<div className='mt-12 flex flex-wrap justify-center gap-4'>
-						{actions.slice(0, 2).map((action, index) =>
-							index === 0 ? (
-								<Button
-									key={action.label}
-									asChild
-									size='lg'
-									className='bg-brand font-bold text-ink hover:bg-brand-strong'>
-									<Link href={action.href}>
-										{action.label} <ArrowRight />
-									</Link>
-								</Button>
-							) : (
-								<Button
-									key={action.label}
-									asChild
-									size='lg'
-									variant='outline'
-									className='border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white'>
-									<Link href={action.href}>{action.label}</Link>
-								</Button>
-							),
-						)}
-					</div>
-				)}
+				<ActionRow
+					actions={actions}
+					className='mt-12 sm:justify-center'
+				/>
 			</div>
 		</section>
 	)

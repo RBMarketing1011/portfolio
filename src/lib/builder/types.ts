@@ -4,11 +4,14 @@ export type FieldType =
 	| 'textarea'
 	| 'richtext'
 	| 'number'
+	| 'range'
+	| 'prose'
 	| 'boolean'
 	| 'select'
 	| 'image'
 	| 'icon'
 	| 'tint'
+	| 'group'
 	| 'list'
 
 export type Field = {
@@ -19,16 +22,25 @@ export type Field = {
 	hint?: string
 	/** `select` only. */
 	options?: { value: string; label: string }[]
-	/** `number` only. */
+	/** `number` and `range` only. */
 	min?: number
 	max?: number
 	step?: number
+	/** `range` only: appended to the readout, e.g. `%`. */
+	unit?: string
+	/** `range` and `boolean`: what the control shows before anything is stored. */
+	defaultValue?: number | boolean
 	/** `list` only: the shape of one row. */
-	of?: Field[]
-	/** `list` only: how a row is labeled in the collapsed list. */
+	of?: Field[]	/** `list` only: how a row is labeled in the collapsed list. */
 	rowLabel?: string
+	/** `list` only: wording for the add button, when `rowLabel` names a row property. */
+	addLabel?: string
 	/** `list` only: the component reads exactly this many rows, so slots are locked. */
 	fixed?: number
+	/** `list` only: slot count and row labels come from this sibling list instead. */
+	slotsFrom?: string
+	/** `text` only: offers one insertable token per row of this top-level list. */
+	tokensFrom?: string
 }
 
 export type VariantOption = { id: string; label: string }
@@ -56,8 +68,10 @@ export type SectionSchema = {
 		defaultChild: string
 		defaultChildCount: number
 	}
-	/** True when this section is only ever a child of a container. */
+	/** True when this is never a section on its own: a container child or an in-section primitive. */
 	displayItem?: boolean
+	/** Renders its own measure only, so the builder wraps it in a full-width Section. */
+	bare?: boolean
 }
 
 export type Block = {

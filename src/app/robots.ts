@@ -1,14 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { baseUrl } from '@/lib/seo'
 
-// The section library, the builder, and both preview surfaces are internal tools.
-const internal = [
-	'/api/',
-	'/builder/',
-	'/section-preview/',
-	'/page-preview/',
-	'/preview/',
-]
+// The section library and both preview surfaces are internal tools. The builder is
+// linked from the public header, so it stays crawlable.
+const internal = ['/api/', '/section-preview/', '/page-preview/', '/preview/']
 
 export default function robots(): MetadataRoute.Robots {
 	return {

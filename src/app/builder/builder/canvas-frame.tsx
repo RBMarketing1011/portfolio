@@ -143,10 +143,24 @@ export function CanvasFrame({
 				chrome,
 				currentSlug,
 				surfaceCss,
+				// The iframe is its own document, so a signed-in library cannot be read
+				// from localStorage there.
+				mediaIndex: store.remote
+					? store.media.map((item) => ({ id: item.id, url: item.src }))
+					: null,
 			},
 			window.location.origin,
 		)
-	}, [blocks, selectedId, nav, chrome, currentSlug, surfaceCss])
+	}, [
+		blocks,
+		selectedId,
+		nav,
+		chrome,
+		currentSlug,
+		surfaceCss,
+		store.remote,
+		store.media,
+	])
 
 	useEffect(() => {
 		function onMessage(event: MessageEvent) {

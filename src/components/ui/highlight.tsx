@@ -9,10 +9,9 @@ export function Highlight({
 }) {
 	return (
 		<span
-			className={cn(
-				'relative inline-block whitespace-nowrap text-brand',
-				className,
-			)}>
+			// inline-block so the stroke can span the whole phrase, but wrapping stays on:
+			// the text breaks across lines and the underline sits under the last one.
+			className={cn('relative inline-block text-brand', className)}>
 			{children}
 			{/* One closed outline traced along both sides of a single pen gesture,
 			    so the sweep, the Z reversal, and the run-out stay continuous. */}

@@ -1,18 +1,19 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import {
 	ArrowDown,
 	ArrowRight,
+	Check,
 	Clock,
 	Gauge,
 	TrendingUp,
+	X,
 	type LucideIcon,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
+import { cn } from '@/lib/utils'
 import { ClientLogo, exampleLogos, type Logo } from './cards'
-import { Section, SectionHeading } from './primitives'
+import { ActionRow, Section, SectionHeading, type Action } from './primitives'
 
 export function StatBand({
 	stats = [
@@ -43,10 +44,10 @@ export function StatBand({
 		return (
 			<Section>
 				<dl className='grid gap-5 sm:grid-cols-3'>
-					{stats.map((stat) => {
+					{stats.map((stat, index) => {
 						const Icon = stat.icon ?? Gauge
 						return (
-							<GlassCard key={stat.label} variant='accent' className='p-8'>
+							<GlassCard key={index} variant='accent' className='p-8'>
 								<span className='flex size-11 items-center justify-center rounded-lg border border-brand/25 bg-brand/10'>
 									<Icon className='size-5 text-brand' />
 								</span>
@@ -62,23 +63,32 @@ export function StatBand({
 		)
 	}
 
-	// Numbers only, split by rules. The quietest of the three.
+	// Numbers only, split by rules. The quietest of the three, so the icon shows
+	// only when one is actually chosen rather than falling back to a default.
 	if (variant === 'divided') {
 		return (
 			<Section>
 				<dl className='grid divide-y divide-white/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0'>
-					{stats.map((stat) => (
-						<div
-							key={stat.label}
-							className='px-6 py-8 text-center first:pt-0 last:pb-0 sm:py-0'>
-							<dt className='font-display text-5xl font-semibold text-brand'>
-								{stat.value}
-							</dt>
-							<dd className='mx-auto mt-4 max-w-56 text-sm leading-6 text-slate-500'>
-								{stat.label}
-							</dd>
-						</div>
-					))}
+					{stats.map((stat, index) => {
+						const Icon = stat.icon
+						return (
+							<div
+								key={index}
+								className='px-6 py-8 text-center first:pt-0 last:pb-0 sm:py-0'>
+								{Icon && (
+									<span className='mx-auto mb-4 flex size-11 items-center justify-center rounded-lg border border-brand/25 bg-brand/10'>
+										<Icon className='size-5 text-brand' />
+									</span>
+								)}
+								<dt className='font-display text-5xl font-semibold text-brand'>
+									{stat.value}
+								</dt>
+								<dd className='mx-auto mt-4 max-w-56 text-sm leading-6 text-slate-500'>
+									{stat.label}
+								</dd>
+							</div>
+						)
+					})}
 				</dl>
 			</Section>
 		)
@@ -87,10 +97,10 @@ export function StatBand({
 	return (
 		<Section>
 			<dl className='grid gap-10 text-center sm:grid-cols-3 sm:text-left'>
-				{stats.map((stat) => {
+				{stats.map((stat, index) => {
 					const Icon = stat.icon ?? Gauge
 					return (
-						<div key={stat.label}>
+						<div key={index}>
 							<dt className='flex items-center justify-center gap-3 font-display text-3xl font-semibold text-brand sm:justify-start sm:text-4xl'>
 								<span className='flex size-11 shrink-0 items-center justify-center rounded-lg border border-brand/25 bg-brand/10'>
 									<Icon className='size-5 text-brand' />
@@ -121,8 +131,8 @@ export function LogoStrip({
 	const list = (
 		// Stacked and left-aligned on mobile so the marks form a clean column.
 		<ul className='mx-auto mt-9 flex w-fit flex-col items-start gap-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-12'>
-			{logos.map((logo) => (
-				<li key={logo.name}>
+			{logos.map((logo, index) => (
+				<li key={index}>
 					<ClientLogo {...logo} />
 				</li>
 			))}
@@ -135,9 +145,9 @@ export function LogoStrip({
 			<Section>
 				<p className='eyebrow text-center'>{eyebrow}</p>
 				<ul className='mt-9 grid grid-cols-2 overflow-hidden rounded-xl border border-white/10 sm:grid-cols-3 lg:grid-cols-5'>
-					{logos.map((logo) => (
+					{logos.map((logo, index) => (
 						<li
-							key={logo.name}
+							key={index}
 							className='flex items-center justify-center border-b border-r border-white/10 px-6 py-10'>
 							<ClientLogo {...logo} />
 						</li>
@@ -183,36 +193,50 @@ export function Spotlight({
 				'Swap the labels to suit: challenge and outcome, problem and result, before and after.',
 		},
 	],
-	href = '/case-studies',
-	linkLabel = 'Read More',
+	actions = [
+		{ label: 'Read More', href: '/case-studies', icon: ArrowRight },
+	],
 	mediaSrc,
 	mediaAlt = '',
 	mediaLabel = 'Media slot: screenshot, video, or photo',
+	mediaOpacity = 100,
+	mediaBrightness = 100,
 	variant = 'split',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	summary?: string
 	details?: { label: string; value: string }[]
-	href?: string
-	linkLabel?: string
+	actions?: Action[]
 	/** Real screenshot. Falls back to the placeholder label when absent. */
 	mediaSrc?: string
 	mediaAlt?: string
 	mediaLabel?: string
+	/** Percentages. Drop either one to keep copy readable over the image. */
+	mediaOpacity?: number
+	mediaBrightness?: number
 	variant?: 'split' | 'stacked' | 'overlap'
 }) {
-	const media = mediaSrc ? (
-		<Image
-			src={mediaSrc}
-			alt={mediaAlt}
-			fill
-			sizes='(min-width: 1024px) 40rem, 90vw'
-			className='object-cover'
-		/>
-	) : (
-		<div className='flex h-full items-center justify-center px-6 text-center text-sm text-slate-500'>
-			{mediaLabel}
+	const media = (
+		<div
+			className='absolute inset-0'
+			style={{
+				opacity: mediaOpacity / 100,
+				filter: `brightness(${mediaBrightness / 100})`,
+			}}>
+			{mediaSrc ? (
+				<Image
+					src={mediaSrc}
+					alt={mediaAlt}
+					fill
+					sizes='(min-width: 1024px) 40rem, 90vw'
+					className='object-cover'
+				/>
+			) : (
+				<div className='flex h-full items-center justify-center px-6 text-center text-sm text-slate-500'>
+					{mediaLabel}
+				</div>
+			)}
 		</div>
 	)
 
@@ -229,15 +253,7 @@ export function Spotlight({
 		</dl>
 	)
 
-	const cta = (
-		<Button
-			asChild
-			className='mt-9 bg-brand font-bold text-ink hover:bg-brand-strong'>
-			<Link href={href}>
-				{linkLabel} <ArrowRight />
-			</Link>
-		</Button>
-	)
+	const cta = <ActionRow actions={actions} className='mt-9' />
 
 	// Centered copy above full-bleed media, for when the visual is the argument.
 	if (variant === 'stacked') {
@@ -315,22 +331,60 @@ export function Spotlight({
 	)
 }
 
+/** Rows were plain strings before icons existed, so both shapes still render. */
+type ContrastItem = string | { text?: string; icon?: LucideIcon }
+
+const itemText = (item: ContrastItem) =>
+	typeof item === 'string' ? item : (item?.text ?? '')
+const itemIcon = (item: ContrastItem) =>
+	typeof item === 'string' ? undefined : item?.icon
+
+function ContrastRow({
+	item,
+	tone,
+}: {
+	item: ContrastItem
+	tone: 'muted' | 'bright'
+}) {
+	const Icon = itemIcon(item)
+	return (
+		<li
+			className={cn(
+				'flex gap-3',
+				tone === 'muted' ? 'text-slate-400' : 'text-slate-200',
+			)}>
+			{Icon && (
+				<Icon
+					className={cn(
+						'mt-1.5 size-4 shrink-0',
+						tone === 'muted' ? 'text-slate-500' : 'text-brand',
+					)}
+				/>
+			)}
+			<span className='leading-7'>{itemText(item)}</span>
+		</li>
+	)
+}
+
 export function BeforeAfter({
 	eyebrow = 'Eyebrow',
 	title = 'This is the before and after heading',
 	beforeLabel = 'Before',
 	afterLabel = 'After',
 	before = [
-		'This is a line describing the old process',
-		'Each line is one concrete, specific problem',
-		'Three to five reads best on either side',
-		'Keep both columns the same length',
+		{ text: 'This is a line describing the old process', icon: X },
+		{ text: 'Each line is one concrete, specific problem', icon: X },
+		{ text: 'Three to five reads best on either side', icon: X },
+		{ text: 'Keep both columns the same length', icon: X },
 	],
 	after = [
-		'This is the matching line describing the new process',
-		'Each one answers the problem directly across from it',
-		'Specific beats abstract in both columns',
-		'The contrast is the whole point of the section',
+		{
+			text: 'This is the matching line describing the new process',
+			icon: Check,
+		},
+		{ text: 'Each one answers the problem directly across from it', icon: Check },
+		{ text: 'Specific beats abstract in both columns', icon: Check },
+		{ text: 'The contrast is the whole point of the section', icon: Check },
 	],
 	variant = 'columns',
 }: {
@@ -338,8 +392,9 @@ export function BeforeAfter({
 	title?: React.ReactNode
 	beforeLabel?: string
 	afterLabel?: string
-	before?: string[]
-	after?: string[]
+	/** Each row picks its own icon, or none at all. */
+	before?: ContrastItem[]
+	after?: ContrastItem[]
 	variant?: 'columns' | 'rows' | 'stacked'
 }) {
 	// Pairs each problem with its answer on the same line, so nothing is left to inference.
@@ -356,16 +411,28 @@ export function BeforeAfter({
 							{afterLabel}
 						</p>
 					</div>
-					{before.map((item, index) => (
-						<div
-							key={item}
-							className='grid grid-cols-2 border-b border-white/6 last:border-b-0'>
-							<p className='p-5 leading-7 text-slate-500'>{item}</p>
-							<p className='bg-brand/8 p-5 leading-7 text-slate-200'>
-								{after[index]}
-							</p>
-						</div>
-					))}
+					{before.map((item, index) => {
+						const BeforeIcon = itemIcon(item)
+						const AfterIcon = itemIcon(after[index])
+						return (
+							<div
+								key={index}
+								className='grid grid-cols-2 border-b border-white/6 last:border-b-0'>
+								<p className='flex gap-3 p-5 leading-7 text-slate-500'>
+									{BeforeIcon && (
+										<BeforeIcon className='mt-1.5 size-4 shrink-0' />
+									)}
+									<span>{itemText(item)}</span>
+								</p>
+								<p className='flex gap-3 bg-brand/8 p-5 leading-7 text-slate-200'>
+									{AfterIcon && (
+										<AfterIcon className='mt-1.5 size-4 shrink-0 text-brand' />
+									)}
+									<span>{itemText(after[index])}</span>
+								</p>
+							</div>
+						)
+					})}
 				</GlassCard>
 			</Section>
 		)
@@ -382,11 +449,8 @@ export function BeforeAfter({
 							{beforeLabel}
 						</Badge>
 						<ul className='mt-6 grid gap-4 sm:grid-cols-2'>
-							{before.map((item) => (
-								<li key={item} className='flex gap-3 text-slate-400'>
-									<span className='mt-2.5 size-1.5 shrink-0 rounded-full bg-slate-600' />
-									<span className='leading-7'>{item}</span>
-								</li>
+							{before.map((item, index) => (
+								<ContrastRow key={index} item={item} tone='muted' />
 							))}
 						</ul>
 					</GlassCard>
@@ -398,11 +462,8 @@ export function BeforeAfter({
 					<GlassCard variant='accent' className='p-8'>
 						<Badge className='uppercase tracking-widest'>{afterLabel}</Badge>
 						<ul className='mt-6 grid gap-4 sm:grid-cols-2'>
-							{after.map((item) => (
-								<li key={item} className='flex gap-3 text-slate-200'>
-									<span className='mt-2.5 size-1.5 shrink-0 rounded-full bg-brand' />
-									<span className='leading-7'>{item}</span>
-								</li>
+							{after.map((item, index) => (
+								<ContrastRow key={index} item={item} tone='bright' />
 							))}
 						</ul>
 					</GlassCard>
@@ -420,22 +481,16 @@ export function BeforeAfter({
 						{beforeLabel}
 					</Badge>
 					<ul className='mt-6 space-y-4'>
-						{before.map((item) => (
-							<li key={item} className='flex gap-3 text-slate-400'>
-								<span className='mt-2.5 size-1.5 shrink-0 rounded-full bg-slate-600' />
-								<span className='leading-7'>{item}</span>
-							</li>
+						{before.map((item, index) => (
+							<ContrastRow key={index} item={item} tone='muted' />
 						))}
 					</ul>
 				</GlassCard>
 				<GlassCard variant='accent' className='p-8'>
 					<Badge className='uppercase tracking-widest'>{afterLabel}</Badge>
 					<ul className='mt-6 space-y-4'>
-						{after.map((item) => (
-							<li key={item} className='flex gap-3 text-slate-200'>
-								<span className='mt-2.5 size-1.5 shrink-0 rounded-full bg-brand' />
-								<span className='leading-7'>{item}</span>
-							</li>
+						{after.map((item, index) => (
+							<ContrastRow key={index} item={item} tone='bright' />
 						))}
 					</ul>
 				</GlassCard>

@@ -1,82 +1,18 @@
 'use client'
 
 import * as Icons from 'lucide-react'
+import { icons } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-// Curated rather than the full lucide set: this is what the icon picker offers,
-// and it keeps the bundle honest.
-export const ICON_NAMES = [
-	'Activity',
-	'AlarmClock',
-	'Award',
-	'BarChart3',
-	'Bell',
-	'Bot',
-	'Boxes',
-	'Briefcase',
-	'Building2',
-	'CalendarClock',
-	'Camera',
-	'Check',
-	'CheckCircle2',
-	'ClipboardCheck',
-	'Clock',
-	'Cloud',
-	'Code2',
-	'Compass',
-	'Cpu',
-	'CreditCard',
-	'Database',
-	'FileSearch',
-	'FileStack',
-	'FileText',
-	'Filter',
-	'Flag',
-	'Gauge',
-	'GitBranch',
-	'Globe',
-	'GraduationCap',
-	'Hammer',
-	'HeartHandshake',
-	'Layers',
-	'LayoutDashboard',
-	'Leaf',
-	'Lightbulb',
-	'LifeBuoy',
-	'LineChart',
-	'Link2',
-	'Lock',
-	'Mail',
-	'Map',
-	'MapPin',
-	'Megaphone',
-	'MessageSquare',
-	'Monitor',
-	'Package',
-	'Phone',
-	'PieChart',
-	'Plug',
-	'Rocket',
-	'Scale',
-	'Search',
-	'ShieldCheck',
-	'ShoppingCart',
-	'Sparkles',
-	'Star',
-	'Store',
-	'Target',
-	'Timer',
-	'TrendingUp',
-	'Truck',
-	'Users',
-	'Wallet',
-	'Workflow',
-	'Wrench',
-	'Zap',
-] as const
+const canonical = icons as unknown as Record<string, LucideIcon>
 
-export type IconName = (typeof ICON_NAMES)[number]
+/** Every icon lucide ships today. The picker searches this whole set. */
+export const ICON_NAMES = Object.keys(canonical).sort()
 
+export type IconName = string
+
+// Resolution stays on the full namespace, not `icons`, so deprecated aliases
+// already saved in a page (CheckCircle2, BarChart3, ...) keep rendering.
 const iconMap = Icons as unknown as Record<string, LucideIcon>
 
 export function resolveIcon(name: unknown): LucideIcon | undefined {
@@ -85,4 +21,11 @@ export function resolveIcon(name: unknown): LucideIcon | undefined {
 	return typeof icon === 'function' || typeof icon === 'object'
 		? icon
 		: undefined
+}
+
+/** "CircleCheckBig" -> "Circle Check Big", so a search for "check" matches. */
+export function iconLabel(name: string) {
+	return name
+		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+		.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
 }

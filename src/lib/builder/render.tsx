@@ -1,5 +1,6 @@
 'use client'
 
+import { Section } from '@/components/sections/primitives'
 import { BlockBoundary } from './block-boundary'
 import { hydrateProps } from './hydrate'
 import { sectionRegistry } from './registry'
@@ -19,11 +20,13 @@ export function RenderBlock({
 	selectable = false,
 	selectedId,
 	flashId,
+	nested = false,
 }: {
 	block: Block
 	selectable?: boolean
 	selectedId?: string | null
 	flashId?: string | null
+	nested?: boolean
 }) {
 	const Component = sectionRegistry[block.type]
 	const schema = getSchema(block.type)
@@ -39,11 +42,11 @@ export function RenderBlock({
 	// Children are edited from the parent's Items tab, so they are never selectable.
 	const children = block.children?.length
 		? block.children.map((child) => (
-				<RenderBlock key={child.id} block={child} selectable={false} />
+				<RenderBlock key={child.id} block={child} selectable={false} nested />
 			))
 		: undefined
 
-	const element = (
+	const content = (
 		<BlockBoundary label={schema.label}>
 			{schema.container ? (
 				<Component {...props}>{children ?? []}</Component>
@@ -53,15 +56,23 @@ export function RenderBlock({
 		</BlockBoundary>
 	)
 
-	if (!selectable) return element
+	// Content primitives render their own measure only. Standing alone on a page they
+	// need the full-width shell every other section already carries.
+	const element =
+		schema.bare && !nested ? <Section>{content}</Section> : content
 
-	// display:contents keeps the node addressable for click-to-select without
-	// adding a box that would disturb grid or flex layout.
+	// Children are painted through their parent, so only top-level blocks are tagged.
+	if (nested) return element
+
+	// display:contents keeps the node addressable for per-block surfaces and
+	// click-to-select without adding a box that would disturb grid or flex layout.
 	return (
 		<div
 			data-block-id={block.id}
-			data-selected={block.id === selectedId ? 'true' : undefined}
-			data-flash={block.id === flashId ? 'true' : undefined}
+			data-selected={
+				selectable && block.id === selectedId ? 'true' : undefined
+			}
+			data-flash={selectable && block.id === flashId ? 'true' : undefined}
 			style={{ display: 'contents' }}>
 			{element}
 		</div>

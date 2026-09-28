@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { FontCombobox } from './font-combobox'
 import { fontStack } from './google-fonts'
 import {
+	contentWidths,
 	defaultSettings,
 	paletteTokens,
 	tintHex,
@@ -154,6 +155,37 @@ export function SettingsDialog({
 									/>
 								</div>
 							))}
+						</div>
+
+						<div className='border-t border-white/10 pt-8'>
+							<div className='flex flex-wrap items-end justify-between gap-4'>
+								<div>
+									<p className='font-display text-sm font-semibold text-white'>
+										Content width
+									</p>
+									<p className='mt-0.5 text-xs text-slate-500'>
+										One measure for every section, the header, and the footer.
+									</p>
+								</div>
+								<div className='flex flex-wrap gap-1.5'>
+									{contentWidths.map((option) => (
+										<button
+											key={option.id}
+											type='button'
+											onClick={() => set('maxWidth', option.id)}
+											aria-pressed={draft.maxWidth === option.id}
+											title={`max-w-${option.id} · ${option.value}`}
+											className={cn(
+												'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+												draft.maxWidth === option.id
+													? 'border-brand/40 bg-brand/12 text-white'
+													: 'border-white/10 bg-white/3 text-slate-400 hover:border-white/25 hover:text-white',
+											)}>
+											{option.label}
+										</button>
+									))}
+								</div>
+							</div>
 						</div>
 
 						<div className='border-t border-white/10 pt-8'>

@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
-import { BuilderProvider } from '@/lib/builder/builder-context'
 import { loadTemplates } from '@/lib/builder/load-templates'
+import { BuilderShell } from './builder-shell'
 import { LibraryNav } from './library-nav'
 import { entryVariants, library } from './library'
 
@@ -29,7 +29,7 @@ export default async function SectionsLayout({
 	const templates = await loadTemplates()
 
 	return (
-		<BuilderProvider>
+		<BuilderShell>
 			<div className='flex'>
 				<aside className='sticky top-0 flex h-screen w-72 shrink-0 flex-col border-r border-white/10'>
 					<Suspense fallback={null}>
@@ -39,6 +39,6 @@ export default async function SectionsLayout({
 
 				<main className='min-w-0 flex-1'>{children}</main>
 			</div>
-		</BuilderProvider>
+		</BuilderShell>
 	)
 }

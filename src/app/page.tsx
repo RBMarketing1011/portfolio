@@ -47,7 +47,7 @@ export default function Home() {
 				title={
 					<>
 						We find the work your business{' '}
-						<Highlight>should not be doing by hand</Highlight>.
+						<Highlight>should not be doing by hand</Highlight>
 					</>
 				}
 				description='ReynoldsBuilt walks through your entire operation, shows you exactly where AI and automation pay off, and then builds the systems that make it real.'

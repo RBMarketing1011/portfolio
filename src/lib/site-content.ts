@@ -1360,7 +1360,7 @@ export const services: Service[] = [
 			{
 				question: 'Who actually builds it?',
 				answer:
-					'The person you talk to. There is no account layer between you and the work, which means the person who understood your process is the one writing the code and the one you call when something is wrong.',
+					'The same team that ran your assessment. There is no account layer between you and the work, which means the engineers who understood your process are the ones writing the code and the ones you call when something is wrong.',
 			},
 		],
 	},
@@ -1407,7 +1407,7 @@ export const processSteps: ProcessStep[] = [
 			'Small, working increments. You see progress continuously instead of waiting for a reveal.',
 		detail: [
 			'Working software in front of your team early',
-			'Direct access to the person building it',
+			'Direct access to the engineers building it',
 			'Scope that adjusts as we learn, without losing the target',
 		],
 	},
@@ -4322,8 +4322,8 @@ export const principles = [
 		body: 'The fastest way to lose your trust is to sell you a system you did not need. Part of every assessment is a list of things to leave alone.',
 	},
 	{
-		title: 'You talk to the person building it',
-		body: 'No account layer between you and the work. The person who understands your process is the person writing the code.',
+		title: 'You talk to the team building it',
+		body: 'No account layer between you and the work. The engineers who understand your process are the ones writing the code.',
 	},
 	{
 		title: 'Plain language, always',

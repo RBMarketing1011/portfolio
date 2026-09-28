@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
 	Pagination as PaginationRoot,
 	PaginationContent,
@@ -11,6 +11,7 @@ import {
 	PaginationNext,
 	PaginationPrevious,
 } from '@/components/ui/pagination'
+import { anchorId } from '@/lib/builder/ids'
 import { cn } from '@/lib/utils'
 
 export function FilterBar({
@@ -27,7 +28,8 @@ export function FilterBar({
 	design = 'pills',
 	className,
 }: {
-	filters?: string[]
+	/** A plain label, or a label plus the value it matches on. */
+	filters?: (string | { label?: string; value?: string })[]
 	defaultValue?: string
 	onChange?: (value: string) => void
 	resultCount?: number
@@ -35,7 +37,15 @@ export function FilterBar({
 	design?: 'pills' | 'underline' | 'segmented'
 	className?: string
 }) {
-	const [active, setActive] = useState(defaultValue ?? filters[0])
+	const options = filters.map((filter) => {
+		const label = typeof filter === 'string' ? filter : (filter?.label ?? '')
+		// Unset means the label doubles as the value, which is the common case.
+		const value =
+			typeof filter === 'string' ? filter : (filter?.value || label)
+		return { label, value }
+	})
+
+	const [active, setActive] = useState(defaultValue ?? options[0]?.value)
 
 	const select = (value: string) => {
 		setActive(value)
@@ -57,31 +67,31 @@ export function FilterBar({
 					design === 'segmented' &&
 						'gap-0 rounded-lg border border-white/12 bg-white/3 p-1',
 				)}>
-				{filters.map((filter) => (
-					<li key={filter}>
+				{options.map((filter, index) => (
+					<li key={`${filter.value}-${index}`}>
 						<button
 							type='button'
-							onClick={() => select(filter)}
-							aria-pressed={filter === active}
+							onClick={() => select(filter.value)}
+							aria-pressed={filter.value === active}
 							className={cn(
 								'text-sm font-medium transition-colors',
 								design === 'pills' && 'rounded-full border px-4 py-1.5',
 								design === 'pills' &&
-									(filter === active
+									(filter.value === active
 										? 'border-brand/40 bg-brand/10 text-white'
 										: 'border-white/10 bg-white/3 text-slate-400 hover:border-white/25 hover:text-white'),
 								design === 'underline' && 'border-b-2 pb-2',
 								design === 'underline' &&
-									(filter === active
+									(filter.value === active
 										? 'border-brand text-white'
 										: 'border-transparent text-slate-400 hover:text-white'),
 								design === 'segmented' && 'rounded-md px-4 py-1.5',
 								design === 'segmented' &&
-									(filter === active
+									(filter.value === active
 										? 'bg-brand text-ink'
 										: 'text-slate-400 hover:text-white'),
 							)}>
-							{filter}
+							{filter.label}
 						</button>
 					</li>
 				))}
@@ -168,7 +178,7 @@ export function Pagination({
 				<PaginationEllipsis />
 			</PaginationItem>
 		) : (
-			<PaginationItem key={item}>
+				<PaginationItem key={`page-${index}`}>
 				<PaginationLink
 					{...linkProps(item)}
 					isActive={item === page}
@@ -227,25 +237,37 @@ export function Pagination({
 export function TableOfContents({
 	title = 'On This Page',
 	items = [
-		{ id: 'section-one', label: 'This is the first heading' },
-		{ id: 'section-two', label: 'This is the second heading' },
-		{ id: 'section-three', label: 'This is the third heading' },
-		{ id: 'section-four', label: 'This is the fourth heading' },
+		{ label: 'This is the first heading' },
+		{ label: 'This is the second heading' },
+		{ label: 'This is the third heading' },
+		{ label: 'This is the fourth heading' },
 	],
 	design = 'rail',
 	className,
 }: {
 	title?: string
-	items?: { id: string; label: string }[]
+	/** Without an id the label slug is the anchor, matching the ids headings carry. */
+	items?: { id?: string; label: string }[]
 	/** How the list marks the active heading. */
 	design?: 'rail' | 'numbered' | 'card'
 	className?: string
 }) {
-	const [active, setActive] = useState(items[0]?.id)
+	const entries = useMemo(
+		() =>
+			items.map((item) => ({
+				label: item.label,
+				id: item.id || anchorId(item.label),
+			})),
+		[items],
+	)
+	const [active, setActive] = useState<string | undefined>()
+	const current = entries.some((entry) => entry.id === active)
+		? active
+		: entries[0]?.id
 
 	useEffect(() => {
-		const headings = items
-			.map((item) => document.getElementById(item.id))
+		const headings = entries
+			.map((entry) => document.getElementById(entry.id))
 			.filter((el): el is HTMLElement => Boolean(el))
 
 		if (headings.length === 0) return
@@ -261,14 +283,15 @@ export function TableOfContents({
 
 		headings.forEach((heading) => observer.observe(heading))
 		return () => observer.disconnect()
-	}, [items])
+	}, [entries])
 
 	return (
 		<nav
 			aria-label='Table of contents'
 			// self-start stops a grid parent stretching it, which would leave sticky no room to travel.
+			// The max height keeps a long list inside the viewport rather than running past it.
 			className={cn(
-				'lg:sticky lg:top-28 lg:self-start',
+				'lg:sticky lg:top-28 lg:max-h-[calc(100vh-9rem)] lg:self-start lg:overflow-y-auto',
 				design === 'card' &&
 					'rounded-xl border border-white/10 bg-white/3 p-6 backdrop-blur-xl',
 				className,
@@ -279,25 +302,25 @@ export function TableOfContents({
 					'mt-4 space-y-1',
 					design === 'rail' && 'border-l border-white/10',
 				)}>
-				{items.map((item, index) => (
-					<li key={item.id}>
+				{entries.map((item, index) => (
+					<li key={index}>
 						<a
 							href={`#${item.id}`}
 							className={cn(
 								'block text-sm transition-colors',
 								design === 'rail' && '-ml-px border-l py-1.5 pl-4',
 								design === 'rail' &&
-									(item.id === active
+									(item.id === current
 										? 'border-brand font-medium text-white'
 										: 'border-transparent text-slate-500 hover:border-white/30 hover:text-slate-300'),
 								design === 'numbered' && 'flex gap-3 py-1.5',
 								design === 'card' && 'rounded-md px-3 py-2',
 								design === 'card' &&
-									(item.id === active
+									(item.id === current
 										? 'bg-brand/12 font-medium text-white'
 										: 'text-slate-500 hover:bg-white/5 hover:text-slate-300'),
 								design === 'numbered' &&
-									(item.id === active
+									(item.id === current
 										? 'font-medium text-white'
 										: 'text-slate-500 hover:text-slate-300'),
 							)}>
@@ -306,7 +329,7 @@ export function TableOfContents({
 									aria-hidden
 									className={cn(
 										'tabular-nums',
-										item.id === active ? 'text-brand' : 'text-slate-700',
+										item.id === current ? 'text-brand' : 'text-slate-700',
 									)}>
 									{String(index + 1).padStart(2, '0')}
 								</span>

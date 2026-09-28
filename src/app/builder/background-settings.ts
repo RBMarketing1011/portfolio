@@ -20,7 +20,8 @@ export type SurfaceSettings = {
 	pattern: PatternId
 	patternAngle: number
 	patternColor: Tint
-	fill: 'solid' | 'gradient' | 'transparent'
+	/** `global` paints nothing, so the one page background carries through. */
+	fill: 'global' | 'solid' | 'gradient' | 'transparent'
 	gradientAngle: number
 	/** The flat color under everything, and what shows when the fill is solid. */
 	color: Tint
@@ -88,6 +89,13 @@ export const defaultBackground: BackgroundSettings = {
 	},
 	panelGlow: { mode: 'accent', lightness: 0, size: 'md' },
 	featureGlow: { mode: 'accent', lightness: 0, size: 'sm' },
+}
+
+// What the header, the footer, and any untouched block start as: nothing of their
+// own, so the page background reads as one fixed sheet behind the whole site.
+export const globalBackground: BackgroundSettings = {
+	...defaultBackground,
+	page: { ...defaultBackground.page, fill: 'global', pattern: 'none' },
 }
 
 const surfaceKeys = {
@@ -167,7 +175,12 @@ function readSurface(
 	next.to = readTint(params, keys.to, fallback.to)
 
 	const fill = params.get(keys.fill)
-	if (fill === 'solid' || fill === 'gradient' || fill === 'transparent')
+	if (
+		fill === 'global' ||
+		fill === 'solid' ||
+		fill === 'gradient' ||
+		fill === 'transparent'
+	)
 		next.fill = fill
 
 	const gradientAngle = readAngle(params.get(keys.gradientAngle))

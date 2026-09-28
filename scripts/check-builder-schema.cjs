@@ -1,8 +1,8 @@
 // Guards against the registry and schema drifting apart. Dev-only.
 const fs = require('fs')
+const { loadSchema } = require('./load-schema.cjs')
 
 const reg = fs.readFileSync('src/lib/builder/registry.ts', 'utf8')
-const sch = fs.readFileSync('src/lib/builder/schema.ts', 'utf8')
 
 const body = reg.slice(
 	reg.indexOf('sectionRegistry'),
@@ -11,7 +11,7 @@ const body = reg.slice(
 const regKeys = [...body.matchAll(/^\t'?([a-z][a-z0-9-]*)'?:/gm)].map(
 	(m) => m[1],
 )
-const schKeys = [...sch.matchAll(/^\t\ttype: '([^']+)'/gm)].map((m) => m[1])
+const schKeys = loadSchema().sectionSchemas.map((s) => s.type)
 
 const onlySchema = schKeys.filter((k) => !regKeys.includes(k))
 const onlyRegistry = regKeys.filter((k) => !schKeys.includes(k))

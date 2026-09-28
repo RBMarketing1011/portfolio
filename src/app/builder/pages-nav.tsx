@@ -58,6 +58,7 @@ import {
 	type Template,
 } from '@/lib/builder/page-schema'
 import type { Block } from '@/lib/builder/types'
+import { globalBackground } from './background-settings'
 import { AddPageDialog } from './builder/add-page-dialog'
 import { SectionPicker } from './builder/section-picker'
 import { ChromeSettingsDrawer } from './builder/chrome-settings-drawer'
@@ -72,6 +73,8 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 	const [blockSettings, setBlockSettings] = useState<string | null>(null)
 	const [dragIndex, setDragIndex] = useState<number | null>(null)
 	const [overIndex, setOverIndex] = useState<number | null>(null)
+
+	const pagesBase = `/builder/sites/${store.siteId}/pages`
 
 	const page = store.pages.find((p) => p.id === store.pageId) ?? null
 
@@ -170,7 +173,7 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 													value={`${item.name} ${item.slug}`}
 													onSelect={() => {
 														setPageOpen(false)
-																router.push(`/builder/pages/${item.id}`)
+														router.push(`${pagesBase}/${item.id}`)
 													}}>
 													<Check
 														className={cn(
@@ -226,7 +229,7 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 							label={`Delete ${page.name}`}
 							onClick={() => {
 								store.removePage(page.id)
-								router.push('/builder/pages')
+								router.push(pagesBase)
 							}}
 							className='text-slate-500 hover:text-destructive'>
 							<Trash2 className='size-3.5' />
@@ -293,7 +296,7 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 				onCreate={({ name, slug, templateSlug, inHeader }) => {
 					const template = templates.find((t) => t.slug === templateSlug)
 					const id = store.addPage(name, slug, template?.blocks ?? [], inHeader)
-					router.push(`/builder/pages/${id}`)
+					router.push(`${pagesBase}/${id}`)
 				}}
 			/>
 
@@ -327,7 +330,7 @@ export function PagesNav({ templates }: { templates: Template[] }) {
 				}
 				open={blockSettings !== null}
 				onOpenChange={(next) => !next && setBlockSettings(null)}
-				settings={store.look.blocks[blockSettings ?? ''] ?? store.look.page}
+				settings={store.look.blocks[blockSettings ?? ''] ?? globalBackground}
 				theme={store.look.theme}
 				onChange={(next) =>
 					blockSettings && store.setBlockLook(blockSettings, next)

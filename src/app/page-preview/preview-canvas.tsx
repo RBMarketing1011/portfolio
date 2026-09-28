@@ -8,6 +8,7 @@ import {
 	type NavPage,
 } from '@/components/built-chrome'
 import { defaultChrome, type Chrome } from '@/lib/builder/page-schema'
+import { setMediaIndex } from '@/lib/builder/media-store'
 import { RenderBlocks } from '@/lib/builder/render'
 import type { Block } from '@/lib/builder/types'
 
@@ -20,6 +21,7 @@ export type PreviewMessage =
 			chrome?: Chrome
 			currentSlug?: string
 			surfaceCss?: string
+			mediaIndex?: { id: string; url: string }[] | null
 	  }
 	| { kind: 'builder:select'; id: string | null }
 	| { kind: 'builder:scroll-to'; id: string }
@@ -96,6 +98,7 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 				return
 			}
 			if (data?.kind === 'builder:page') {
+				if (data.mediaIndex !== undefined) setMediaIndex(data.mediaIndex)
 				setBlocks(data.blocks ?? [])
 				if (data.selectedId !== undefined) setSelectedId(data.selectedId)
 				if (data.nav) setNav(data.nav)

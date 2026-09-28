@@ -62,81 +62,21 @@ for (const file of program.getSourceFiles()) {
 	})
 }
 
-// Top-level schema field keys, with nested list rows excluded.
-const schemaSrc = fs.readFileSync(
-	path.join(srcDir, 'lib', 'builder', 'schema.ts'),
-	'utf8',
-)
+// Top-level schema field keys, read from the real schema objects.
+const {
+	loadSchema,
+	fieldKeys,
+	listShapes,
+} = require('./load-schema.cjs')
 
-function stripNested(body) {
-	let out = ''
-	let i = 0
-	while (i < body.length) {
-		const listAt = body.indexOf('list(', i)
-		const ofAt = body.indexOf('of: [', i)
-		const at =
-			listAt === -1 ? ofAt : ofAt === -1 ? listAt : Math.min(listAt, ofAt)
-		if (at === -1) return out + body.slice(i)
-		out += body.slice(i, at)
-		const isList = at === listAt
-		const open = isList ? '(' : '['
-		const close = isList ? ')' : ']'
-		const start = body.indexOf(open, at)
-		let depth = 0
-		let j = start
-		for (; j < body.length; j++) {
-			if (body[j] === open) depth++
-			else if (body[j] === close && --depth === 0) break
-		}
-		if (isList) {
-			const key = body.slice(start, j).match(/'([\w.]+)'/)
-			out += `list(${key ? `'${key[1]}'` : ''})`
-		}
-		i = j + 1
-	}
-	return out
-}
-
-const entries = [...schemaSrc.matchAll(/\n\t\ttype: '([\w-]+)',/g)]
 const schemaFields = new Map()
 const variantProps = new Map()
 // type -> [key, 'scalar' | 'rows'] for every list field
 const listFields = new Map()
-for (let i = 0; i < entries.length; i++) {
-	const start = entries[i].index
-	const end = i + 1 < entries.length ? entries[i + 1].index : schemaSrc.length
-	const full = schemaSrc.slice(start, end)
-	const lists = []
-	for (const m of full.matchAll(
-		/\blist\(\s*'([\w.]+)'[^)]*?,\s*(\[[\s\S]*?\]|\w+)\s*\)/g,
-	)) {
-		const rows = m[2]
-		const keys = [
-			...rows.matchAll(
-				/(?:key: |text\(|area\(|rich\(|num\(|bool\()'([\w.]+)'/g,
-			),
-		].map((k) => k[1])
-		lists.push([
-			m[1],
-			keys.length === 1 && keys[0] === 'value' ? 'scalar' : 'rows',
-		])
-	}
-	listFields.set(entries[i][1], lists)
-	const body = stripNested(full)
-	const keys = new Set()
-	for (const k of body.matchAll(/key: '([\w.]+)'/g))
-		keys.add(k[1].split('.')[0])
-	for (const k of body.matchAll(
-		/\b(?:text|area|rich|num|bool|list|tint)\(\s*'([\w.]+)'/g,
-	))
-		keys.add(k[1].split('.')[0])
-	// Shared field constants appear as bare identifiers in the fields array.
-	for (const name of ['eyebrow', 'description', 'columns']) {
-		if (new RegExp(`(?:\\[|\\s)${name}\\s*(?:,|\\])`).test(body)) keys.add(name)
-	}
-	schemaFields.set(entries[i][1], keys)
-	const vp = full.match(/variantProp: '(\w+)'/)
-	if (vp) variantProps.set(entries[i][1], vp[1])
+for (const schema of loadSchema().sectionSchemas) {
+	schemaFields.set(schema.type, fieldKeys(schema))
+	listFields.set(schema.type, listShapes(schema))
+	if (schema.variantProp) variantProps.set(schema.type, schema.variantProp)
 }
 
 const SKIP = new Set(['className', 'children', 'key', 'ref'])
@@ -148,6 +88,9 @@ const EXEMPT = {
 	'split-hero': ['media'], // ReactNode slot, mediaSrc is the editable one
 	'filter-bar': ['onChange'],
 	pagination: ['hrefFor', 'onPageChange'],
+	// The hydrator sets these from the `body` field when it holds authored HTML.
+	callout: ['html'],
+	'prose-block': ['html'],
 }
 // Fields the hydrator remaps rather than passing straight through.
 const REMAPPED = { callout: ['body'], 'prose-block': ['body'] }

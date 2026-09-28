@@ -37,7 +37,7 @@ export type {
 } from './cards'
 export { MediaCard } from './media-card'
 // Collection containers: generic, item agnostic.
-export { Grid, Masonry, Carousel, Marquee } from './collections'
+export { Grid, Masonry, Carousel, Marquee, CollectionPage } from './collections'
 export { SplitHero, StatHero, Breadcrumbs } from './entry'
 export { StatBand, LogoStrip, Spotlight, BeforeAfter } from './proof'
 export {

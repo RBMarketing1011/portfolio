@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+	Check,
 	ChevronLeft,
 	ChevronRight,
 	FastForward,
@@ -14,6 +15,7 @@ import {
 	RotateCcw,
 	Volume2,
 	VolumeX,
+	type LucideIcon,
 } from 'lucide-react'
 import { GlassCard } from '@/components/ui/glass-card'
 import { cn } from '@/lib/utils'
@@ -47,35 +49,41 @@ function ControlButton({
 	)
 }
 
+const ASPECTS: Record<string, number> = {
+	'16:9': 16 / 9,
+	'9:16': 9 / 16,
+	'4:5': 4 / 5,
+}
+
 export function VideoPlayer({
 	eyebrow = 'Eyebrow',
 	title = 'This is the video section heading',
 	description = 'This is the video description. It frames what the viewer is about to watch.',
 	src = '/scheduler/scheduler.mp4',
-	poster = '/scheduler/scheduler.png',
+	poster,
 	caption = 'This is the video caption, describing what is on screen.',
 	loop = false,
 	skipSeconds = 10,
-	aspect = 16 / 9,
-	bare = false,
+	aspect = '16:9',
+	layout = 'stacked',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	description?: string
 	src?: string
+	/** Optional. Without one the browser shows the video's own first frame. */
 	poster?: string
 	caption?: string
 	loop?: boolean
+	/** How far the skip-forward and skip-back buttons jump. */
 	skipSeconds?: number
-	/** Fallback frame ratio, used until the video reports its own. */
-	aspect?: number
-	/** Render just the player, for use inside another section. */
-	bare?: boolean
+	aspect?: '16:9' | '9:16' | '4:5'
+	/** Where the copy sits, or player on its own. */
+	layout?: 'stacked' | 'text-left' | 'text-right' | 'player'
 }) {
 	const frameRef = useRef<HTMLDivElement>(null)
 	const videoRef = useRef<HTMLVideoElement>(null)
 	const [playing, setPlaying] = useState(false)
-	const [ratio, setRatio] = useState<number | null>(null)
 	const [time, setTime] = useState(0)
 	const [duration, setDuration] = useState(0)
 	const [buffered, setBuffered] = useState(0)
@@ -122,7 +130,7 @@ export function VideoPlayer({
 		<figure>
 			<GlassCard
 				ref={frameRef}
-				style={{ aspectRatio: ratio ?? aspect }}
+				style={{ aspectRatio: ASPECTS[aspect] ?? ASPECTS['16:9'] }}
 				className='group relative w-full overflow-hidden bg-ink'>
 				<video
 					ref={videoRef}
@@ -136,10 +144,6 @@ export function VideoPlayer({
 					onPlay={() => setPlaying(true)}
 					onPause={() => setPlaying(false)}
 					onEnded={() => setPlaying(false)}
-					onLoadedMetadata={(e) => {
-						const { videoWidth, videoHeight } = e.currentTarget
-						if (videoWidth && videoHeight) setRatio(videoWidth / videoHeight)
-					}}
 					onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
 					onDurationChange={(e) => setDuration(e.currentTarget.duration)}
 					onProgress={(e) => {
@@ -254,7 +258,32 @@ export function VideoPlayer({
 		</figure>
 	)
 
-	if (bare) return player
+	if (layout === 'player') {
+		return (
+			<Section>
+				<div className='mx-auto max-w-4xl'>{player}</div>
+			</Section>
+		)
+	}
+
+	if (layout === 'text-left' || layout === 'text-right') {
+		return (
+			<Section>
+				<div className='grid items-center gap-12 lg:grid-cols-2'>
+					<div className={layout === 'text-right' ? 'lg:order-2' : undefined}>
+						<SectionHeading
+							eyebrow={eyebrow}
+							title={title}
+							description={description}
+						/>
+					</div>
+					<div className={layout === 'text-right' ? 'lg:order-1' : undefined}>
+						{player}
+					</div>
+				</div>
+			</Section>
+		)
+	}
 
 	return (
 		<Section>
@@ -300,12 +329,34 @@ export function MediaGallery({
 	title?: React.ReactNode
 	description?: string
 	items?: { src: string; alt: string; caption?: string }[]
-	/** Where the thumbnail strip sits relative to the lead image. */
-	thumbnails?: 'bottom' | 'side' | 'top'
+	/** Where the thumbnail strip sits, or a carousel with no strip at all. */
+	thumbnails?: 'bottom' | 'side' | 'top' | 'carousel'
 }) {
+	// A freshly added row has no image yet, and next/image throws on an empty src.
+	const shots = items.filter((item) => Boolean(item?.src))
 	const [active, setActive] = useState(0)
-	const current = items[active]
+	const index = Math.min(active, Math.max(shots.length - 1, 0))
+	const current = shots[index]
 	const side = thumbnails === 'side'
+	const carousel = thumbnails === 'carousel'
+
+	if (!current) {
+		return (
+			<Section>
+				<SectionHeading
+					eyebrow={eyebrow}
+					title={title}
+					description={description}
+				/>
+				<div className='mt-12 flex aspect-video items-center justify-center rounded-xl border border-dashed border-white/15 text-sm text-slate-500'>
+					Add an image to this gallery
+				</div>
+			</Section>
+		)
+	}
+
+	const step = (delta: number) =>
+		setActive((index + delta + shots.length) % shots.length)
 
 	const lead = (
 		<>
@@ -313,14 +364,49 @@ export function MediaGallery({
 				<Image
 					key={current.src}
 					src={current.src}
-					alt={current.alt}
+					alt={current.alt ?? ''}
 					fill
 					sizes='(min-width: 1024px) 72rem, 100vw'
 					className='object-cover'
 				/>
+				{carousel && shots.length > 1 && (
+					<>
+						<button
+							type='button'
+							onClick={() => step(-1)}
+							aria-label='Previous image'
+							className='absolute left-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-ink/70 text-white transition-colors hover:bg-ink'>
+							<ChevronLeft className='size-5' />
+						</button>
+						<button
+							type='button'
+							onClick={() => step(1)}
+							aria-label='Next image'
+							className='absolute right-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-ink/70 text-white transition-colors hover:bg-ink'>
+							<ChevronRight className='size-5' />
+						</button>
+					</>
+				)}
 			</GlassCard>
 			{current.caption && (
 				<p className='mt-4 text-sm text-slate-500'>{current.caption}</p>
+			)}
+			{carousel && shots.length > 1 && (
+				<div className='mt-5 flex justify-center gap-2'>
+					{shots.map((shot, dot) => (
+						<button
+							key={dot}
+							type='button'
+							onClick={() => setActive(dot)}
+							aria-label={`Go to image ${dot + 1}`}
+							aria-current={dot === index}
+							className={cn(
+								'h-1.5 rounded-full transition-all',
+								dot === index ? 'w-6 bg-brand' : 'w-1.5 bg-white/25',
+							)}
+						/>
+					))}
+				</div>
 			)}
 		</>
 	)
@@ -333,15 +419,15 @@ export function MediaGallery({
 					? 'grid grid-cols-3 sm:grid-cols-1'
 					: 'grid grid-cols-2 sm:grid-cols-4',
 			)}>
-			{items.map((item, index) => (
-				<li key={item.src}>
+			{shots.map((item, thumb) => (
+				<li key={thumb}>
 					<button
 						type='button'
-						onClick={() => setActive(index)}
-						aria-current={index === active}
+						onClick={() => setActive(thumb)}
+						aria-current={thumb === index}
 						className={cn(
 							'relative block aspect-video w-full overflow-hidden rounded-lg border transition-colors',
-							index === active
+							thumb === index
 								? 'border-brand'
 								: 'border-white/10 hover:border-white/30',
 						)}>
@@ -352,7 +438,7 @@ export function MediaGallery({
 							sizes='16rem'
 							className={cn(
 								'object-cover transition-opacity',
-								index === active ? 'opacity-100' : 'opacity-55',
+								thumb === index ? 'opacity-100' : 'opacity-55',
 							)}
 						/>
 					</button>
@@ -368,7 +454,9 @@ export function MediaGallery({
 				title={title}
 				description={description}
 			/>
-			{side ? (
+			{carousel ? (
+				<div className='mt-12'>{lead}</div>
+			) : side ? (
 				<div className='mt-12 grid gap-6 sm:grid-cols-[1fr_10rem]'>
 					<div>{lead}</div>
 					{strip}
@@ -418,16 +506,18 @@ export function MediaMosaic({
 				title={title}
 				description={description}
 			/>
-			{/* The lead keeps its emphasis at every width: full bleed and taller on
-			    small screens, then a 2x2 block once the mosaic forms at sm. */}
-			<div className='mt-12 grid grid-cols-2 gap-4 sm:h-96 sm:grid-cols-4 sm:grid-rows-2 lg:h-136'>
+			{/* Auto rows rather than a fixed height, so a sixth image wraps onto a new
+			    row instead of being clipped out of the grid. */}
+			<div className='mt-12 grid grid-cols-2 gap-4 sm:auto-rows-[11rem] sm:grid-cols-4 lg:auto-rows-[16rem]'>
 				{lead && (
 					<div className='col-span-2 aspect-4/3 sm:row-span-2 sm:aspect-auto'>
 						<MediaCard fill {...lead} />
 					</div>
 				)}
-				{rest.map((item) => (
-					<div key={item.src} className='aspect-square sm:aspect-auto'>
+				{rest.map((item, index) => (
+					<div
+						key={index}
+						className='aspect-square sm:aspect-auto'>
 						<MediaCard fill {...item} />
 					</div>
 				))}
@@ -442,26 +532,56 @@ export function ImageCompare({
 	description = 'Drag the handle to wipe between the two shots. Arrow keys work once it has focus.',
 	before = { src: '/hub/hub.png', label: 'Before' },
 	after = { src: '/portal/portal.png', label: 'After' },
+	points = [],
+	layout = 'stacked',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	description?: string
 	before?: { src: string; alt?: string; label?: string }
 	after?: { src: string; alt?: string; label?: string }
+	/** Optional supporting points beside the comparison. */
+	points?: (string | { text?: string; icon?: LucideIcon })[]
+	/** Where the copy sits relative to the comparison. */
+	layout?: 'stacked' | 'text-left' | 'text-right'
 }) {
 	const [position, setPosition] = useState(50)
 	const [ratio, setRatio] = useState<number | null>(null)
+	const beside = layout !== 'stacked'
 
-	return (
-		<Section>
+	const copy = (
+		<div className={layout === 'text-right' ? 'lg:order-2' : undefined}>
 			<SectionHeading
 				eyebrow={eyebrow}
 				title={title}
 				description={description}
 			/>
-			<div
-				style={{ aspectRatio: ratio ?? 16 / 9 }}
-				className='group/compare relative mt-12 w-full overflow-hidden rounded-xl border border-white/10 bg-ink'>
+			{points.length > 0 && (
+				<ul className='mt-7 space-y-3'>
+					{points.map((point, index) => {
+						const text =
+							typeof point === 'string' ? point : (point?.text ?? '')
+						const Glyph =
+							typeof point === 'string' ? Check : (point?.icon ?? Check)
+						return (
+							<li key={index} className='flex gap-3 text-slate-300'>
+								<Glyph className='mt-1 size-4 shrink-0 text-brand' />
+								<span className='leading-7'>{text}</span>
+							</li>
+						)
+					})}
+				</ul>
+			)}
+		</div>
+	)
+
+	const frame = (
+		<div
+			style={{ aspectRatio: ratio ?? 16 / 9 }}
+			className={cn(
+				'group/compare relative w-full overflow-hidden rounded-xl border border-white/10 bg-ink',
+				beside ? (layout === 'text-right' ? 'lg:order-1' : '') : 'mt-12',
+			)}>
 				<Image
 					src={after.src}
 					alt={after.alt ?? ''}
@@ -522,6 +642,23 @@ export function ImageCompare({
 					className='absolute inset-0 size-full cursor-ew-resize appearance-none bg-transparent focus:outline-none [&::-moz-range-thumb]:h-full [&::-moz-range-thumb]:w-11 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-transparent [&::-webkit-slider-thumb]:h-full [&::-webkit-slider-thumb]:w-11 [&::-webkit-slider-thumb]:appearance-none'
 				/>
 			</div>
+	)
+
+	if (beside) {
+		return (
+			<Section>
+				<div className='grid items-center gap-12 lg:grid-cols-2'>
+					{copy}
+					{frame}
+				</div>
+			</Section>
+		)
+	}
+
+	return (
+		<Section>
+			{copy}
+			{frame}
 		</Section>
 	)
 }
@@ -531,6 +668,7 @@ export function Figure({
 	alt = '',
 	caption = 'This is a figure caption. It sits under an image inside long-form copy.',
 	design = 'below',
+	align = 'left',
 	className,
 }: {
 	src?: string
@@ -538,8 +676,16 @@ export function Figure({
 	caption?: string
 	/** Where the caption sits and how the image is framed. */
 	design?: 'below' | 'framed' | 'beside'
+	/** Where the figure sits in the section, or full to drop the measure. */
+	align?: 'left' | 'center' | 'right' | 'full'
 	className?: string
 }) {
+	const box = cn(
+		align === 'full' && 'max-w-none!',
+		align === 'center' && 'mx-auto',
+		align === 'right' && 'ml-auto',
+	)
+
 	const image = (
 		<div className='relative aspect-video w-full overflow-hidden rounded-xl border border-white/10'>
 			<Image
@@ -554,7 +700,7 @@ export function Figure({
 
 	if (design === 'framed') {
 		return (
-			<figure className={cn('my-10 max-w-3xl', className)}>
+			<figure className={cn('my-10 max-w-3xl', box, className)}>
 				<GlassCard className='p-3'>
 					{image}
 					{caption && (
@@ -572,6 +718,7 @@ export function Figure({
 			<figure
 				className={cn(
 					'my-10 grid max-w-4xl gap-5 sm:grid-cols-[10rem_1fr]',
+					box,
 					className,
 				)}>
 				{caption && (
@@ -585,7 +732,7 @@ export function Figure({
 	}
 
 	return (
-		<figure className={cn('my-10 max-w-3xl', className)}>
+		<figure className={cn('my-10 max-w-3xl', box, className)}>
 			{image}
 			{caption && (
 				<figcaption className='mt-3 text-sm leading-6 text-slate-500'>

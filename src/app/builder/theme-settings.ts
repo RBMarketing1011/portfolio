@@ -40,6 +40,24 @@ export const tintVar = (tint: Tint) =>
 export const tintHex = (settings: ThemeSettings, tint: Tint) =>
 	mixWith(settings[tint.token] ?? settings.accent, tint.lightness)
 
+/** Mirrors Tailwind's max-w scale, so the token is the class it stands in for. */
+export const contentWidths = [
+	{ id: '3xl', label: 'Small', value: '48rem' },
+	{ id: '4xl', label: 'Medium', value: '56rem' },
+	{ id: '5xl', label: 'Large', value: '64rem' },
+	{ id: '6xl', label: 'Extra large', value: '72rem' },
+	{ id: '7xl', label: '2X large', value: '80rem' },
+	{ id: 'full', label: 'Full width', value: '100%' },
+] as const
+
+export type ContentWidth = (typeof contentWidths)[number]['id']
+
+export const isContentWidth = (value: string | null): value is ContentWidth =>
+	contentWidths.some((item) => item.id === value)
+
+export const contentWidthValue = (id: ContentWidth) =>
+	contentWidths.find((item) => item.id === id)?.value ?? '72rem'
+
 export type ThemeSettings = {
 	background: string
 	accent: string
@@ -47,6 +65,8 @@ export type ThemeSettings = {
 	body: string
 	headingFont: string
 	bodyFont: string
+	/** One measure for sections, header, and footer alike. */
+	maxWidth: ContentWidth
 	buttonFill: 'solid' | 'gradient'
 	buttonFrom: Tint
 	buttonTo: Tint
@@ -60,6 +80,7 @@ export const defaultSettings: ThemeSettings = {
 	body: '#cbd5e1',
 	headingFont: 'Space Grotesk',
 	bodyFont: 'DM Sans',
+	maxWidth: '6xl',
 	buttonFill: 'solid',
 	buttonFrom: { token: 'accent', lightness: 0 },
 	buttonTo: { token: 'accent', lightness: 40 },
@@ -75,6 +96,7 @@ const shortKeys = {
 	body: 'bd',
 	headingFont: 'hf',
 	bodyFont: 'bf',
+	maxWidth: 'mw',
 	buttonFill: 'btf',
 } as const
 
@@ -136,6 +158,9 @@ export function readSettings(params: URLSearchParams): ThemeSettings {
 
 	const bodyFont = params.get(shortKeys.bodyFont)
 	if (bodyFont && isGoogleFont(bodyFont)) next.bodyFont = bodyFont
+
+	const maxWidth = params.get(shortKeys.maxWidth)
+	if (isContentWidth(maxWidth)) next.maxWidth = maxWidth
 
 	const buttonFill = params.get(shortKeys.buttonFill)
 	if (buttonFill === 'solid' || buttonFill === 'gradient')

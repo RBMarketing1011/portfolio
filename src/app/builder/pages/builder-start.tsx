@@ -5,21 +5,32 @@ import { useRouter } from 'next/navigation'
 import { LayoutTemplate, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBuilder } from '@/lib/builder/builder-context'
+import { LOCAL_SITE_ID } from '@/lib/builder/drivers'
 import type { Template } from '@/lib/builder/page-schema'
+import { SiteLoadError } from '../site-load-error'
 import { AddPageDialog } from '../builder/add-page-dialog'
 
-export function BuilderStart({ templates }: { templates: Template[] }) {
+export function BuilderStart({
+	templates,
+	siteId = LOCAL_SITE_ID,
+}: {
+	templates: Template[]
+	siteId?: string
+}) {
 	const router = useRouter()
 	const store = useBuilder()
 	const [open, setOpen] = useState(false)
+	const base = `/builder/sites/${siteId}/pages`
 
 	// Landing on the builder with work already saved should resume it.
 	useEffect(() => {
 		if (!store.hydrated) return
 		const target =
 			store.pages.find((p) => p.id === store.pageId) ?? store.pages[0]
-		if (target) router.replace(`/builder/pages/${target.id}`)
-	}, [store.hydrated, store.pages, store.pageId, router])
+		if (target) router.replace(`${base}/${target.id}`)
+	}, [store.hydrated, store.pages, store.pageId, router, base])
+
+	if (store.loadError) return <SiteLoadError message={store.loadError} />
 
 	if (!store.hydrated || store.pages.length > 0) {
 		return (
@@ -57,7 +68,7 @@ export function BuilderStart({ templates }: { templates: Template[] }) {
 				onCreate={({ name, slug, templateSlug, inHeader }) => {
 					const template = templates.find((t) => t.slug === templateSlug)
 					const id = store.addPage(name, slug, template?.blocks ?? [], inHeader)
-					router.push(`/builder/pages/${id}`)
+					router.push(`${base}/${id}`)
 				}}
 			/>
 		</div>

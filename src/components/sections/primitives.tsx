@@ -5,6 +5,165 @@ import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { cn } from '@/lib/utils'
 
+/** Where an icon sits relative to the text it belongs to. */
+export type IconSide = 'before' | 'after'
+export type IconPlacement = IconSide | 'above' | 'below'
+
+export type ActionStyle =
+	| 'primary'
+	| 'outline'
+	| 'secondary'
+	| 'ghost'
+	| 'link'
+
+export type Action = {
+	label: string
+	href: string
+	icon?: LucideIcon
+	iconPosition?: IconSide
+	/** Omitted actions fall back to solid-first, outlined-second. */
+	style?: ActionStyle
+}
+
+const ACTION_VARIANT: Record<
+	ActionStyle,
+	'default' | 'outline' | 'secondary' | 'ghost' | 'link'
+> = {
+	primary: 'default',
+	outline: 'outline',
+	secondary: 'secondary',
+	ghost: 'ghost',
+	link: 'link',
+}
+
+const ACTION_CLASS: Record<ActionStyle, string> = {
+	primary: 'bg-brand font-bold text-ink hover:bg-brand-strong',
+	outline:
+		'border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white',
+	secondary: '',
+	ghost: 'text-slate-100 hover:bg-white/5 hover:text-white',
+	link: 'px-0 text-brand hover:text-brand-strong',
+}
+
+export function ActionButton({
+	action,
+	fallbackStyle = 'primary',
+	size = 'lg',
+	className,
+}: {
+	action: Action
+	fallbackStyle?: ActionStyle
+	size?: 'sm' | 'default' | 'lg'
+	className?: string
+}) {
+	const style = action.style ?? fallbackStyle
+	const Icon = action.icon
+	const before = action.iconPosition === 'before'
+
+	return (
+		<Button
+			asChild
+			size={size}
+			variant={ACTION_VARIANT[style]}
+			className={cn(ACTION_CLASS[style], className)}>
+			<Link href={action.href || '#'}>
+				{Icon && before && <Icon />}
+				{action.label}
+				{Icon && !before && <Icon />}
+			</Link>
+		</Button>
+	)
+}
+
+export function ActionRow({
+	actions,
+	limit = 2,
+	className,
+}: {
+	actions?: Action[]
+	limit?: number
+	className?: string
+}) {
+	const buttons = actions?.slice(0, limit) ?? []
+	if (buttons.length === 0) return null
+
+	return (
+		<div
+			className={cn(
+				'flex flex-col gap-4 sm:flex-row sm:flex-wrap',
+				className,
+			)}>
+			{buttons.map((action, index) => (
+				<ActionButton
+					key={`${action.label}-${index}`}
+					action={action}
+					fallbackStyle={index === 0 ? 'primary' : 'outline'}
+					className='w-full sm:w-auto'
+				/>
+			))}
+		</div>
+	)
+}
+
+/**
+ * One stat. The value and label stay a single group so the icon can sit on any
+ * side of the pair, and a side-mounted icon pulls the text to that side.
+ */
+export function StatFigure({
+	value,
+	label,
+	icon: Icon,
+	iconPosition = 'above',
+	valueClassName,
+	labelClassName,
+	className,
+}: {
+	value?: string
+	label?: string
+	icon?: LucideIcon
+	iconPosition?: IconPlacement
+	valueClassName?: string
+	labelClassName?: string
+	className?: string
+}) {
+	const copy = (
+		<div className='min-w-0'>
+			<dt className={valueClassName}>{value}</dt>
+			<dd className={labelClassName}>{label}</dd>
+		</div>
+	)
+
+	if (!Icon) return <div className={className}>{copy}</div>
+
+	const glyph = <Icon className='size-6 shrink-0 text-brand' />
+
+	if (iconPosition === 'before' || iconPosition === 'after') {
+		return (
+			<div
+				className={cn(
+					'flex items-start gap-3',
+					iconPosition === 'after' && 'flex-row-reverse text-right',
+					className,
+				)}>
+				{glyph}
+				{copy}
+			</div>
+		)
+	}
+
+	return (
+		<div
+			className={cn(
+				'flex flex-col gap-3',
+				iconPosition === 'below' && 'flex-col-reverse',
+				className,
+			)}>
+			{glyph}
+			{copy}
+		</div>
+	)
+}
+
 export function Section({
 	id,
 	className,
@@ -18,7 +177,10 @@ export function Section({
 		<section
 			id={id}
 			className={cn('px-6 py-20 sm:px-10 lg:px-16 lg:py-28', className)}>
-			<div className='mx-auto max-w-6xl'>{children}</div>
+			{/* The fallback is max-w-6xl, so an unthemed page measures as it always did. */}
+			<div className='mx-auto w-full max-w-[var(--content-max,72rem)]'>
+				{children}
+			</div>
 		</section>
 	)
 }
@@ -123,14 +285,18 @@ export function PageHero({
 	/** Accepts markup so part of the headline can be wrapped in <Highlight>. */
 	title?: React.ReactNode
 	description?: string
-	/** First action renders solid, second outlined. */
-	actions?: { label: string; href: string }[]
-	stats?: { value: string; label: string }[]
+	/** First action renders solid, second outlined, unless each sets its own style. */
+	actions?: Action[]
+	stats?: {
+		value: string
+		label: string
+		icon?: LucideIcon
+		iconPosition?: IconPlacement
+	}[]
 	children?: React.ReactNode
 	/** How the opening block is aligned. */
 	variant?: 'left' | 'centered' | 'compact'
 }) {
-	const buttons = actions?.slice(0, 2) ?? []
 	const figures = stats?.slice(0, 3) ?? []
 	const centered = variant === 'centered'
 
@@ -144,7 +310,7 @@ export function PageHero({
 			)}>
 			<div
 				className={cn(
-					'mx-auto max-w-6xl',
+					'mx-auto w-full max-w-[var(--content-max,72rem)]',
 					centered ? 'text-center' : 'text-center sm:text-left',
 				)}>
 				<Badge className='uppercase tracking-widest'>{eyebrow}</Badge>
@@ -166,48 +332,23 @@ export function PageHero({
 					{description}
 				</p>
 
-				{buttons.length > 0 && (
-					<div
-						className={cn(
-							'mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap',
-							centered && 'sm:justify-center',
-						)}>
-						{buttons.map((action, index) =>
-							index === 0 ? (
-								<Button
-									key={action.label}
-									asChild
-									size='lg'
-									className='w-full bg-brand font-bold text-ink hover:bg-brand-strong sm:w-auto'>
-									<Link href={action.href}>
-										{action.label} <ArrowRight />
-									</Link>
-								</Button>
-							) : (
-								<Button
-									key={action.label}
-									asChild
-									size='lg'
-									variant='outline'
-									className='w-full border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white sm:w-auto'>
-									<Link href={action.href}>{action.label}</Link>
-								</Button>
-							),
-						)}
-					</div>
-				)}
+				<ActionRow
+					actions={actions}
+					className={cn('mt-10', centered && 'sm:justify-center')}
+				/>
 
 				{figures.length > 0 && (
 					<dl className='mx-auto mt-16 grid max-w-3xl gap-8 border-t border-white/10 pt-10 sm:mx-0 sm:grid-cols-3'>
-						{figures.map((figure) => (
-							<div key={figure.label}>
-								<dt className='font-display text-2xl font-semibold text-brand'>
-									{figure.value}
-								</dt>
-								<dd className='mt-2 leading-7 text-slate-400'>
-									{figure.label}
-								</dd>
-							</div>
+						{figures.map((figure, index) => (
+							<StatFigure
+								key={`${figure.label}-${index}`}
+								value={figure.value}
+								label={figure.label}
+								icon={figure.icon}
+								iconPosition={figure.iconPosition}
+								valueClassName='font-display text-2xl font-semibold text-brand'
+								labelClassName='mt-2 leading-7 text-slate-400'
+							/>
 						))}
 					</dl>
 				)}
@@ -240,8 +381,8 @@ export function CheckList({
 				variant === 'columns' && 'grid gap-3 sm:grid-cols-2',
 				variant === 'inline' && 'flex flex-wrap gap-x-6 gap-y-3',
 			)}>
-			{items.map((item) => (
-				<li key={item} className='flex gap-3 text-slate-300'>
+			{items.map((item, index) => (
+				<li key={index} className='flex gap-3 text-slate-300'>
 					<Icon className='mt-1 size-4 shrink-0 text-brand' />
 					<span className='leading-7'>{item}</span>
 				</li>
@@ -254,48 +395,26 @@ export function CtaBand({
 	title = 'Find out what should actually be built.',
 	description = 'Start with an assessment. We walk your business end to end and show you where automation and AI pay off, ranked by what they are worth.',
 	actions = [
-		{ label: 'Book An Assessment', href: '/contact' },
+		{ label: 'Book An Assessment', href: '/contact', icon: ArrowRight },
 		{ label: 'See What We Have Built', href: '/case-studies' },
 	],
 	design = 'card',
 }: {
 	title?: string
 	description?: string
-	/** First action renders solid, second outlined. */
-	actions?: { label: string; href: string }[]
+	/** First action renders solid, second outlined, unless each sets its own style. */
+	actions?: Action[]
 	/** How the band is framed and where the buttons sit. */
 	design?: 'card' | 'centered' | 'split'
 }) {
 	const buttons = (
-		<div
+		<ActionRow
+			actions={actions}
 			className={cn(
-				'flex flex-col gap-4 sm:flex-row sm:flex-wrap',
-				design === 'centered' && 'justify-center',
+				design === 'centered' && 'sm:justify-center',
 				design === 'split' ? 'lg:justify-end' : 'mt-9',
-			)}>
-			{actions.slice(0, 2).map((action, index) =>
-				index === 0 ? (
-					<Button
-						key={action.label}
-						asChild
-						size='lg'
-						className='w-full bg-brand font-bold text-ink hover:bg-brand-strong sm:w-auto'>
-						<Link href={action.href}>
-							{action.label} <ArrowRight />
-						</Link>
-					</Button>
-				) : (
-					<Button
-						key={action.label}
-						asChild
-						size='lg'
-						variant='outline'
-						className='w-full border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white sm:w-auto'>
-						<Link href={action.href}>{action.label}</Link>
-					</Button>
-				),
 			)}
-		</div>
+		/>
 	)
 
 	const heading = (

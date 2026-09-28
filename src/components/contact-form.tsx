@@ -26,13 +26,16 @@ export default function ContactForm({ siteKey }: { siteKey: string }) {
 		setStatus('sending')
 		const form = event.currentTarget
 
+		// The widget is invisible, so it may still be solving when they submit.
+		const verification = token ?? (await turnstile.current?.getToken()) ?? null
+
 		try {
 			const response = await fetch('/api/contact', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					...Object.fromEntries(new FormData(form)),
-					'cf-turnstile-response': token,
+					'cf-turnstile-response': verification,
 				}),
 			})
 
@@ -174,10 +177,13 @@ export default function ContactForm({ siteKey }: { siteKey: string }) {
 				</p>
 			)}
 
+			{/* Not gated on the token: the widget is invisible, so a disabled button
+			    would look broken with nothing on screen to explain it. Submitting
+			    waits for the token instead, and the server is the real gate. */}
 			<Button
 				type='submit'
 				size='lg'
-				disabled={status === 'sending' || !token}
+				disabled={status === 'sending' || !siteKey}
 				className='w-full bg-brand font-bold text-ink hover:bg-brand-strong'>
 				{status === 'sending' ? (
 					<>

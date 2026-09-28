@@ -1,12 +1,21 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, ChevronRight } from 'lucide-react'
+import {
+	ArrowLeft,
+	ArrowRight,
+	ChevronRight,
+	type LucideIcon,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { cn } from '@/lib/utils'
-
-type Action = { label: string; href: string }
+import {
+	ActionRow,
+	StatFigure,
+	type Action,
+	type IconPlacement,
+	type IconSide,
+} from './primitives'
 
 // Positions are percentages of the primary card, so the cluster scales with it.
 // Tiles stay fully opaque and are shaded with brightness instead, so each one reads
@@ -69,7 +78,7 @@ export function SplitHero({
 	title = 'This is the split hero heading',
 	description = 'This is the split hero description. Copy sits on one side and the product shot sits on the other, for pages where the work itself is the argument.',
 	actions = [
-		{ label: 'Primary Button', href: '/contact' },
+		{ label: 'Primary Button', href: '/contact', icon: ArrowRight },
 		{ label: 'Secondary Button', href: '/case-studies' },
 	],
 	media,
@@ -87,56 +96,28 @@ export function SplitHero({
 	mediaLabel?: string
 	/** Slot images, in the order of backdropLayouts. Empty slots render numbered placeholders. */
 	backdrop?: string[]
-	/** Which side the media sits on, or stacked beneath centered copy. */
-	variant?: 'split' | 'reversed' | 'stacked'
+	/** Which side the media sits on. The copy takes the other side and aligns to it. */
+	variant?: 'split' | 'reversed'
 }) {
-	const stacked = variant === 'stacked'
+	const mediaLeft = variant === 'reversed'
 
 	return (
 		<section className='relative overflow-hidden px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-24 lg:pt-44'>
-			<div
-				className={cn(
-					'mx-auto grid max-w-6xl items-center gap-14',
-					!stacked && 'lg:grid-cols-2',
-				)}>
+			<div className='mx-auto grid w-full max-w-[var(--content-max,72rem)] items-center gap-14 lg:grid-cols-2'>
 				<div
 					className={cn(
-						stacked
-							? 'mx-auto max-w-3xl text-center'
-							: 'text-center sm:text-left',
-						variant === 'reversed' && 'lg:order-2',
+						'text-center sm:text-left',
+						mediaLeft && 'lg:order-2 lg:text-right',
 					)}>
 					<Badge className='uppercase tracking-widest'>{eyebrow}</Badge>
 					<h1 className='mt-6 font-display text-4xl font-semibold leading-[1.08] text-white sm:text-5xl'>
 						{title}
 					</h1>
 					<p className='mt-6 text-lg leading-8 text-slate-300'>{description}</p>
-					{actions.length > 0 && (
-						<div className='mt-9 flex flex-col gap-4 sm:flex-row sm:flex-wrap'>
-							{actions.slice(0, 2).map((action, index) =>
-								index === 0 ? (
-									<Button
-										key={action.label}
-										asChild
-										size='lg'
-										className='w-full bg-brand font-bold text-ink hover:bg-brand-strong sm:w-auto'>
-										<Link href={action.href}>
-											{action.label} <ArrowRight />
-										</Link>
-									</Button>
-								) : (
-									<Button
-										key={action.label}
-										asChild
-										size='lg'
-										variant='outline'
-										className='w-full border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white sm:w-auto'>
-										<Link href={action.href}>{action.label}</Link>
-									</Button>
-								),
-							)}
-						</div>
-					)}
+					<ActionRow
+						actions={actions}
+						className={cn('mt-9', mediaLeft && 'lg:justify-end')}
+					/>
 				</div>
 
 				{/* Backdrop tiles sit behind the primary and are clipped by the section where they bleed.
@@ -145,7 +126,7 @@ export function SplitHero({
 				<div
 					className={cn(
 						'relative mx-4 mb-12 mt-16 sm:mx-10 lg:mx-6 lg:my-0',
-						variant === 'reversed' && 'lg:order-1',
+						mediaLeft && 'lg:order-1',
 					)}>
 					<div className='absolute inset-0 z-0 hidden scale-85 sm:block lg:scale-100'>
 						{backdropLayouts.map((layout, index) => {
@@ -215,17 +196,28 @@ export function StatHero({
 			label: 'The fourth is optional and drops off on smaller screens',
 		},
 	],
+	showLink = true,
 	linkLabel = 'See What All The Hype Is About',
 	linkHref = '/case-studies',
+	linkIcon: LinkIcon = ArrowRight,
+	linkIconPosition = 'after',
 	variant = 'cards',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	description?: string
-	stats?: { value: string; label: string }[]
-	/** Pass null to drop the link entirely. */
+	stats?: {
+		value: string
+		label: string
+		icon?: LucideIcon
+		iconPosition?: IconPlacement
+	}[]
+	/** Turn the closing link off without clearing its text. */
+	showLink?: boolean
 	linkLabel?: string | null
 	linkHref?: string
+	linkIcon?: LucideIcon
+	linkIconPosition?: IconSide
 	/** How the stat row is drawn against the copy. */
 	variant?: 'cards' | 'divided' | 'centered'
 }) {
@@ -235,7 +227,7 @@ export function StatHero({
 		<section className='px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-20 lg:pt-44'>
 			<div
 				className={cn(
-					'mx-auto max-w-6xl',
+					'mx-auto w-full max-w-[var(--content-max,72rem)]',
 					centered ? 'text-center' : 'text-center sm:text-left',
 				)}>
 				<Badge className='uppercase tracking-widest'>{eyebrow}</Badge>
@@ -259,37 +251,42 @@ export function StatHero({
 						variant === 'divided' &&
 							'gap-0 divide-y divide-white/10 border-y border-white/10 sm:divide-x sm:divide-y-0',
 					)}>
-					{stats.map((stat) =>
-						variant === 'cards' ? (
-							<GlassCard key={stat.label} className='p-7'>
-								<dt className='font-display text-4xl font-semibold text-brand'>
-									{stat.value}
-								</dt>
-								<dd className='mt-3 text-sm leading-6 text-slate-400'>
-									{stat.label}
-								</dd>
+					{stats.map((stat, index) => {
+						const figure = (
+							<StatFigure
+								value={stat.value}
+								label={stat.label}
+								icon={stat.icon}
+								iconPosition={stat.iconPosition}
+								valueClassName='font-display text-4xl font-semibold text-brand'
+								labelClassName='mt-3 text-sm leading-6 text-slate-400'
+							/>
+						)
+						return variant === 'cards' ? (
+							<GlassCard key={`${stat.label}-${index}`} className='p-7'>
+								{figure}
 							</GlassCard>
 						) : (
 							<div
-								key={stat.label}
+								key={`${stat.label}-${index}`}
 								className={cn('p-7', centered && 'text-center')}>
-								<dt className='font-display text-4xl font-semibold text-brand'>
-									{stat.value}
-								</dt>
-								<dd className='mt-3 text-sm leading-6 text-slate-400'>
-									{stat.label}
-								</dd>
+								{figure}
 							</div>
-						),
-					)}
+						)
+					})}
 				</dl>
 
-				{linkLabel && (
+				{showLink && linkLabel && (
 					<Link
-						href={linkHref}
+						href={linkHref || '#'}
 						className='mt-10 inline-flex items-center gap-2 text-sm font-semibold text-brand transition-colors hover:text-brand-strong'>
+						{LinkIcon && linkIconPosition === 'before' && (
+							<LinkIcon className='size-4' />
+						)}
 						{linkLabel}
-						<ArrowRight className='size-4' />
+						{LinkIcon && linkIconPosition !== 'before' && (
+							<LinkIcon className='size-4' />
+						)}
 					</Link>
 				)}
 			</div>
@@ -303,20 +300,27 @@ export function Breadcrumbs({
 		{ label: 'Parent Page', href: '/services' },
 		{ label: 'This Is The Current Page' },
 	],
+	align = 'left',
 	variant = 'chevron',
 	className,
 }: {
 	items?: { label: string; href?: string }[]
+	/** Where the trail sits across the section. */
+	align?: 'left' | 'center' | 'right'
 	variant?: 'chevron' | 'slash' | 'pill'
 	className?: string
 }) {
 	const parent = [...items].reverse().find((item) => item.href)
+	const justify = cn(
+		align === 'center' && 'justify-center',
+		align === 'right' && 'justify-end',
+	)
 
 	// A back link rather than a trail, for deep pages on small screens.
 	if (variant === 'pill') {
 		return (
 			<nav aria-label='Breadcrumb' className={className}>
-				<ol className='flex flex-wrap items-center gap-2'>
+				<ol className={cn('flex flex-wrap items-center gap-2', justify)}>
 					{parent && (
 						<li>
 							<Link
@@ -343,11 +347,15 @@ export function Breadcrumbs({
 	if (variant === 'slash') {
 		return (
 			<nav aria-label='Breadcrumb' className={className}>
-				<ol className='flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-widest text-slate-600'>
+				<ol
+					className={cn(
+						'flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-widest text-slate-600',
+						justify,
+					)}>
 					{items.map((item, index) => {
 						const last = index === items.length - 1
 						return (
-							<li key={item.label} className='flex items-center gap-2'>
+							<li key={index} className='flex items-center gap-2'>
 								{item.href && !last ? (
 									<Link
 										href={item.href}
@@ -370,11 +378,15 @@ export function Breadcrumbs({
 
 	return (
 		<nav aria-label='Breadcrumb' className={className}>
-			<ol className='flex flex-wrap items-center gap-1.5 text-sm text-slate-500'>
+			<ol
+				className={cn(
+					'flex flex-wrap items-center gap-1.5 text-sm text-slate-500',
+					justify,
+				)}>
 				{items.map((item, index) => {
 					const last = index === items.length - 1
 					return (
-						<li key={item.label} className='flex items-center gap-1.5'>
+							<li key={index} className='flex items-center gap-1.5'>
 							{item.href && !last ? (
 								<Link
 									href={item.href}

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 // The section library, the builder, and both preview surfaces render their own
 // chrome, so they opt out of the real header and footer.
 const bareRoutes = [
-	'/sections',
+	'/builder',
 	'/section-preview',
 	'/page-preview',
 	'/preview',

@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { ImageIcon, Trash2, Upload, X } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { ImageIcon, Info, Trash2, Upload, X } from 'lucide-react'
 import {
 	Dialog,
 	DialogContent,
@@ -13,13 +13,21 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useBuilder } from '@/lib/builder/builder-context'
+import {
+	formatBytes,
+	freeStorage,
+	mediaRef,
+	mediaUsage,
+	resolveMediaSrc,
+	storageBytes,
+} from '@/lib/builder/media-store'
 
 // Uploads are inlined as data URLs, which live in localStorage, so a full-size photo
 // would eat the whole budget. Downscale to something a hero can still use.
 const MAX_EDGE = 1600
 const MAX_UPLOAD = 12 * 1024 * 1024
 
-async function toDataUrl(file: File) {
+async function toWebp(file: File): Promise<Blob> {
 	const bitmap = await createImageBitmap(file)
 	const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
 	const canvas = document.createElement('canvas')
@@ -28,8 +36,20 @@ async function toDataUrl(file: File) {
 	canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
 	bitmap.close()
 	// PNG screenshots re-encode far smaller as WebP with no visible loss at this size.
-	return canvas.toDataURL('image/webp', 0.82)
+	const blob = await new Promise<Blob | null>((resolve) =>
+		canvas.toBlob(resolve, 'image/webp', 0.82),
+	)
+	if (!blob) throw new Error('encode failed')
+	return blob
 }
+
+const blobToDataUrl = (blob: Blob) =>
+	new Promise<string>((resolve, reject) => {
+		const reader = new FileReader()
+		reader.onload = () => resolve(reader.result as string)
+		reader.onerror = () => reject(new Error('read failed'))
+		reader.readAsDataURL(blob)
+	})
 
 /** The builder only ever offers images the user uploaded, never repo assets. */
 export function MediaPicker({
@@ -39,7 +59,8 @@ export function MediaPicker({
 	value: string | undefined
 	onChange: (value: string | undefined) => void
 }) {
-	const { media, addMedia, removeMedia, mediaError } = useBuilder()
+	const { media, addMedia, uploadMedia, removeMedia, mediaError, remote } =
+		useBuilder()
 	const [open, setOpen] = useState(false)
 	const [query, setQuery] = useState('')
 	const [error, setError] = useState<string | null>(null)
@@ -49,7 +70,27 @@ export function MediaPicker({
 	const shown = media.filter((item) =>
 		item.name.toLowerCase().includes(query.trim().toLowerCase()),
 	)
-	const current = media.find((item) => item.src === value)
+	// The stored value is a reference, so the preview has to look the image up.
+	const selectedSrc = resolveMediaSrc(value) as string | undefined
+	const current = media.find((item) => mediaRef(item.id) === value)
+
+	// Re-measured whenever the library changes, since a probe is not free.
+	const quota = useMemo(() => {
+		if (!open || remote) return null
+		const used = mediaUsage()
+		const { freeBytes, atCap } = freeStorage(true)
+		const average = used.count ? used.bytes / used.count : 600 * 1024
+		return {
+			...used,
+			freeBytes,
+			atCap,
+			roomFor: Math.max(0, Math.floor(freeBytes / average)),
+			filled: Math.min(
+				100,
+				Math.round((used.bytes / (used.bytes + freeBytes || 1)) * 100),
+			),
+		}
+	}, [open, media, remote])
 
 	const upload = async (file: File | undefined, select: boolean) => {
 		if (!file) return
@@ -58,12 +99,21 @@ export function MediaPicker({
 			return
 		}
 		setError(null)
+		let blob: Blob
+		const name = file.name.replace(/\.[^.]+$/, '')
 		try {
-			const src = await toDataUrl(file)
-			addMedia(file.name.replace(/\.[^.]+$/, ''), src)
-			if (select) onChange(src)
+			blob = await toWebp(file)
 		} catch {
 			setError('That file could not be read as an image.')
+			return
+		}
+		try {
+			const item = remote
+				? await uploadMedia(name, blob)
+				: addMedia(name, await blobToDataUrl(blob))
+			if (select) onChange(mediaRef(item.id))
+		} catch {
+			setError('That image could not be saved. Try again.')
 		}
 	}
 
@@ -76,7 +126,7 @@ export function MediaPicker({
 					className='flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-white/4 text-slate-500 transition-colors hover:border-brand/50'>
 					{value ? (
 						// eslint-disable-next-line @next/next/no-img-element
-						<img alt='' src={value} className='size-full object-cover' />
+						<img alt='' src={selectedSrc} className='size-full object-cover' />
 					) : (
 						<ImageIcon className='size-5' />
 					)}
@@ -135,7 +185,8 @@ export function MediaPicker({
 					<DialogHeader className='shrink-0 border-b border-white/10 px-6 py-5'>
 						<DialogTitle>Media library</DialogTitle>
 						<DialogDescription>
-							Images you have uploaded. Nothing else is available to the builder.
+							Images you have uploaded. Nothing else is available to the
+							builder.
 						</DialogDescription>
 						<div className='mt-3 flex items-center gap-2'>
 							<Input
@@ -167,6 +218,49 @@ export function MediaPicker({
 
 					<div className='min-h-0 flex-1 overflow-y-auto'>
 						<div className='px-6 py-5'>
+							{remote ? (
+								<div className='mb-5 rounded-lg border border-white/10 bg-white/3 px-4 py-3'>
+									<p className='text-xs leading-5 text-slate-400'>
+										<span className='font-medium text-white'>
+											{media.length} {media.length === 1 ? 'image' : 'images'}
+										</span>{' '}
+										saved to this site. They are stored on our servers, so they
+										follow you to any device you sign in on.
+									</p>
+								</div>
+							) : (
+								<div className='mb-5 rounded-lg border border-amber-400/25 bg-amber-400/8 px-4 py-3'>
+									<p className='flex items-start gap-2 text-xs leading-5 text-amber-200/90'>
+										<Info className='mt-0.5 size-3.5 shrink-0' />
+										<span>
+											You are not signed in, so these images are not stored on a
+											server. They live in this browser only &mdash; clearing
+											site data or switching devices loses them. Create an
+											account to keep them for good.
+										</span>
+									</p>
+									{quota && (
+										<div className='mt-3 border-t border-amber-400/15 pt-3'>
+											<div className='flex items-baseline justify-between gap-4 text-xs'>
+												<span className='font-medium text-white'>
+													{quota.count} {quota.count === 1 ? 'image' : 'images'}{' '}
+													&middot; {formatBytes(quota.bytes)} used
+												</span>
+												<span className='tabular-nums text-amber-200/70'>
+													room for about {quota.roomFor}
+													{quota.atCap ? '+' : ''} more
+												</span>
+											</div>
+											<div className='mt-2 h-1.5 overflow-hidden rounded-full bg-white/10'>
+												<div
+													className='h-full rounded-full bg-amber-400/70'
+													style={{ width: `${quota.filled}%` }}
+												/>
+											</div>
+										</div>
+									)}
+								</div>
+							)}
 							{media.length === 0 ? (
 								<div className='py-14 text-center'>
 									<ImageIcon className='mx-auto size-8 text-slate-600' />
@@ -185,12 +279,12 @@ export function MediaPicker({
 											<button
 												type='button'
 												onClick={() => {
-													onChange(item.src)
+													onChange(mediaRef(item.id))
 													setOpen(false)
 												}}
 												className={cn(
 													'w-full overflow-hidden rounded-lg border text-left transition-colors',
-													value === item.src
+													value === mediaRef(item.id)
 														? 'border-brand'
 														: 'border-white/10 hover:border-white/30',
 												)}>
@@ -209,7 +303,7 @@ export function MediaPicker({
 											<button
 												type='button'
 												onClick={() => {
-													if (value === item.src) onChange(undefined)
+													if (value === mediaRef(item.id)) onChange(undefined)
 													removeMedia(item.id)
 												}}
 												aria-label={`Delete ${item.name}`}

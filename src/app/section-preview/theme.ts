@@ -7,6 +7,7 @@ import {
 	type SurfaceSettings,
 } from '@/app/builder/background-settings'
 import {
+	contentWidthValue,
 	defaultSettings,
 	tintVar,
 	type ThemeSettings,
@@ -103,6 +104,9 @@ function tokens(settings: ThemeSettings) {
 		'--font-body': bodyFamily,
 		'--font-space-grotesk': headingFamily,
 		'--font-dm-sans': bodyFamily,
+
+		// Sections, header, and footer all measure from this one value.
+		'--content-max': contentWidthValue(settings.maxWidth),
 	}
 }
 
@@ -176,7 +180,7 @@ const safeAngle = (value: number, fallback: number) =>
 
 /** The color under the surface: the flat pick when solid, the last stop when gradient. */
 const surfaceColor = (surface: SurfaceSettings) =>
-	surface.fill === 'transparent'
+	surface.fill === 'transparent' || surface.fill === 'global'
 		? 'transparent'
 		: tintVar(surface.fill === 'gradient' ? surface.to : surface.color)
 
@@ -285,6 +289,17 @@ export function backgroundCss(
 			: surfaceColor(page)
 	// One step more specific than the utility classes already on the element.
 	const selector = scope ?? `html [data-surface='${target}']`
+	// Painting nothing is the point of `global`: no colour, no wash, no pattern, and
+	// no stacking context that would cut this element out of the page background.
+	const pageReset = globals
+		? [
+				`html{background-color:var(--color-ink);background-image:none;}`,
+				`body{background-color:transparent;}`,
+			]
+		: []
+	if (page.fill === 'global')
+		return [...pageReset, ...(globals ? menuRules : [])].join('')
+
 	// The header's surface is already its own clipped layer; the footer is the element itself.
 	const box =
 		target === 'footer' || scope
@@ -292,12 +307,7 @@ export function backgroundCss(
 			: ''
 
 	return [
-		...(globals
-			? [
-					`html{background-color:var(--color-ink);background-image:none;}`,
-					`body{background-color:transparent;}`,
-				]
-			: []),
+		...pageReset,
 		`${selector}{${box}background-color:${base};background-image:${wash(page, defaultBackground.page.gradientAngle)};}`,
 		patternRule(
 			`${selector}::before`,

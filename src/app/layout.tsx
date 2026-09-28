@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { DM_Sans, Space_Grotesk } from 'next/font/google'
+import { SessionProvider } from 'next-auth/react'
 import '@/styles/globals.css'
 import { AppShell } from '@/components/app-shell'
 import SiteFooter from '@/components/site-footer'
@@ -75,9 +76,11 @@ export default function RootLayout({
 			<body
 				className={`${bodyFont.variable} ${displayFont.variable} antialiased`}>
 				<JsonLd schema={[organizationSchema, websiteSchema]} />
-				<AppShell header={<SiteHeader />} footer={<SiteFooter />}>
-					{children}
-				</AppShell>
+				<SessionProvider>
+					<AppShell header={<SiteHeader />} footer={<SiteFooter />}>
+						{children}
+					</AppShell>
+				</SessionProvider>
 			</body>
 		</html>
 	)

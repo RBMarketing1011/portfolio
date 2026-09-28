@@ -2,7 +2,13 @@
 
 import { getSchema } from './schema'
 import { resolveIcon } from './icons'
-import { renderProse, renderRichText } from './rich-text'
+import { resolveMediaSrc } from './media-store'
+import {
+	isProseHtml,
+	renderProse,
+	renderRichText,
+	sanitizeProseHtml,
+} from './rich-text'
 import type { Field } from './types'
 
 /** A list whose rows are a single `value` field is stored as a plain array. */
@@ -58,6 +64,10 @@ function hydrateRow(row: unknown, fields: Field[]) {
 			const icon = resolveIcon(source[field.key])
 			if (icon) out[field.key] = icon
 			else delete out[field.key]
+		} else if (field.type === 'image') {
+			const src = resolveMediaSrc(source[field.key])
+			if (src) out[field.key] = src
+			else delete out[field.key]
 		} else if (field.type === 'list' && field.of) {
 			// A non-array here would make the section map over a string.
 			const rows = source[field.key]
@@ -92,9 +102,20 @@ export function hydrateProps(
 				if (icon) setPath(out, field.key, icon)
 				break
 			}
+			case 'image': {
+				// A missing reference renders the component's own empty slot.
+				const src = resolveMediaSrc(raw)
+				if (src) setPath(out, field.key, src)
+				break
+			}
 			case 'select':
 				setPath(out, field.key, isNumericSelect(field) ? Number(raw) : raw)
 				break
+			case 'group': {
+				if (typeof raw !== 'object' || Array.isArray(raw)) break
+				setPath(out, field.key, hydrateRow(raw, field.of ?? []))
+				break
+			}
 			case 'list':
 				// Fall back to the section's own default rather than render a broken row.
 				if (!Array.isArray(raw)) break
@@ -115,8 +136,11 @@ export function hydrateProps(
 
 	// Sections whose editable body maps onto `children` rather than a prop.
 	if (type === 'prose-block' || type === 'callout') {
-		const body = renderProse(props.body)
-		if (body) out.children = body
+		if (isProseHtml(props.body)) out.html = sanitizeProseHtml(props.body)
+		else {
+			const body = renderProse(props.body)
+			if (body) out.children = body
+		}
 		delete out.body
 	}
 

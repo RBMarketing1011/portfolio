@@ -103,11 +103,11 @@ export function BuiltHeader({
 		return (
 			<header
 				data-surface='header'
-				className='sticky top-0 z-50 px-4 pt-4 sm:px-6 lg:px-10'>
+				className='sticky top-0 z-50 px-6 pt-4 sm:px-10 lg:px-16'>
 				<nav
 					aria-label='Main'
 					className={cn(
-						'mx-auto flex max-w-7xl items-center justify-between gap-6 rounded-full border px-5 py-2.5 shadow-[0_8px_32px_-12px_rgb(0_0_0/0.6)]',
+						'mx-auto flex w-full max-w-[var(--content-max,72rem)] items-center justify-between gap-6 rounded-full border px-5 py-2.5 shadow-[0_8px_32px_-12px_rgb(0_0_0/0.6)]',
 						shell,
 						edge,
 					)}>
@@ -124,14 +124,18 @@ export function BuiltHeader({
 			<header
 				data-surface='header'
 				className={cn('sticky top-0 border-b', shell, edge)}>
-				<div className='mx-auto flex max-w-7xl items-center justify-between gap-6 px-4 py-3 sm:px-6 lg:px-10'>
-					<Wordmark href={linkBase} />
-					{cta}
+				{/* Gutters sit outside the measure, as they do on a section, so both
+				    rows start where the page content starts. */}
+				<div className='px-6 sm:px-10 lg:px-16'>
+					<div className='mx-auto flex w-full max-w-[var(--content-max,72rem)] items-center justify-between gap-6 py-3'>
+						<Wordmark href={linkBase} />
+						{cta}
+					</div>
 				</div>
 				<nav
 					aria-label='Main'
-					className={cn('border-t px-4 sm:px-6 lg:px-10', edge)}>
-					<div className='mx-auto flex max-w-7xl justify-center py-1'>
+					className={cn('border-t px-6 sm:px-10 lg:px-16', edge)}>
+					<div className='mx-auto flex w-full max-w-[var(--content-max,72rem)] justify-center py-1'>
 						<NavLinks pages={pages} current={current} linkBase={linkBase} />
 					</div>
 				</nav>
@@ -143,13 +147,13 @@ export function BuiltHeader({
 		<header
 			data-surface='header'
 			className={cn(
-				'sticky top-0 border-b px-4 sm:px-6 lg:px-10',
+				'sticky top-0 border-b px-6 sm:px-10 lg:px-16',
 				shell,
 				edge,
 			)}>
 			<nav
 				aria-label='Main'
-				className='mx-auto flex max-w-7xl items-center justify-between gap-6 py-3'>
+				className='mx-auto flex w-full max-w-[var(--content-max,72rem)] items-center justify-between gap-6 py-3'>
 				<Wordmark href={linkBase} />
 				<NavLinks pages={pages} current={current} linkBase={linkBase} />
 				{cta}
@@ -245,7 +249,7 @@ export function BuiltFooter({
 	if (design === 'centered') {
 		return (
 			<footer data-surface='footer' className={cn(surface, 'text-center')}>
-				<div className='mx-auto max-w-6xl'>
+				<div className='mx-auto w-full max-w-[var(--content-max,72rem)]'>
 					<div className='flex flex-col items-center'>{brand}</div>
 					<div className='mt-12 grid gap-10 sm:grid-cols-3'>{linkColumns}</div>
 					<Separator className={cn('my-10', edge, 'bg-white/10')} />
@@ -258,11 +262,15 @@ export function BuiltFooter({
 	if (design === 'split') {
 		return (
 			<footer data-surface='footer' className={surface}>
-				<div className='mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1fr_1.4fr]'>
+				<div className='mx-auto grid w-full max-w-[var(--content-max,72rem)] gap-14 lg:grid-cols-[1fr_1.4fr]'>
 					{brand}
 					<div className='grid gap-8 sm:grid-cols-3'>{linkColumns}</div>
 				</div>
-				<div className={cn('mx-auto mt-14 max-w-6xl border-t pt-8', edge)}>
+				<div
+					className={cn(
+						'mx-auto mt-14 w-full max-w-[var(--content-max,72rem)] border-t pt-8',
+						edge,
+					)}>
 					{legal}
 				</div>
 			</footer>
@@ -271,7 +279,7 @@ export function BuiltFooter({
 
 	return (
 		<footer data-surface='footer' className={surface}>
-			<div className='mx-auto max-w-6xl'>
+			<div className='mx-auto w-full max-w-[var(--content-max,72rem)]'>
 				<div className='grid gap-12 md:grid-cols-[1.5fr_repeat(3,1fr)]'>
 					{brand}
 					{linkColumns}

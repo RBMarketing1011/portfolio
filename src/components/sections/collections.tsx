@@ -7,6 +7,7 @@ import {
 	type CarouselSize,
 } from '@/components/ui/carousel'
 import { cn } from '@/lib/utils'
+import { FilterBar, Pagination } from './navigation'
 import { Section, SectionHeading } from './primitives'
 
 const columnClasses = {
@@ -226,6 +227,91 @@ export function Marquee({
 		<Section className={className}>
 			{eyebrow && <p className='eyebrow text-center'>{eyebrow}</p>}
 			<div className={cn('-mx-6', eyebrow && 'mt-9')}>{track}</div>
+		</Section>
+	)
+}
+
+/**
+ * A category listing: every item of one kind, with the filter bar and pager that
+ * only make sense over a set. Both are options here rather than sections of their own.
+ */
+export function CollectionPage({
+	eyebrow,
+	title,
+	description,
+	category = 'Blog',
+	columns = 3,
+	showFilters = true,
+	filters = [
+		{ label: 'All', value: 'all' },
+		{ label: 'First Category', value: 'first-category' },
+		{ label: 'Second Category', value: 'second-category' },
+	],
+	filterStyle = 'pills',
+	filterAlign = 'left',
+	showPagination = true,
+	page = 1,
+	totalPages = 4,
+	paginationStyle = 'numbers',
+	className,
+	children,
+}: HeadingProps & {
+	/** Which kind of entry the page lists, e.g. Blog or Services. */
+	category?: string
+	columns?: keyof typeof columnClasses
+	showFilters?: boolean
+	filters?: (string | { label?: string; value?: string })[]
+	filterStyle?: 'pills' | 'underline' | 'segmented'
+	filterAlign?: 'left' | 'center' | 'right'
+	showPagination?: boolean
+	page?: number
+	totalPages?: number
+	paginationStyle?: 'numbers' | 'compact' | 'spread'
+	className?: string
+	children: React.ReactNode
+}) {
+	const count = React.Children.count(children)
+	// A pager over three items is noise, so it hides itself rather than needing a toggle.
+	const pager = showPagination && count > 3 && totalPages > 1
+
+	return (
+		<Section className={className}>
+			{(eyebrow || title || description) && (
+				<SectionHeading
+					eyebrow={eyebrow ?? category}
+					title={title}
+					description={description}
+				/>
+			)}
+
+			{showFilters && filters.length > 0 && (
+				<div
+					className={cn(
+						'mt-10 flex',
+						filterAlign === 'center' && 'justify-center',
+						filterAlign === 'right' && 'justify-end',
+					)}>
+					<FilterBar
+						filters={filters}
+						resultCount={count}
+						design={filterStyle}
+					/>
+				</div>
+			)}
+
+			<div className={cn('mt-10 grid gap-5', columnClasses[columns])}>
+				{children}
+			</div>
+
+			{pager && (
+				<div className='mt-12'>
+					<Pagination
+						page={page}
+						totalPages={totalPages}
+						design={paginationStyle}
+					/>
+				</div>
+			)}
 		</Section>
 	)
 }

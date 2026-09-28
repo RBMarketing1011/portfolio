@@ -4,11 +4,21 @@ import { useEffect, useState } from 'react'
 import { findBlock } from '@/lib/builder/block-ops'
 import { useBuilder } from '@/lib/builder/builder-context'
 import { pageHref } from '@/lib/builder/page-schema'
+import { LOCAL_SITE_ID } from '@/lib/builder/drivers'
+import { SaveIndicator } from '../save-indicator'
+import { SiteLoadError } from '../site-load-error'
+import { globalBackground } from '../background-settings'
 import { BackgroundDrawer } from '../background-drawer'
 import { BlockInspector } from '../builder/block-inspector'
 import { CanvasFrame } from '../builder/canvas-frame'
 
-export function PageEditor({ pageId }: { pageId: string }) {
+export function PageEditor({
+	pageId,
+	siteId = LOCAL_SITE_ID,
+}: {
+	pageId: string
+	siteId?: string
+}) {
 	const store = useBuilder()
 	const [colorsOpen, setColorsOpen] = useState(false)
 
@@ -30,6 +40,8 @@ export function PageEditor({ pageId }: { pageId: string }) {
 		window.addEventListener('keydown', onKey)
 		return () => window.removeEventListener('keydown', onKey)
 	}, [store])
+
+	if (store.loadError) return <SiteLoadError message={store.loadError} />
 
 	if (!store.hydrated) {
 		return (
@@ -55,18 +67,17 @@ export function PageEditor({ pageId }: { pageId: string }) {
 
 	return (
 		<div className='flex h-screen overflow-hidden'>
-			{store.saveError && (
-				<p
-					role='alert'
-					className='fixed inset-x-0 top-0 z-100 bg-destructive px-4 py-2 text-center text-sm font-medium text-white'>
-					{store.saveError}
-				</p>
-			)}
+			<SaveIndicator
+				state={store.saveState}
+				error={store.saveError}
+				remote={store.remote}
+				onRetry={store.retrySave}
+			/>
 			<main className='min-w-0 flex-1'>
 				<CanvasFrame
 					blocks={page.blocks}
 					selectedId={store.selectedId}
-					viewHref={pageHref('/preview', page.slug)}
+					viewHref={pageHref(`/preview/${siteId}`, page.slug)}
 					nav={store.pages.filter((p) => p.inHeader)}
 					chrome={store.chrome}
 					currentSlug={page.slug}
@@ -109,7 +120,7 @@ export function PageEditor({ pageId }: { pageId: string }) {
 				slug={selected?.type ?? 'section'}
 				open={colorsOpen && selected !== null}
 				onOpenChange={setColorsOpen}
-				settings={store.look.blocks[selected?.id ?? ''] ?? store.look.page}
+				settings={store.look.blocks[selected?.id ?? ''] ?? globalBackground}
 				theme={store.look.theme}
 				onChange={(next) => selected && store.setBlockLook(selected.id, next)}
 			/>

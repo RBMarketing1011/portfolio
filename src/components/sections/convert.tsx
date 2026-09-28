@@ -2,7 +2,17 @@
 
 import Link from 'next/link'
 import { useId, useState } from 'react'
-import { AlertCircle, ArrowRight, Check, Mail } from 'lucide-react'
+import {
+	AlertCircle,
+	ArrowRight,
+	Check,
+	CheckCircle,
+	Circle,
+	Mail,
+	Minus,
+	Plus,
+	type LucideIcon,
+} from 'lucide-react'
 import {
 	Accordion,
 	AccordionContent,
@@ -14,7 +24,13 @@ import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { Section, SectionHeading } from './primitives'
+import {
+	ActionButton,
+	Section,
+	SectionHeading,
+	type ActionStyle,
+	type IconSide,
+} from './primitives'
 
 export function FaqAccordion({
 	eyebrow = 'Eyebrow',
@@ -42,32 +58,62 @@ export function FaqAccordion({
 				'Order questions by how often they actually get asked, not by how easy they are to answer.',
 		},
 	],
+	marker = 'chevron',
+	openFirst = false,
 	layout = 'split',
 }: {
 	eyebrow?: string
 	title?: React.ReactNode
 	description?: string
 	faqs?: { question: string; answer: string }[]
+	/** What sits at the end of each question row. */
+	marker?: 'chevron' | 'plus' | 'check' | 'arrow'
+	/** Opens the first question on load. */
+	openFirst?: boolean
 	/** Where the heading sits and how each question is framed. */
 	layout?: 'split' | 'stacked' | 'boxed'
 }) {
 	const boxed = layout === 'boxed'
 
+	const markerNode =
+		marker === 'chevron' ? undefined : (
+			<span className='pointer-events-none shrink-0 translate-y-0.5 text-brand'>
+				{marker === 'plus' && (
+					<>
+						<Plus className='size-4 group-data-[state=open]/faq:hidden' />
+						<Minus className='hidden size-4 group-data-[state=open]/faq:block' />
+					</>
+				)}
+				{marker === 'check' && (
+					<>
+						<Circle className='size-4 text-slate-600 group-data-[state=open]/faq:hidden' />
+						<CheckCircle className='hidden size-4 group-data-[state=open]/faq:block' />
+					</>
+				)}
+				{marker === 'arrow' && (
+					<ArrowRight className='size-4 transition-transform duration-200 group-data-[state=open]/faq:rotate-90' />
+				)}
+			</span>
+		)
+
 	const accordion = (
 		<Accordion
 			type='single'
 			collapsible
+			defaultValue={openFirst ? 'faq-0' : undefined}
 			className={cn('w-full', boxed && 'space-y-4')}>
-			{faqs.map((faq) => (
+			{faqs.map((faq, index) => (
 				<AccordionItem
-					key={faq.question}
-					value={faq.question}
+					key={index}
+					value={`faq-${index}`}
 					className={cn(
 						boxed
 							? 'rounded-xl border border-white/12 bg-white/3 px-6'
 							: 'border-white/10',
 					)}>
-					<AccordionTrigger className='py-5 text-left text-base font-medium text-white hover:no-underline'>
+					<AccordionTrigger
+						marker={markerNode}
+						className='group/faq py-5 text-left text-base font-medium text-white hover:no-underline'>
 						{faq.question}
 					</AccordionTrigger>
 					<AccordionContent className='pb-5 pr-8 text-base leading-8 text-slate-400'>
@@ -126,12 +172,15 @@ export function ContactSplit({
 	],
 	email,
 	form,
+	stepMark = 'icon',
 	layout = 'split',
 }: {
 	eyebrow?: string
 	title?: string
 	description?: string
-	steps?: { title: string; body: string }[]
+	steps?: { title: string; body: string; icon?: LucideIcon }[]
+	/** Whether each step is marked with its icon or its position in the list. */
+	stepMark?: 'icon' | 'number' | 'none'
 	/** Omitted renders no address at all, which is the default for the live site. */
 	email?: string
 	form?: React.ReactNode
@@ -168,7 +217,7 @@ export function ContactSplit({
 		<section className='px-6 pb-20 pt-36 sm:px-10 lg:px-16 lg:pt-44'>
 			<div
 				className={cn(
-					'mx-auto max-w-6xl gap-14',
+					'mx-auto w-full max-w-[var(--content-max,72rem)] gap-14',
 					stacked ? 'space-y-14' : 'grid lg:grid-cols-2',
 				)}>
 				<div
@@ -189,24 +238,35 @@ export function ContactSplit({
 							'mt-12',
 							stacked ? 'grid gap-8 text-left sm:grid-cols-3' : 'space-y-8',
 						)}>
-						{steps.map((step) => (
-							<div
-								key={step.title}
-								className={cn(
-									'flex gap-4',
-									stacked
-										? 'flex-col items-start'
-										: 'flex-col items-center sm:flex-row sm:items-start',
-								)}>
-								<span className='mt-1 flex size-10 shrink-0 items-center justify-center rounded-lg border border-brand/25 bg-brand/10'>
-									<Check className='size-4 text-brand' />
-								</span>
-								<div>
-									<p className='font-semibold text-white'>{step.title}</p>
-									<p className='mt-1 leading-7 text-slate-400'>{step.body}</p>
+						{steps.map((step, index) => {
+							const StepIcon = step.icon ?? Check
+							return (
+								<div
+									key={index}
+									className={cn(
+										'flex gap-4',
+										stacked
+											? 'flex-col items-start'
+											: 'flex-col items-center sm:flex-row sm:items-start',
+									)}>
+									{stepMark !== 'none' && (
+										<span className='mt-1 flex size-10 shrink-0 items-center justify-center rounded-lg border border-brand/25 bg-brand/10'>
+											{stepMark === 'number' ? (
+												<span className='font-display text-sm font-semibold text-brand'>
+													{index + 1}
+												</span>
+											) : (
+												<StepIcon className='size-4 text-brand' />
+											)}
+										</span>
+									)}
+									<div>
+										<p className='font-semibold text-white'>{step.title}</p>
+										<p className='mt-1 leading-7 text-slate-400'>{step.body}</p>
+									</div>
 								</div>
-							</div>
-						))}
+							)
+						})}
 					</div>
 					{mailLink}
 				</div>
@@ -273,9 +333,12 @@ export function PricingTiers({
 		name: string
 		price: string
 		blurb: string
-		features: string[]
+		features: (string | { text?: string; icon?: LucideIcon })[]
 		cta: string
 		href: string
+		icon?: LucideIcon
+		iconPosition?: IconSide
+		style?: ActionStyle
 		featured?: boolean
 	}[]
 	/** How each column is framed. */
@@ -297,7 +360,7 @@ export function PricingTiers({
 						'grid gap-px overflow-hidden rounded-xl border border-white/12 bg-white/12 lg:grid-cols-3',
 					design === 'banded' && 'grid gap-8 lg:grid-cols-3',
 				)}>
-				{tiers.map((tier) => {
+				{tiers.map((tier, index) => {
 					const body = (
 						<>
 							{tier.featured && design !== 'banded' && (
@@ -313,31 +376,37 @@ export function PricingTiers({
 							</p>
 							<p className='mt-4 leading-7 text-slate-400'>{tier.blurb}</p>
 							<ul className='mt-7 flex-1 space-y-3'>
-								{tier.features.map((feature) => (
-									<li key={feature} className='flex gap-3 text-slate-300'>
-										<Check className='mt-1 size-4 shrink-0 text-brand' />
-										<span className='leading-7'>{feature}</span>
+							{(tier.features ?? []).map((feature, index) => {
+								const text =
+									typeof feature === 'string' ? feature : (feature?.text ?? '')
+								const Glyph =
+									typeof feature === 'string' ? Check : (feature?.icon ?? Check)
+								return (
+									<li key={index} className='flex gap-3 text-slate-300'>
+										<Glyph className='mt-1 size-4 shrink-0 text-brand' />
+										<span className='leading-7'>{text}</span>
 									</li>
-								))}
-							</ul>
-							<Button
-								asChild
-								size='lg'
-								variant={tier.featured ? 'default' : 'outline'}
-								className={
-									tier.featured
-										? 'mt-8 bg-brand font-bold text-ink hover:bg-brand-strong'
-										: 'mt-8 border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white'
-								}>
-								<Link href={tier.href}>{tier.cta}</Link>
-							</Button>
+								)
+							})}
+						</ul>
+						<ActionButton
+							action={{
+								label: tier.cta,
+								href: tier.href,
+								icon: tier.icon,
+								iconPosition: tier.iconPosition,
+								style: tier.style,
+							}}
+							fallbackStyle={tier.featured ? 'primary' : 'outline'}
+							className='mt-8'
+						/>
 						</>
 					)
 
 					if (design === 'divided') {
 						return (
 							<div
-								key={tier.name}
+								key={index}
 								className={cn(
 									'flex flex-col bg-ink p-8',
 									tier.featured && 'bg-brand/8',
@@ -350,7 +419,7 @@ export function PricingTiers({
 					if (design === 'banded') {
 						return (
 							<div
-								key={tier.name}
+								key={index}
 								className={cn(
 									'flex flex-col rounded-xl border border-white/12 p-8',
 									tier.featured && 'border-t-4 border-t-brand',
@@ -362,7 +431,7 @@ export function PricingTiers({
 
 					return (
 						<GlassCard
-							key={tier.name}
+							key={index}
 							variant={tier.featured ? 'accent' : 'default'}
 							className='flex flex-col p-8'>
 							{body}
@@ -379,22 +448,42 @@ export function LeadCapture({
 	description = 'This is the supporting line. One field, one button, no page change.',
 	placeholder = 'you@company.com',
 	cta = 'Subscribe',
+	ctaIcon: CtaIcon = ArrowRight,
+	ctaIconPosition = 'after',
+	collect = 'email',
+	firstNamePlaceholder = 'First name',
+	lastNamePlaceholder = 'Last name',
 	design = 'card',
 }: {
 	title?: string
 	description?: string
 	placeholder?: string
 	cta?: string
+	ctaIcon?: LucideIcon
+	ctaIconPosition?: 'before' | 'after'
+	/** Which fields the form asks for. */
+	collect?: 'email' | 'name-email' | 'full-name-email'
+	firstNamePlaceholder?: string
+	lastNamePlaceholder?: string
 	/** How the capture block is framed. */
 	design?: 'card' | 'banner' | 'ruled'
 }) {
 	const [submitted, setSubmitted] = useState(false)
 	const [email, setEmail] = useState('')
+	const [firstName, setFirstName] = useState('')
+	const [lastName, setLastName] = useState('')
 	const [error, setError] = useState<string | null>(null)
 	const errorId = useId()
 
+	const wantsName = collect !== 'email'
+	const wantsLastName = collect === 'full-name-email'
+
 	const submit = (event: React.FormEvent) => {
 		event.preventDefault()
+		if (wantsName && !firstName.trim()) {
+			setError('Enter your name so we know who we are talking to.')
+			return
+		}
 		const value = email.trim()
 		if (!value) {
 			setError('Enter your email address so we know where to send it.')
@@ -435,6 +524,35 @@ export function LeadCapture({
 					) : (
 						/* noValidate so the browser's own bubble never fires over ours. */
 						<form noValidate onSubmit={submit} className='relative'>
+							{wantsName && (
+								<div
+									className={cn(
+										'mb-3 grid gap-3',
+										wantsLastName && 'sm:grid-cols-2',
+									)}>
+									<Input
+										value={firstName}
+										onChange={(event) => {
+											setFirstName(event.target.value)
+											if (error) setError(null)
+										}}
+										placeholder={firstNamePlaceholder}
+										aria-label={wantsLastName ? 'First name' : 'Name'}
+										autoComplete={wantsLastName ? 'given-name' : 'name'}
+										className='border-white/15 bg-ink/60 text-white placeholder:text-slate-500'
+									/>
+									{wantsLastName && (
+										<Input
+											value={lastName}
+											onChange={(event) => setLastName(event.target.value)}
+											placeholder={lastNamePlaceholder}
+											aria-label='Last name'
+											autoComplete='family-name'
+											className='border-white/15 bg-ink/60 text-white placeholder:text-slate-500'
+										/>
+									)}
+								</div>
+							)}
 							<div className='flex flex-col gap-3 sm:flex-row'>
 								<Input
 									type='email'
@@ -467,7 +585,9 @@ export function LeadCapture({
 								<Button
 									type='submit'
 									className='shrink-0 bg-brand font-bold text-ink hover:bg-brand-strong'>
-									{cta} <ArrowRight />
+									{CtaIcon && ctaIconPosition === 'before' && <CtaIcon />}
+									{cta}
+									{CtaIcon && ctaIconPosition !== 'before' && <CtaIcon />}
 								</Button>
 							</div>
 						</form>
@@ -525,6 +645,9 @@ export function SplitCta({
 		body: string
 		cta: string
 		href: string
+		icon?: LucideIcon
+		iconPosition?: IconSide
+		style?: ActionStyle
 		featured?: boolean
 	}[]
 	/** How the two paths are separated. */
@@ -541,29 +664,25 @@ export function SplitCta({
 						'grid divide-white/12 overflow-hidden rounded-xl border border-white/12 lg:grid-cols-2 lg:divide-x',
 					rows && 'divide-y divide-white/12 border-y border-white/12',
 				)}>
-				{paths.map((path) => {
+				{paths.map((path, index) => {
 					const button = (
-						<Button
-							asChild
-							size='lg'
-							variant={path.featured ? 'default' : 'outline'}
-							className={cn(
-								'w-fit shrink-0',
-								!rows && 'mt-8',
-								path.featured
-									? 'bg-brand font-bold text-ink hover:bg-brand-strong'
-									: 'border-white/20 bg-transparent text-slate-100 hover:bg-white/5 hover:text-white',
-							)}>
-							<Link href={path.href}>
-								{path.cta} <ArrowRight />
-							</Link>
-						</Button>
+						<ActionButton
+							action={{
+								label: path.cta,
+								href: path.href,
+								icon: path.icon,
+								iconPosition: path.iconPosition,
+								style: path.style,
+							}}
+							fallbackStyle={path.featured ? 'primary' : 'outline'}
+							className={cn('w-fit shrink-0', !rows && 'mt-8')}
+						/>
 					)
 
 					if (rows) {
 						return (
 							<div
-								key={path.title}
+								key={index}
 								className='flex flex-col gap-6 py-10 lg:flex-row lg:items-center lg:justify-between'>
 								<div className='max-w-2xl'>
 									<p className='eyebrow'>{path.eyebrow}</p>
@@ -593,7 +712,7 @@ export function SplitCta({
 					if (design === 'divided') {
 						return (
 							<div
-								key={path.title}
+								key={index}
 								className={cn(
 									'flex flex-col p-10',
 									path.featured && 'bg-brand/8',
@@ -605,7 +724,7 @@ export function SplitCta({
 
 					return (
 						<GlassCard
-							key={path.title}
+							key={index}
 							variant={path.featured ? 'accent' : 'default'}
 							className='flex flex-col p-10'>
 							{body}

@@ -1,4 +1,5 @@
-import { PageEditor } from '../page-editor'
+import { redirect } from 'next/navigation'
+import { LOCAL_SITE_ID } from '@/lib/builder/site-ids'
 
 export default async function BuilderPageRoute({
 	params,
@@ -6,5 +7,5 @@ export default async function BuilderPageRoute({
 	params: Promise<{ pageId: string }>
 }) {
 	const { pageId } = await params
-	return <PageEditor pageId={pageId} />
+	redirect(`/builder/sites/${LOCAL_SITE_ID}/pages/${pageId}`)
 }

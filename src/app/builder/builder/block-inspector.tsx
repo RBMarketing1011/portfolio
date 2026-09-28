@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
 	ArrowDown,
 	ArrowUp,
@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { isScalarList } from '@/lib/builder/hydrate'
+import { formulaName } from '@/lib/builder/ids'
 import { getSchema } from '@/lib/builder/schema'
 import {
 	clampLightness,
@@ -102,6 +103,7 @@ export function BlockInspector({
 				value={props[field.key]}
 				theme={theme}
 				siblings={props}
+				blockProps={props}
 				onChange={(value) => onPropChange(field.key, value)}
 			/>
 		))
@@ -450,6 +452,7 @@ function FieldControl({
 	theme,
 	hideHeader = false,
 	siblings,
+	blockProps,
 	onChange,
 }: {
 	field: Field
@@ -459,9 +462,39 @@ function FieldControl({
 	hideHeader?: boolean
 	/** The other props on the same block, for fields that mirror a sibling list. */
 	siblings?: Record<string, unknown>
+	/** The block's top-level props, which a row cannot reach through `siblings`. */
+	blockProps?: Record<string, unknown>
 	onChange: (value: unknown) => void
 }) {
 	const isSet = value !== undefined && value !== null && value !== ''
+	const inputRef = useRef<HTMLInputElement>(null)
+
+	// Formula variables are derived from the input labels, so nobody has to guess them.
+	const tokens = field.tokensFrom
+		? ((blockProps?.[field.tokensFrom] as unknown[]) ?? [])
+				.map((row, index) =>
+					formulaName((row as Record<string, unknown>)?.label, index),
+				)
+				.filter(Boolean)
+		: []
+
+	const insert = (token: string) => {
+		const el = inputRef.current
+		const text = (value as string) ?? ''
+		if (!el) {
+			onChange(`${text}${token}`)
+			return
+		}
+		const start = el.selectionStart ?? text.length
+		const end = el.selectionEnd ?? text.length
+		const next = text.slice(0, start) + token + text.slice(end)
+		onChange(next)
+		// Restore the caret after React writes the new value back in.
+		requestAnimationFrame(() => {
+			el.focus()
+			el.setSelectionRange(start + token.length, start + token.length)
+		})
+	}
 
 	const header = hideHeader ? null : (
 		<div className='flex items-center justify-between gap-2'>
@@ -485,6 +518,7 @@ function FieldControl({
 				value={value}
 				theme={theme}
 				siblings={siblings}
+				blockProps={blockProps}
 				onChange={onChange}
 				header={header}
 			/>
@@ -673,6 +707,7 @@ function FieldControl({
 			default:
 				return (
 					<Input
+						ref={inputRef}
 						id={`field-${field.key}`}
 						value={(value as string) ?? ''}
 						placeholder='Using the section default'
@@ -687,6 +722,39 @@ function FieldControl({
 		<div className='space-y-2'>
 			{header}
 			{control}
+			{field.tokensFrom && (
+				<div className='flex flex-wrap items-center gap-1'>
+					{tokens.length === 0 ? (
+						<span className='text-xs text-slate-500'>
+							Add an input above to get variables.
+						</span>
+					) : (
+						<>
+							{tokens.map((token) => (
+								<button
+									key={token}
+									type='button'
+									title={`Insert ${token}`}
+									onClick={() => insert(token)}
+									className='rounded border border-brand/30 bg-brand/10 px-1.5 py-0.5 font-mono text-[11px] text-brand transition-colors hover:border-brand/60 hover:bg-brand/20'>
+									{token}
+								</button>
+							))}
+							<span className='mx-1 h-3 w-px bg-white/15' />
+							{['(', ')', '+', '-', '*', '/'].map((op) => (
+								<button
+									key={op}
+									type='button'
+									title={`Insert ${op}`}
+									onClick={() => insert(op)}
+									className='w-6 rounded border border-white/12 bg-white/5 py-0.5 font-mono text-[11px] text-slate-300 transition-colors hover:border-white/30 hover:text-white'>
+									{op}
+								</button>
+							))}
+						</>
+					)}
+				</div>
+			)}
 			{field.hint && (
 				<p className='text-xs leading-5 text-slate-500'>{field.hint}</p>
 			)}
@@ -726,6 +794,7 @@ function ListControl({
 	value,
 	theme,
 	siblings,
+	blockProps,
 	onChange,
 	header,
 }: {
@@ -733,6 +802,7 @@ function ListControl({
 	value: unknown
 	theme: ThemeSettings
 	siblings?: Record<string, unknown>
+	blockProps?: Record<string, unknown>
 	onChange: (value: unknown) => void
 	header: React.ReactNode
 }) {
@@ -832,6 +902,7 @@ function ListControl({
 										theme={theme}
 										value={(row as Record<string, unknown>)?.[sub.key]}
 										siblings={row as Record<string, unknown>}
+										blockProps={blockProps}
 										onChange={(next) =>
 											setRow(index, {
 												...(row as Record<string, unknown>),

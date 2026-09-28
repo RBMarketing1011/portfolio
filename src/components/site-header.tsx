@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, ChevronDown, Menu } from 'lucide-react'
 import { Wordmark } from '@/components/brand'
+import { AccountLink } from '@/components/account-link'
+import { MobileAccountLinks } from '@/components/mobile-account-links'
 import { useHeaderOptions } from '@/components/header-options'
 import { Button } from '@/components/ui/button'
 import {
@@ -256,6 +258,8 @@ function DesktopNav() {
 				<Link href='/portfolio' className={plainLinkClass}>
 					Portfolio
 				</Link>
+
+				<AccountLink className={plainLinkClass} />
 			</div>
 		)
 	}
@@ -497,6 +501,10 @@ function DesktopNav() {
 						</div>
 					</NavigationMenuContent>
 				</NavigationMenuItem>
+
+				<NavigationMenuItem>
+					<AccountLink className={plainLinkClass} />
+				</NavigationMenuItem>
 			</NavigationMenuList>
 		</NavigationMenu>
 	)
@@ -614,11 +622,24 @@ function MobileNav() {
 						</Link>
 					</div>
 
+					<MobileAccountLinks
+						onNavigate={close}
+						className='flex items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium text-white transition-all outline-none hover:underline'
+					/>
+
 					<Button
 						asChild
 						className='mt-6 w-full bg-brand font-bold text-ink hover:bg-brand-strong'>
 						<Link href='/contact' onClick={close}>
 							Book An Assessment
+						</Link>
+					</Button>
+					<Button
+						asChild
+						variant='outline'
+						className='mt-3 w-full border-brand/40 bg-transparent font-semibold text-white hover:border-brand hover:bg-brand/10 hover:text-white'>
+						<Link href='/builder' onClick={close}>
+							Try The Builder
 						</Link>
 					</Button>
 				</div>
@@ -648,12 +669,21 @@ export default function SiteHeader({
 	/** How the fixed bar is shaped. */
 	design?: 'bar' | 'floating' | 'stacked'
 }) {
+	// Both sit in the same slot, so every header design picks them up together.
 	const cta = (
-		<Button
-			asChild
-			className='hidden whitespace-nowrap bg-brand font-bold text-ink hover:bg-brand-strong sm:inline-flex lg:hidden xl:inline-flex'>
-			<Link href='/contact'>Book An Assessment</Link>
-		</Button>
+		<>
+			<Button
+				asChild
+				className='hidden whitespace-nowrap bg-brand font-bold text-ink hover:bg-brand-strong sm:inline-flex lg:hidden xl:inline-flex'>
+				<Link href='/contact'>Book An Assessment</Link>
+			</Button>
+			<Button
+				asChild
+				variant='outline'
+				className='hidden whitespace-nowrap border-brand/40 bg-transparent font-semibold text-white hover:border-brand hover:bg-brand/10 hover:text-white sm:inline-flex lg:hidden xl:inline-flex'>
+				<Link href='/builder'>Try The Builder</Link>
+			</Button>
+		</>
 	)
 
 	if (design === 'floating') {

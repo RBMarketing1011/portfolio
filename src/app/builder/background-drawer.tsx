@@ -32,6 +32,7 @@ import {
 } from './theme-settings'
 
 const fills = [
+	{ id: 'global', label: 'Global' },
 	{ id: 'solid', label: 'Solid' },
 	{ id: 'gradient', label: 'Gradient' },
 	{ id: 'transparent', label: 'Transparent' },
@@ -154,75 +155,88 @@ function SurfaceFields({
 
 	return (
 		<div className='space-y-5'>
-			<Choices
-				label='Pattern'
-				options={patterns}
-				value={value.pattern}
-				onChange={(pattern) => set('pattern', pattern)}
-			/>
-			<div
-				className={cn(
-					'space-y-5',
-					value.pattern === 'none' && 'pointer-events-none opacity-40',
-				)}>
-				<AngleField
-					id={`${idPrefix}-pattern-angle`}
-					label='Pattern angle'
-					value={value.patternAngle}
-					onChange={(angle) => set('patternAngle', angle)}
-				/>
-				<TintField
-					id={`${idPrefix}-pattern-lightness`}
-					label='Pattern color'
-					value={value.patternColor}
-					theme={theme}
-					onChange={(patternColor) => set('patternColor', patternColor)}
-				/>
-			</div>
-
-			<div className='border-t border-white/10 pt-5'>
+			<div>
 				<Choices
 					label='Fill'
 					options={fills}
 					value={value.fill}
-					columns={3}
+					columns={2}
 					onChange={(fill) => set('fill', fill)}
 				/>
+				{value.fill === 'global' && (
+					<p className='mt-2 text-xs leading-5 text-slate-500'>
+						Paints nothing of its own. The one page background runs behind this,
+						unbroken, exactly as it does everywhere else.
+					</p>
+				)}
 			</div>
-			{value.fill === 'transparent' ? (
-				<p className='text-xs leading-5 text-slate-500'>
-					Shows whatever sits behind it, so the page background carries through.
-				</p>
-			) : value.fill === 'solid' ? (
-				<TintField
-					id={`${idPrefix}-color-lightness`}
-					label='Surface color'
-					value={value.color}
-					theme={theme}
-					onChange={(color) => set('color', color)}
-				/>
-			) : (
+
+			{value.fill !== 'global' && (
 				<>
-					<TintField
-						id={`${idPrefix}-from-lightness`}
-						label='Gradient from'
-						value={value.from}
-						theme={theme}
-						onChange={(from) => set('from', from)}
-					/>
-					<TintField
-						id={`${idPrefix}-to-lightness`}
-						label='Gradient to'
-						value={value.to}
-						theme={theme}
-						onChange={(to) => set('to', to)}
-					/>
-					<AngleField
-						id={`${idPrefix}-gradient-angle`}
-						label='Gradient angle'
-						value={value.gradientAngle}
-						onChange={(angle) => set('gradientAngle', angle)}
-					/>
+					{value.fill === 'transparent' ? (
+						<p className='text-xs leading-5 text-slate-500'>
+							No fill of its own, but it still carries the pattern below.
+						</p>
+					) : value.fill === 'solid' ? (
+						<TintField
+							id={`${idPrefix}-color-lightness`}
+							label='Surface color'
+							value={value.color}
+							theme={theme}
+							onChange={(color) => set('color', color)}
+						/>
+					) : (
+						<>
+							<TintField
+								id={`${idPrefix}-from-lightness`}
+								label='Gradient from'
+								value={value.from}
+								theme={theme}
+								onChange={(from) => set('from', from)}
+							/>
+							<TintField
+								id={`${idPrefix}-to-lightness`}
+								label='Gradient to'
+								value={value.to}
+								theme={theme}
+								onChange={(to) => set('to', to)}
+							/>
+							<AngleField
+								id={`${idPrefix}-gradient-angle`}
+								label='Gradient angle'
+								value={value.gradientAngle}
+								onChange={(angle) => set('gradientAngle', angle)}
+							/>
+						</>
+					)}
+
+					<div className='border-t border-white/10 pt-5'>
+						<Choices
+							label='Pattern'
+							options={patterns}
+							value={value.pattern}
+							onChange={(pattern) => set('pattern', pattern)}
+						/>
+					</div>
+					<div
+						className={cn(
+							'space-y-5',
+							value.pattern === 'none' && 'pointer-events-none opacity-40',
+						)}>
+						<AngleField
+							id={`${idPrefix}-pattern-angle`}
+							label='Pattern angle'
+							value={value.patternAngle}
+							onChange={(angle) => set('patternAngle', angle)}
+						/>
+						<TintField
+							id={`${idPrefix}-pattern-lightness`}
+							label='Pattern color'
+							value={value.patternColor}
+							theme={theme}
+							onChange={(patternColor) => set('patternColor', patternColor)}
+						/>
+					</div>
 				</>
 			)}
 		</div>

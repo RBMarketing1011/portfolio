@@ -3,10 +3,12 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { SlidersHorizontal } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { LOCAL_SITE_ID } from '@/lib/builder/site-ids'
 import type { Template } from '@/lib/builder/page-schema'
 import { BackgroundDrawer } from './background-drawer'
 import { readBackground, writeBackground } from './background-settings'
@@ -33,6 +35,7 @@ export function LibraryNav({
 	const pathname = usePathname()
 	const router = useRouter()
 	const params = useSearchParams()
+	const { data: session } = useSession()
 	const navRef = useRef<HTMLElement>(null)
 	// Viewport and theme carry across sections; the variant is per entry, so it does not.
 	const carried = new URLSearchParams(params.toString())
@@ -57,7 +60,17 @@ export function LibraryNav({
 	}, [pathname])
 
 	const sections = groups.filter((group) => group.kind === 'section')
-	const onPages = pathname.startsWith('/builder/pages')
+	const onPages =
+		pathname.startsWith('/builder/pages') ||
+		pathname.startsWith('/builder/sites')
+	const openSite = pathname.match(/^\/builder\/sites\/[^/]+/)?.[0]
+	// Stay inside whichever site is open. Otherwise the dashboard, but only when
+	// there is an account to show it for: signed out goes straight to the builder.
+	const pagesHref = openSite
+		? `${openSite}/pages`
+		: session
+			? '/builder/sites'
+			: `/builder/sites/${LOCAL_SITE_ID}/pages`
 	const [settingsSlug, setSettingsSlug] = useState<string | null>(null)
 
 	const renderGroups = (list: NavGroup[], showLabels: boolean) =>
@@ -119,7 +132,7 @@ export function LibraryNav({
 			<Tabs
 				value={onPages ? 'pages' : 'sections'}
 				onValueChange={(value) =>
-					router.push(value === 'pages' ? '/builder/pages' : '/builder')
+					router.push(value === 'pages' ? pagesHref : '/builder')
 				}
 				className='flex min-h-0 flex-1 flex-col gap-0'>
 				<TabsList className='h-auto w-full shrink-0 gap-4 rounded-none border-b border-white/10 bg-transparent px-4 pt-4'>

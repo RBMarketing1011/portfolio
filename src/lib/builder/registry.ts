@@ -10,6 +10,7 @@ import {
 	Breadcrumbs,
 	Callout,
 	Carousel,
+	CollectionPage,
 	CaseStudyCard,
 	CheckList,
 	Chips,
@@ -109,6 +110,7 @@ export const sectionRegistry: Record<string, AnySection> = {
 	masonry: Masonry,
 	carousel: Carousel,
 	marquee: Marquee,
+	'collection-page': CollectionPage,
 
 	'testimonial-card': TestimonialCard,
 	'case-study-card': CaseStudyCard,
