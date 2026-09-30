@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
-import { errorResponse, requireSiteOwner } from '@/lib/auth/guards'
+import { errorResponse, requireSitePermission } from '@/lib/auth/guards'
 import type { MediaEntry, SiteDoc } from '@/lib/builder/site-doc'
 
 export const runtime = 'nodejs'
@@ -19,7 +19,7 @@ type Params = { params: Promise<{ siteId: string }> }
 export async function POST(request: Request, { params }: Params) {
 	try {
 		const { siteId } = await params
-		const { site, db } = await requireSiteOwner(siteId)
+		const { site, db } = await requireSitePermission(siteId, 'media.upload')
 		const body = (await request.json()) as HandleUploadBody
 
 		const result = await handleUpload({

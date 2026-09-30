@@ -30,6 +30,38 @@ const removedUsers = await db
 	.collection('users')
 	.deleteMany({ _id: { $in: users.map((u) => u._id) } })
 
+// Accounts, roles, memberships and invitations all hang off a user. Deleting the
+// user without them leaves orphans that still satisfy a membership lookup.
+const liveUserIds = new Set(
+	(
+		await db
+			.collection('users')
+			.find({}, { projection: { _id: 1 } })
+			.toArray()
+	).map((u) => u._id.toString()),
+)
+
+const deadWorkspaces = (await db.collection('workspaces').find({}).toArray())
+	.filter((w) => !liveUserIds.has(w.ownerId))
+	.map((w) => w._id)
+
+if (deadWorkspaces.length) {
+	await db.collection('workspaces').deleteMany({ _id: { $in: deadWorkspaces } })
+	for (const name of ['workspaceRoles', 'workspaceMembers', 'workspaceInvites'])
+		await db
+			.collection(name)
+			.deleteMany({ workspaceId: { $in: deadWorkspaces } })
+	await db
+		.collection('sites')
+		.deleteMany({ workspaceId: { $in: deadWorkspaces } })
+}
+
+// A membership pointing at a user who no longer exists survives the sweep above
+// when the account itself is still someone else's.
+const removedMembers = await db
+	.collection('workspaceMembers')
+	.deleteMany({ userId: { $nin: [...liveUserIds] } })
+
 // A run that was interrupted between the two deletes leaves a site with no owner.
 const owners = new Set(
 	(
@@ -66,7 +98,7 @@ const stale = orphans.blobs.filter(
 if (stale.length) await del(stale.map((b) => b.url)).catch(() => {})
 
 console.log(
-	`removed ${removedUsers.deletedCount} test users, ${removedSites.deletedCount + ownerless.length} sites, ${stale.length} orphaned blobs`,
+	`removed ${removedUsers.deletedCount} test users, ${removedSites.deletedCount + ownerless.length} sites, ${deadWorkspaces.length} accounts, ${removedMembers.deletedCount} stray memberships, ${stale.length} orphaned blobs`,
 )
 
 await client.close()

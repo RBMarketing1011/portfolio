@@ -30,7 +30,8 @@ export default async function SectionsLayout({
 	const templates = await loadTemplates()
 	// Resolved here rather than with useSession: the nav renders during SSR, where
 	// a client provider higher up the tree is not something it can rely on.
-	const signedIn = Boolean((await auth())?.user?.id)
+	const session = await auth()
+	const signedIn = Boolean(session?.user?.id)
 
 	return (
 		<BuilderShell>
@@ -41,6 +42,7 @@ export default async function SectionsLayout({
 							groups={navGroups}
 							templates={templates}
 							signedIn={signedIn}
+							email={signedIn ? session?.user?.email : null}
 						/>
 					</Suspense>
 				</aside>

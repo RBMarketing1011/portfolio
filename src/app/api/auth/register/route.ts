@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { hash } from '@node-rs/argon2'
 import { z } from 'zod'
 import { getDb } from '@/lib/mongo'
+import { clientIp } from '@/lib/auth/rate-limit'
 import { verifyTurnstile } from '@/lib/turnstile'
 
 export const runtime = 'nodejs'
@@ -35,12 +36,9 @@ export async function POST(request: Request) {
 			{ status: 400 },
 		)
 
-	const clientIp =
-		request.headers.get('cf-connecting-ip') ??
-		request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-		null
-
-	if (!(await verifyTurnstile(parsed.data.token, clientIp, 'register')))
+	if (
+		!(await verifyTurnstile(parsed.data.token, clientIp(request), 'register'))
+	)
 		return NextResponse.json(
 			{ error: 'Verification failed. Please try again.' },
 			{ status: 403 },

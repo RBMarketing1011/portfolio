@@ -1,30 +1,39 @@
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { errorResponse, requireUserId } from '@/lib/auth/guards'
-import { getDb } from '@/lib/mongo'
+import { errorResponse, requirePermission } from '@/lib/auth/guards'
 import {
 	sitePayloadSchema,
+	slugifySite,
 	toSiteResponse,
 	type SiteDoc,
 } from '@/lib/builder/site-doc'
+import { newPreviewToken, uniqueSubdomain } from '@/lib/builder/site-slug'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
 	try {
-		const ownerId = await requireUserId()
-		const db = await getDb()
+		const workspaceId = new URL(request.url).searchParams.get('workspace')
+		const { db, workspace } = await requirePermission(
+			'projects.view',
+			workspaceId,
+		)
+
 		const docs = await db
 			.collection<SiteDoc>('sites')
-			.find({ ownerId })
+			.find({ workspaceId: workspace._id })
 			.sort({ updatedAt: -1 })
 			.toArray()
 
 		return NextResponse.json({
+			workspace: { id: workspace._id.toString(), name: workspace.name },
 			sites: docs.map((doc) => ({
 				id: doc._id.toString(),
 				name: doc.name,
+				subdomain: doc.subdomain,
+				customDomain: doc.customDomain ?? null,
+				status: doc.status ?? 'draft',
 				pages: doc.site?.pages?.length ?? 0,
 				updatedAt: doc.updatedAt.toISOString(),
 			})),
@@ -36,7 +45,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
 	try {
-		const ownerId = await requireUserId()
+		const workspaceId = new URL(request.url).searchParams.get('workspace')
+		const { db, workspace, userId } = await requirePermission(
+			'projects.create',
+			workspaceId,
+		)
 
 		let body: unknown
 		try {
@@ -52,10 +65,18 @@ export async function POST(request: Request) {
 				{ status: 400 },
 			)
 
+		const sites = db.collection<SiteDoc>('sites')
 		const now = new Date()
 		const doc: Omit<SiteDoc, '_id'> = {
-			ownerId,
+			workspaceId: workspace._id,
+			ownerId: userId,
 			name: parsed.data.name,
+			subdomain: await uniqueSubdomain(sites, slugifySite(parsed.data.name)),
+			customDomain: null,
+			customDomainVerifiedAt: null,
+			previewToken: newPreviewToken(),
+			status: 'draft',
+			publishedAt: null,
 			site: parsed.data.site,
 			look: parsed.data.look ?? {},
 			media: [],
@@ -64,7 +85,6 @@ export async function POST(request: Request) {
 			updatedAt: now,
 		}
 
-		const db = await getDb()
 		const result = await db.collection('sites').insertOne(doc)
 
 		return NextResponse.json(

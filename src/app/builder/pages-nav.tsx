@@ -60,6 +60,7 @@ import {
 import type { Block } from '@/lib/builder/types'
 import { globalBackground } from './background-settings'
 import { SaveButton } from './save-button'
+import { SiteSwitcher } from './site-switcher'
 import { AddPageDialog } from './builder/add-page-dialog'
 import { SectionPicker } from './builder/section-picker'
 import { ChromeSettingsDrawer } from './builder/chrome-settings-drawer'
@@ -101,6 +102,8 @@ export function PagesNav({
 	return (
 		<div className='flex min-h-0 flex-1 flex-col'>
 			<div className='space-y-3 px-4'>
+				<SiteSwitcher signedIn={signedIn} />
+
 				<Field label='Header'>
 					<div className='flex items-center gap-1.5'>
 						<Select

@@ -23,7 +23,61 @@ export const mediaEntrySchema = z.object({
 
 export type MediaEntry = z.infer<typeof mediaEntrySchema>
 
-/** What the client may send. `ownerId` and `rev` are the server's to set. */
+export const SITE_STATUSES = ['draft', 'live'] as const
+export type SiteStatus = (typeof SITE_STATUSES)[number]
+
+/** Labels the app itself answers on, or intends to. */
+export const RESERVED_SUBDOMAINS = new Set([
+	'www',
+	'app',
+	'api',
+	'admin',
+	'account',
+	'builder',
+	'preview',
+	'assets',
+	'cdn',
+	'static',
+	'mail',
+	'smtp',
+	'ftp',
+	'ns1',
+	'ns2',
+	'blog',
+	'docs',
+	'status',
+	'support',
+])
+
+/** Becomes a hostname label, so the DNS rules apply: no leading or trailing dash. */
+export const subdomainSchema = z
+	.string()
+	.min(3)
+	.max(63)
+	.regex(
+		/^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+		'Use lowercase letters, numbers and dashes.',
+	)
+	.refine((value) => !RESERVED_SUBDOMAINS.has(value), 'That name is reserved.')
+
+/** A bare hostname. No scheme, no path, no port. */
+export const customDomainSchema = z
+	.string()
+	.min(4)
+	.max(253)
+	.regex(
+		/^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/,
+		'Enter a domain like example.com.',
+	)
+
+export const slugifySite = (value: string) =>
+	value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 63)
+
+/** What the client may send. `workspaceId`, `status` and `rev` are the server's to set. */
 export const sitePayloadSchema = z.object({
 	name: z.string().min(1).max(120),
 	site: siteSchema,
@@ -36,10 +90,28 @@ export const sitePatchSchema = sitePayloadSchema.partial().extend({
 	rev: z.number().int().nonnegative(),
 })
 
+/** Project settings, which move on their own rather than riding the canvas save. */
+export const siteSettingsSchema = z.object({
+	name: z.string().min(1).max(120).optional(),
+	subdomain: subdomainSchema.optional(),
+	customDomain: customDomainSchema.nullable().optional(),
+	status: z.enum(SITE_STATUSES).optional(),
+})
+
 export type SiteDoc = {
 	_id: import('mongodb').ObjectId
+	workspaceId: import('mongodb').ObjectId
+	/** The user who created it. Kept for attribution; access comes from the workspace. */
 	ownerId: string
 	name: string
+	/** The hostname label under the app's own domain. Unique across every account. */
+	subdomain: string
+	customDomain: string | null
+	customDomainVerifiedAt: Date | null
+	/** Secret. Anyone holding it can view the project whether or not it is live. */
+	previewToken: string
+	status: SiteStatus
+	publishedAt: Date | null
 	site: z.infer<typeof siteSchema>
 	look: Record<string, unknown>
 	media: MediaEntry[]
@@ -52,6 +124,12 @@ export type SiteDoc = {
 export type SiteResponse = {
 	id: string
 	name: string
+	subdomain: string
+	customDomain: string | null
+	customDomainVerified: boolean
+	previewToken: string
+	status: SiteStatus
+	publishedAt: string | null
 	site: z.infer<typeof siteSchema>
 	look: Record<string, unknown>
 	media: MediaEntry[]
@@ -62,6 +140,12 @@ export type SiteResponse = {
 export const toSiteResponse = (doc: SiteDoc): SiteResponse => ({
 	id: doc._id.toString(),
 	name: doc.name,
+	subdomain: doc.subdomain,
+	customDomain: doc.customDomain ?? null,
+	customDomainVerified: Boolean(doc.customDomainVerifiedAt),
+	previewToken: doc.previewToken,
+	status: doc.status ?? 'draft',
+	publishedAt: doc.publishedAt?.toISOString() ?? null,
 	site: doc.site,
 	look: doc.look ?? {},
 	media: doc.media ?? [],

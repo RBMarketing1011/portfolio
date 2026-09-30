@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { del } from '@vercel/blob'
 import { z } from 'zod'
-import { errorResponse, requireSiteOwner } from '@/lib/auth/guards'
+import { errorResponse, requireSitePermission } from '@/lib/auth/guards'
 import type { MediaEntry, SiteDoc } from '@/lib/builder/site-doc'
 
 export const runtime = 'nodejs'
@@ -25,7 +25,7 @@ const registerSchema = z.object({
 export async function POST(request: Request, { params }: Params) {
 	try {
 		const { siteId } = await params
-		const { site, db } = await requireSiteOwner(siteId)
+		const { site, db } = await requireSitePermission(siteId, 'media.upload')
 
 		const parsed = registerSchema.safeParse(await request.json())
 		if (!parsed.success)
@@ -63,7 +63,7 @@ export async function POST(request: Request, { params }: Params) {
 export async function DELETE(request: Request, { params }: Params) {
 	try {
 		const { siteId } = await params
-		const { site, db } = await requireSiteOwner(siteId)
+		const { site, db } = await requireSitePermission(siteId, 'media.delete')
 
 		const id = new URL(request.url).searchParams.get('id')
 		const entry = (site.media ?? []).find((item) => item.id === id)

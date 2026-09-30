@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 
 export function PasswordForm() {
 	const [current, setCurrent] = useState('')
@@ -40,9 +40,8 @@ export function PasswordForm() {
 		<form onSubmit={submit} className='mt-8 max-w-sm space-y-5'>
 			<div className='space-y-2'>
 				<Label htmlFor='current'>Current password</Label>
-				<Input
+				<PasswordInput
 					id='current'
-					type='password'
 					autoComplete='current-password'
 					value={current}
 					onChange={(event) => setCurrent(event.target.value)}
@@ -51,9 +50,8 @@ export function PasswordForm() {
 			</div>
 			<div className='space-y-2'>
 				<Label htmlFor='next'>New password</Label>
-				<Input
+				<PasswordInput
 					id='next'
-					type='password'
 					autoComplete='new-password'
 					required
 					minLength={10}

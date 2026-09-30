@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
@@ -8,12 +8,12 @@ import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Turnstile, type TurnstileHandle } from '@/components/turnstile'
-import { useRef } from 'react'
 
 export function SignUpForm({ siteKey }: { siteKey?: string }) {
 	const router = useRouter()
-	const next = useSearchParams().get('next') ?? '/builder/sites'
+	const next = useSearchParams().get('next') ?? '/account'
 	const widget = useRef<TurnstileHandle>(null)
 
 	const [email, setEmail] = useState('')
@@ -49,9 +49,18 @@ export function SignUpForm({ siteKey }: { siteKey?: string }) {
 			return
 		}
 
-		// Straight in rather than bouncing them to a second form.
-		await signIn('credentials', { email, password, redirect: false })
+		// Straight in rather than bouncing them to a second form. If it does not
+		// take, say so instead of pushing them at a page that will reject them.
+		const signedIn = await signIn('credentials', {
+			email,
+			password,
+			redirect: false,
+		})
 		setBusy(false)
+		if (signedIn?.error) {
+			router.push(`/sign-in?next=${encodeURIComponent(next)}`)
+			return
+		}
 		router.push(next)
 		router.refresh()
 	}
@@ -72,9 +81,8 @@ export function SignUpForm({ siteKey }: { siteKey?: string }) {
 
 			<div className='space-y-2'>
 				<Label htmlFor='password'>Password</Label>
-				<Input
+				<PasswordInput
 					id='password'
-					type='password'
 					autoComplete='new-password'
 					required
 					minLength={10}
@@ -86,9 +94,8 @@ export function SignUpForm({ siteKey }: { siteKey?: string }) {
 
 			<div className='space-y-2'>
 				<Label htmlFor='confirm'>Confirm password</Label>
-				<Input
+				<PasswordInput
 					id='confirm'
-					type='password'
 					autoComplete='new-password'
 					required
 					value={confirm}

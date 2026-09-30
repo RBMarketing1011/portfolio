@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import { baseUrl } from '@/lib/app-url'
 import { site } from '@/lib/site'
 import { faqs, insights, projects, services } from '@/lib/site-content'
 
-export const baseUrl = `https://${site.domain.toLowerCase()}`
+export { baseUrl }
 
 /** Trailing slashes are stripped so canonicals, JSON-LD ids, and the sitemap agree. */
 export function absoluteUrl(path = '/') {

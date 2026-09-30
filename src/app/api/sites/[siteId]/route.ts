@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { del } from '@vercel/blob'
-import { errorResponse, requireSiteOwner } from '@/lib/auth/guards'
+import { errorResponse, requireSitePermission } from '@/lib/auth/guards'
 import {
 	sitePatchSchema,
 	toSiteResponse,
@@ -15,7 +15,7 @@ type Params = { params: Promise<{ siteId: string }> }
 export async function GET(_request: Request, { params }: Params) {
 	try {
 		const { siteId } = await params
-		const { site } = await requireSiteOwner(siteId)
+		const { site } = await requireSitePermission(siteId, 'projects.view')
 		return NextResponse.json({ site: toSiteResponse(site) })
 	} catch (error) {
 		return errorResponse(error)
@@ -25,7 +25,7 @@ export async function GET(_request: Request, { params }: Params) {
 export async function PATCH(request: Request, { params }: Params) {
 	try {
 		const { siteId } = await params
-		const { site, db } = await requireSiteOwner(siteId)
+		const { site, db } = await requireSitePermission(siteId, 'projects.edit')
 
 		let body: unknown
 		try {
@@ -80,7 +80,7 @@ export async function PATCH(request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
 	try {
 		const { siteId } = await params
-		const { site, db } = await requireSiteOwner(siteId)
+		const { site, db } = await requireSitePermission(siteId, 'projects.delete')
 
 		// Blobs outlive their document unless they go first.
 		const urls = (site.media ?? []).map((item) => item.url)

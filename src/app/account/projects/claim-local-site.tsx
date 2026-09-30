@@ -34,8 +34,13 @@ export function ClaimLocalSite({
 			await importLocalSite({ storageKey })
 			setPages(0)
 			await onImported()
-		} catch {
-			setError('That import did not finish. Your local copy is untouched.')
+		} catch (cause) {
+			setError(
+				cause instanceof Error && cause.message === 'media-incomplete'
+					? 'The project came across but some images did not. Your browser copy has been kept so you can try again.'
+					: 'That import did not finish. Your local copy is untouched.',
+			)
+			await onImported()
 		} finally {
 			setBusy(false)
 		}

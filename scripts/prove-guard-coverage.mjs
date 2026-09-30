@@ -10,16 +10,28 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const CASES = [
 	{
-		name: 'site ownership check in requireSiteOwner',
+		name: 'account membership check in requireSitePermission',
 		file: 'src/lib/auth/guards.ts',
-		find: `if (!site || site.ownerId !== ownerId)`,
-		replace: `if (!site)`,
+		find: `\tconst membership = await resolveMembership(userId, site.workspaceId)\n\tif (!membership) throw new HttpError(404, 'Site not found.')`,
+		replace: `\tconst membership = (await resolveMembership(userId, site.workspaceId)) ?? (await resolveMembership(userId))\n\tif (!membership) throw new HttpError(404, 'Site not found.')`,
+	},
+	{
+		name: 'role permission check in requireSitePermission',
+		file: 'src/lib/auth/guards.ts',
+		find: `\tif (!membership.permissions.has(permission))\n\t\tthrow new HttpError(403, 'Your role does not allow that.')\n\n\treturn { membership, site, db }`,
+		replace: `\tif (false)\n\t\tthrow new HttpError(403, 'Your role does not allow that.')\n\n\treturn { membership, site, db }`,
 	},
 	{
 		name: 'sign-in requirement in requireUserId',
 		file: 'src/lib/auth/guards.ts',
 		find: `if (!session?.user?.id) throw new HttpError(401, 'Sign in to continue.')\n\treturn session.user.id`,
 		replace: `if (!session?.user?.id) return 'anonymous'\n\treturn session.user.id`,
+	},
+	{
+		name: 'workspace scoping on the project list',
+		file: 'src/app/api/sites/route.ts',
+		find: `\t\t\t.find({ workspaceId: workspace._id })\n\t\t\t.sort({ updatedAt: -1 })`,
+		replace: `\t\t\t.find({})\n\t\t\t.sort({ updatedAt: -1 })`,
 	},
 	{
 		name: 'stale revision rejection on PATCH',
@@ -32,6 +44,12 @@ const CASES = [
 		file: 'src/app/api/sites/[siteId]/media/route.ts',
 		find: `if (!parsed.data.pathname.startsWith(\`sites/\${site._id.toString()}/\`))`,
 		replace: `if (false)`,
+	},
+	{
+		name: 'permission filter on stored role permissions',
+		file: 'src/lib/workspace/permissions.ts',
+		find: `(v): v is Permission => typeof v === 'string' && isPermission(v),`,
+		replace: `(v): v is Permission => typeof v === 'string',`,
 	},
 ]
 

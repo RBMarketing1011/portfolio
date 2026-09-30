@@ -8,16 +8,20 @@ import { Loader2, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Turnstile } from '@/components/turnstile'
+import { PasswordInput } from '@/components/ui/password-input'
 
-export function SignInForm({ siteKey }: { siteKey?: string }) {
+const MESSAGES: Record<string, string> = {
+	too_many_attempts:
+		'Too many sign-in attempts. Wait fifteen minutes, or use the email link below.',
+}
+
+export function SignInForm() {
 	const router = useRouter()
 	const params = useSearchParams()
-	const next = params.get('next') ?? '/builder/sites'
+	const next = params.get('next') ?? '/account'
 
 	const [email, setEmail] = useState('')
 	const [password, setPassword] = useState('')
-	const [token, setToken] = useState<string | null>(null)
 	const [busy, setBusy] = useState<'password' | 'link' | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [sent, setSent] = useState(false)
@@ -26,6 +30,7 @@ export function SignInForm({ siteKey }: { siteKey?: string }) {
 		event.preventDefault()
 		setBusy('password')
 		setError(null)
+
 		const result = await signIn('credentials', {
 			email,
 			password,
@@ -33,7 +38,10 @@ export function SignInForm({ siteKey }: { siteKey?: string }) {
 		})
 		setBusy(null)
 		if (result?.error) {
-			setError('That email and password combination did not work.')
+			setError(
+				MESSAGES[result.code ?? ''] ??
+					'That email and password combination did not work.',
+			)
 			return
 		}
 		router.push(next)
@@ -90,18 +98,13 @@ export function SignInForm({ siteKey }: { siteKey?: string }) {
 
 			<div className='space-y-2'>
 				<Label htmlFor='password'>Password</Label>
-				<Input
+				<PasswordInput
 					id='password'
-					type='password'
 					autoComplete='current-password'
 					value={password}
 					onChange={(event) => setPassword(event.target.value)}
 				/>
 			</div>
-
-			{siteKey && (
-				<Turnstile siteKey={siteKey} action='signin' onToken={setToken} />
-			)}
 
 			{error && <p className='text-sm text-destructive'>{error}</p>}
 
@@ -135,9 +138,6 @@ export function SignInForm({ siteKey }: { siteKey?: string }) {
 					Create one
 				</Link>
 			</p>
-			{/* Token is collected for parity with the other forms; Auth.js verifies
-			    the credentials themselves server-side. */}
-			<input type='hidden' name='token' value={token ?? ''} />
 		</form>
 	)
 }

@@ -52,6 +52,7 @@ export async function importLocalSite({
 	)
 	const { upload } = await import('@vercel/blob/client')
 	const remap = new Map<string, string>()
+	let failed = 0
 
 	for (const item of library) {
 		if (!isDataUrl(item.src)) continue
@@ -75,6 +76,8 @@ export async function importLocalSite({
 		if (registered.ok) {
 			const { media } = await registered.json()
 			remap.set(item.id, media.id)
+		} else {
+			failed += 1
 		}
 	}
 
@@ -90,6 +93,10 @@ export async function importLocalSite({
 			body: JSON.stringify({ site: JSON.parse(text), rev: site.rev }),
 		})
 	}
+
+	// An image that did not make it would be deleted here with no way back, and
+	// the block that used it would point at an id that no longer resolves.
+	if (failed) throw new Error('media-incomplete')
 
 	window.localStorage.removeItem(storageKey)
 	window.localStorage.removeItem(LOOK_KEY)

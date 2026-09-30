@@ -104,7 +104,7 @@ export function SaveButton({
 							</DialogHeader>
 							<DialogFooter>
 								<Button variant='outline' asChild>
-									<Link href='/builder/sites'>My sites</Link>
+									<Link href='/account/projects'>All projects</Link>
 								</Button>
 								<Button
 									onClick={() => setOpen(false)}

@@ -33,7 +33,7 @@ export function AccountLink({ className }: { className?: string }) {
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align='end' className='w-52 border-white/10'>
 				<DropdownMenuItem asChild>
-					<Link href='/builder/sites' className='cursor-pointer'>
+					<Link href='/account/projects' className='cursor-pointer'>
 						<LayoutGrid className='size-3.5' /> My sites
 					</Link>
 				</DropdownMenuItem>

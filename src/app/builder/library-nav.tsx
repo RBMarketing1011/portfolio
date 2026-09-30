@@ -3,12 +3,13 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, SlidersHorizontal } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { LOCAL_SITE_ID } from '@/lib/builder/site-ids'
 import type { Template } from '@/lib/builder/page-schema'
+import { AccountMenu } from './account-menu'
 import { BackgroundDrawer } from './background-drawer'
 import { readBackground, writeBackground } from './background-settings'
 import { readSettings } from './theme-settings'
@@ -28,10 +29,12 @@ export function LibraryNav({
 	groups,
 	templates,
 	signedIn = false,
+	email = null,
 }: {
 	groups: NavGroup[]
 	templates: Template[]
 	signedIn?: boolean
+	email?: string | null
 }) {
 	const pathname = usePathname()
 	const router = useRouter()
@@ -64,12 +67,12 @@ export function LibraryNav({
 		pathname.startsWith('/builder/pages') ||
 		pathname.startsWith('/builder/sites')
 	const openSite = pathname.match(/^\/builder\/sites\/[^/]+/)?.[0]
-	// Stay inside whichever site is open. Otherwise the dashboard, but only when
-	// there is an account to show it for: signed out goes straight to the builder.
+	// Stay inside whichever site is open. Otherwise the projects list, but only
+	// when there is an account to show it for: signed out goes to the builder.
 	const pagesHref = openSite
 		? `${openSite}/pages`
 		: signedIn
-			? '/builder/sites'
+			? '/account/projects'
 			: `/builder/sites/${LOCAL_SITE_ID}/pages`
 	const [settingsSlug, setSettingsSlug] = useState<string | null>(null)
 
@@ -124,6 +127,51 @@ export function LibraryNav({
 			</div>
 		))
 
+	// Inside a project the sidebar is the editor and nothing else. The section
+	// library is a shop window for the public site, not a tool you work in.
+	if (openSite)
+		return (
+			<nav aria-label='Builder' className='flex min-h-0 flex-1 flex-col'>
+				<div className='border-b border-white/10 px-4 py-3'>
+					<Link
+						href={
+							signedIn
+								? `/account/projects/${openSite.split('/').pop()}`
+								: '/builder'
+						}
+						className='flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white'>
+						<ChevronLeft className='size-4 shrink-0' />
+						{signedIn ? 'Project' : 'Section library'}
+					</Link>
+				</div>
+
+				<div className='flex min-h-0 flex-1 flex-col pt-4'>
+					<PagesNav templates={templates} signedIn={signedIn} />
+				</div>
+
+				<div className='shrink-0 border-t border-white/10 p-2'>
+					<AccountMenu email={email} />
+				</div>
+
+				<BackgroundDrawer
+					slug={settingsSlug ?? ''}
+					open={settingsSlug !== null}
+					onOpenChange={(next) => !next && setSettingsSlug(null)}
+					settings={readBackground(params)}
+					theme={readSettings(params)}
+					onChange={(next) => {
+						const merged = writeBackground(
+							new URLSearchParams(params.toString()),
+							next,
+						)
+						router.replace(`${pathname}?${merged.toString()}`, {
+							scroll: false,
+						})
+					}}
+				/>
+			</nav>
+		)
+
 	return (
 		<nav
 			ref={navRef}
@@ -139,9 +187,12 @@ export function LibraryNav({
 					<TabsTrigger value='sections' className={tabClass}>
 						Sections
 					</TabsTrigger>
-					<TabsTrigger value='pages' className={tabClass}>
-						Builder
-					</TabsTrigger>
+					{/* Signed in, "the builder" is a project in the backend, not a tab. */}
+					{!signedIn && (
+						<TabsTrigger value='pages' className={tabClass}>
+							Builder
+						</TabsTrigger>
+					)}
 				</TabsList>
 
 				<TabsContent value='sections' className='min-h-0 flex-1'>
@@ -149,12 +200,18 @@ export function LibraryNav({
 						<div className='space-y-6 p-4'>{renderGroups(sections, true)}</div>
 					</ScrollArea>
 				</TabsContent>
-				<TabsContent
-					value='pages'
-					className='flex min-h-0 flex-1 flex-col pt-4'>
-					<PagesNav templates={templates} signedIn={signedIn} />
-				</TabsContent>
+				{!signedIn && (
+					<TabsContent
+						value='pages'
+						className='flex min-h-0 flex-1 flex-col pt-4'>
+						<PagesNav templates={templates} signedIn={signedIn} />
+					</TabsContent>
+				)}
 			</Tabs>
+
+			<div className='shrink-0 border-t border-white/10 p-2'>
+				<AccountMenu email={email} />
+			</div>
 
 			<BackgroundDrawer
 				slug={settingsSlug ?? ''}

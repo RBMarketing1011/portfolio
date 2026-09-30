@@ -18,7 +18,7 @@ export function SiteLoadError({ message }: { message: string }) {
 				<Button
 					asChild
 					className='mt-8 bg-brand font-bold text-ink hover:bg-brand-strong'>
-					<Link href='/builder/sites'>Back to my sites</Link>
+					<Link href='/account/projects'>Back to projects</Link>
 				</Button>
 			</div>
 		</div>
