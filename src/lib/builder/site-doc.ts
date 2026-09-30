@@ -98,7 +98,11 @@ export const siteSettingsSchema = z.object({
 	status: z.enum(SITE_STATUSES).optional(),
 })
 
-export type DnsRecord = { type: 'A' | 'CNAME' | 'TXT'; name: string; value: string }
+export type DnsRecord = {
+	type: 'A' | 'CNAME' | 'TXT'
+	name: string
+	value: string
+}
 
 export type SiteDoc = {
 	_id: import('mongodb').ObjectId

@@ -58,7 +58,10 @@ async function signUpAndIn(email, password) {
 const results = []
 const record = (name, pass, detail = '') => results.push({ name, pass, detail })
 
-const owner = await signUpAndIn(`e2e_dom_${rand()}@example.com`, 'password-dom-0000')
+const owner = await signUpAndIn(
+	`e2e_dom_${rand()}@example.com`,
+	'password-dom-0000',
+)
 const created = await owner.call('/api/sites', {
 	method: 'POST',
 	headers: { 'Content-Type': 'application/json' },
@@ -107,7 +110,11 @@ const junk = await owner.call(`/api/sites/${site.id}/settings`, {
 	headers: { 'Content-Type': 'application/json' },
 	body: JSON.stringify({ customDomain: 'not a domain' }),
 })
-record('a malformed domain is rejected', junk.status === 400, `got ${junk.status}`)
+record(
+	'a malformed domain is rejected',
+	junk.status === 400,
+	`got ${junk.status}`,
+)
 
 // The core rule, checked at the database level so it holds regardless of what
 // Vercel says: a domain that is not verified must not serve.
@@ -157,7 +164,10 @@ record(
 	'404 expected',
 )
 
-await sites.updateOne({ _id: id }, { $set: { customDomainVerifiedAt: new Date() } })
+await sites.updateOne(
+	{ _id: id },
+	{ $set: { customDomainVerifiedAt: new Date() } },
+)
 record(
 	'a verified domain serves the project',
 	(await asHost(domain)) === 200,
@@ -195,28 +205,30 @@ record(
 )
 
 // The verify endpoint is a publish right, not an edit right.
-const viewerRole = await client.db().collection('workspaceRoles').insertOne({
-	workspaceId: (
-		await client
-			.db()
-			.collection('sites')
-			.findOne({ _id: id })
-	).workspaceId,
-	name: `Editor ${rand()}`,
-	permissions: ['projects.view', 'projects.edit'],
-	system: false,
-	createdAt: new Date(),
-})
+const viewerRole = await client
+	.db()
+	.collection('workspaceRoles')
+	.insertOne({
+		workspaceId: (await client.db().collection('sites').findOne({ _id: id }))
+			.workspaceId,
+		name: `Editor ${rand()}`,
+		permissions: ['projects.view', 'projects.edit'],
+		system: false,
+		createdAt: new Date(),
+	})
 const theirUser = await client
 	.db()
 	.collection('users')
 	.findOne({ email: otherEmail })
-await client.db().collection('workspaceMembers').insertOne({
-	workspaceId: (await sites.findOne({ _id: id })).workspaceId,
-	userId: theirUser._id.toString(),
-	roleId: viewerRole.insertedId,
-	createdAt: new Date(),
-})
+await client
+	.db()
+	.collection('workspaceMembers')
+	.insertOne({
+		workspaceId: (await sites.findOne({ _id: id })).workspaceId,
+		userId: theirUser._id.toString(),
+		roleId: viewerRole.insertedId,
+		createdAt: new Date(),
+	})
 await other.call('/api/account/workspace', {
 	method: 'POST',
 	headers: { 'Content-Type': 'application/json' },

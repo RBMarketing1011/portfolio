@@ -386,7 +386,9 @@ export function ProjectSettings({
 										</Button>
 										{checkedAt && (
 											<span>
-												{misconfigured ? 'Not resolving here yet' : 'DNS looks right'}
+												{misconfigured
+													? 'Not resolving here yet'
+													: 'DNS looks right'}
 												{' · checked '}
 												{new Date(checkedAt).toLocaleTimeString()}
 											</span>

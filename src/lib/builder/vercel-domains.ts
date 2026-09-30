@@ -144,10 +144,10 @@ const challengeRecords = (domain: ProjectDomain | null): DnsRecord[] =>
 export async function attachDomain(domain: string): Promise<DomainStatus> {
 	let added: ProjectDomain | null = null
 	try {
-		added = await call<ProjectDomain>(
-			`/v10/projects/${projectId}/domains`,
-			{ method: 'POST', body: JSON.stringify({ name: domain }) },
-		)
+		added = await call<ProjectDomain>(`/v10/projects/${projectId}/domains`, {
+			method: 'POST',
+			body: JSON.stringify({ name: domain }),
+		})
 	} catch (error) {
 		// Already on this project is success; already on someone else's is not.
 		if (
@@ -170,7 +170,8 @@ export async function detachDomain(domain: string) {
 		})
 	} catch (error) {
 		// A domain that is already gone is the state we wanted.
-		if (!(error instanceof VercelDomainError && error.status === 404)) throw error
+		if (!(error instanceof VercelDomainError && error.status === 404))
+			throw error
 	}
 }
 
@@ -191,9 +192,9 @@ export async function checkDomain(domain: string): Promise<DomainStatus> {
 		).catch(() => null)
 	}
 
-	const config = await call<DomainConfig>(
-		`/v6/domains/${domain}/config`,
-	).catch(() => null)
+	const config = await call<DomainConfig>(`/v6/domains/${domain}/config`).catch(
+		() => null,
+	)
 
 	return statusFrom(domain, project, config)
 }
