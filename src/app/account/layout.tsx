@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { listMemberships } from '@/lib/workspace'
 import { currentMembership } from '@/lib/workspace/current'
-import { EnvironmentBadge } from '@/components/environment-badge'
 import { AccountShell } from './account-shell'
 import type { NavItem } from './account-nav'
 
@@ -44,17 +43,14 @@ export default async function AccountLayout({
 	]
 
 	return (
-		<>
-			<AccountShell
-				items={items}
-				accountName={membership.workspace.name}
-				accounts={accounts}
-				currentAccountId={membership.workspace._id.toString()}
-				email={session.user.email ?? 'Account'}
-				roleName={membership.isOwner ? 'Account owner' : membership.role.name}>
-				{children}
-			</AccountShell>
-			<EnvironmentBadge />
-		</>
+		<AccountShell
+			items={items}
+			accountName={membership.workspace.name}
+			accounts={accounts}
+			currentAccountId={membership.workspace._id.toString()}
+			email={session.user.email ?? 'Account'}
+			roleName={membership.isOwner ? 'Account owner' : membership.role.name}>
+			{children}
+		</AccountShell>
 	)
 }
