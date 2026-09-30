@@ -45,7 +45,10 @@ export function ProfileNameForm({ name }: { name: string }) {
 				/>
 			</div>
 			{note && (
-				<p className={note.ok ? 'text-sm text-brand' : 'text-sm text-destructive'}>
+				<p
+					className={
+						note.ok ? 'text-sm text-brand' : 'text-sm text-destructive'
+					}>
 					{note.text}
 				</p>
 			)}

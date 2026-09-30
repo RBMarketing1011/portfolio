@@ -78,7 +78,9 @@ export function AccountSettings({
 				<p className='mt-2 leading-7 text-slate-400'>
 					Settings for this account and everything in it. Your own name, email
 					and password live on your{' '}
-					<a href='/account/profile' className='text-brand hover:text-brand-strong'>
+					<a
+						href='/account/profile'
+						className='text-brand hover:text-brand-strong'>
 						profile
 					</a>
 					.

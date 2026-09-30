@@ -147,7 +147,10 @@ for (const site of sites) {
 	if (Object.keys(patch).length) {
 		await db
 			.collection('sites')
-			.updateOne({ _id: new ObjectId(site._id) }, { $set: patch, $unset: { slug: '' } })
+			.updateOne(
+				{ _id: new ObjectId(site._id) },
+				{ $set: patch, $unset: { slug: '' } },
+			)
 		sitesMoved += 1
 	}
 }

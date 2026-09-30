@@ -48,13 +48,20 @@ const { csrfToken } = await (await session.call('/api/auth/csrf')).json()
 await session.call('/api/auth/callback/credentials', {
 	method: 'POST',
 	headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-	body: new URLSearchParams({ email, password: 'password-env-0000', csrfToken }),
+	body: new URLSearchParams({
+		email,
+		password: 'password-env-0000',
+		csrfToken,
+	}),
 })
 
 const created = await session.call('/api/sites', {
 	method: 'POST',
 	headers: { 'Content-Type': 'application/json' },
-	body: JSON.stringify({ name: `Env ${rand()}`, site: { version: 1, pages: [] } }),
+	body: JSON.stringify({
+		name: `Env ${rand()}`,
+		site: { version: 1, pages: [] },
+	}),
 })
 const { site } = await created.json()
 
@@ -84,8 +91,7 @@ record(
 const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text()
 record(
 	'the sitemap uses this deployment as its base',
-	sitemap.includes(BASE.replace(/\/$/, '')) ||
-		APP_HOST === 'reynoldsbuilt.dev',
+	sitemap.includes(BASE.replace(/\/$/, '')) || APP_HOST === 'reynoldsbuilt.dev',
 	sitemap.match(/<loc>([^<]*)<\/loc>/)?.[1] ?? 'no loc',
 )
 

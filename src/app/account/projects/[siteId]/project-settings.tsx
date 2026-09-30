@@ -172,8 +172,8 @@ export function ProjectSettings({
 					<Link2 className='size-4 text-slate-500' /> Share a preview
 				</h2>
 				<p className='mt-1 text-sm leading-6 text-slate-400'>
-					Works whether or not the project is live, and needs no account. Send it
-					to anyone you want an opinion from.
+					Works whether or not the project is live, and needs no account. Send
+					it to anyone you want an opinion from.
 				</p>
 				<CopyField value={previewUrl} href={previewPath} />
 				{can.edit && (
@@ -220,7 +220,10 @@ export function ProjectSettings({
 						</div>
 						<Button
 							onClick={() =>
-								patch({ status: status === 'live' ? 'draft' : 'live' }, 'status')
+								patch(
+									{ status: status === 'live' ? 'draft' : 'live' },
+									'status',
+								)
 							}
 							disabled={busy !== null}
 							className={
@@ -274,7 +277,8 @@ export function ProjectSettings({
 						{domain ? (
 							verified ? (
 								<p className='flex items-center gap-1.5 text-xs text-brand'>
-									<Check className='size-3' /> Verified and serving this project.
+									<Check className='size-3' /> Verified and serving this
+									project.
 								</p>
 							) : (
 								<div className='rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
@@ -299,7 +303,8 @@ export function ProjectSettings({
 									patch({ customDomain: domain.trim() || null }, 'domain')
 								}
 								disabled={
-									busy !== null || domain.trim() === (project.customDomain ?? '')
+									busy !== null ||
+									domain.trim() === (project.customDomain ?? '')
 								}
 								className='bg-brand font-bold text-ink hover:bg-brand-strong'>
 								{busy === 'domain' && <Loader2 className='animate-spin' />}
@@ -352,7 +357,11 @@ export function ProjectSettings({
 						onClick={remove}
 						disabled={busy !== null}
 						className='mt-4 border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10'>
-						{busy === 'delete' ? <Loader2 className='animate-spin' /> : <Trash2 />}
+						{busy === 'delete' ? (
+							<Loader2 className='animate-spin' />
+						) : (
+							<Trash2 />
+						)}
 						Delete project
 					</Button>
 				</section>
@@ -380,7 +389,11 @@ function CopyField({ value, href }: { value: string; href: string }) {
 					setTimeout(() => setCopied(false), 2000)
 				}}
 				className='flex shrink-0 items-center gap-1.5 rounded-md bg-white/5 px-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10'>
-				{copied ? <Check className='size-3.5' /> : <Copy className='size-3.5' />}
+				{copied ? (
+					<Check className='size-3.5' />
+				) : (
+					<Copy className='size-3.5' />
+				)}
 				{copied ? 'Copied' : 'Copy'}
 			</button>
 			<a

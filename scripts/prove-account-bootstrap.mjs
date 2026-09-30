@@ -92,7 +92,9 @@ for (let attempt = 1; attempt <= 5; attempt += 1) {
 		.countDocuments({ userId: user._id.toString() })
 	const roles = await db.collection('workspaceRoles').countDocuments({
 		workspaceId: (
-			await db.collection('workspaces').findOne({ ownerId: user._id.toString() })
+			await db
+				.collection('workspaces')
+				.findOne({ ownerId: user._id.toString() })
 		)._id,
 	})
 	record(

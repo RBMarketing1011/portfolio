@@ -18,12 +18,10 @@ export async function generateMetadata({
 	const membership = await currentMembership()
 	if (!membership) return { title: 'Project' }
 
-	const doc = await membership.db
-		.collection<SiteDoc>('sites')
-		.findOne({
-			_id: new ObjectId(siteId),
-			workspaceId: membership.workspace._id,
-		})
+	const doc = await membership.db.collection<SiteDoc>('sites').findOne({
+		_id: new ObjectId(siteId),
+		workspaceId: membership.workspace._id,
+	})
 
 	return { title: doc?.name ?? 'Project' }
 }

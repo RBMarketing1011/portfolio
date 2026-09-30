@@ -77,9 +77,7 @@ function asHost(path, host) {
 				response.on('data', (chunk) => {
 					body += chunk
 				})
-				response.on('end', () =>
-					resolve({ status: response.statusCode, body }),
-				)
+				response.on('end', () => resolve({ status: response.statusCode, body }))
 			},
 		)
 		request.on('error', reject)
@@ -230,7 +228,10 @@ record(
 
 // Hostnames are global. Nobody may take one that is in use, or point a project
 // at the app's own domain.
-const other = await signUpAndIn(`e2e_host2_${rand()}@example.com`, 'password-host-1111')
+const other = await signUpAndIn(
+	`e2e_host2_${rand()}@example.com`,
+	'password-host-1111',
+)
 const theirs = await other.call('/api/sites', {
 	method: 'POST',
 	headers: { 'Content-Type': 'application/json' },
@@ -245,7 +246,7 @@ const steal = await other.call(`/api/sites/${theirSite.id}/settings`, {
 })
 const { site: afterSteal } = await steal.json()
 record(
-	"another account cannot take a subdomain already in use",
+	'another account cannot take a subdomain already in use',
 	afterSteal.subdomain !== rotatedSite.subdomain,
 	afterSteal.subdomain,
 )
@@ -283,10 +284,7 @@ await client.connect()
 await client
 	.db()
 	.collection('sites')
-	.updateOne(
-		{ customDomain: null, _id: { $exists: true } },
-		{ $set: {} },
-	)
+	.updateOne({ customDomain: null, _id: { $exists: true } }, { $set: {} })
 	.catch(() => {})
 
 // An unverified custom domain must not serve anything, or anyone could point a
