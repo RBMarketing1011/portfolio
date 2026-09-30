@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { RenderedSite } from '@/components/rendered-site'
-import { liveSiteByHost } from '@/lib/builder/public-site'
+import { SiteInactive } from '@/components/site-inactive'
+import { appHost } from '@/lib/app-url'
+import { resolveHost } from '@/lib/builder/public-site'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +12,10 @@ export async function generateMetadata({
 	params: Promise<{ label: string }>
 }) {
 	const { label } = await params
-	const project = await liveSiteByHost({ subdomain: label })
-	return { title: project?.name ?? 'Not found' }
+	const found = await resolveHost({ subdomain: label })
+	return found.state === 'live'
+		? { title: found.site.name }
+		: { title: 'Not live', robots: { index: false, follow: false } }
 }
 
 export default async function HostedSubdomainPage({
@@ -20,14 +24,17 @@ export default async function HostedSubdomainPage({
 	params: Promise<{ label: string; slug?: string[] }>
 }) {
 	const { label, slug } = await params
-	const project = await liveSiteByHost({ subdomain: label })
-	if (!project) notFound()
+	const found = await resolveHost({ subdomain: label })
+
+	if (found.state === 'unknown') notFound()
+	if (found.state === 'inactive')
+		return <SiteInactive host={`${label}.${appHost}`} />
 
 	return (
 		<RenderedSite
-			site={project.site}
-			look={project.look}
-			media={project.media}
+			site={found.site.site}
+			look={found.site.look}
+			media={found.site.media}
 			slug={slug}
 		/>
 	)

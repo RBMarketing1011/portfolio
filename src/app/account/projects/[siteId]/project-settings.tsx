@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
 	Check,
+	ChevronRight,
 	Copy,
 	ExternalLink,
 	Globe,
@@ -75,6 +76,9 @@ export function ProjectSettings({
 
 	const previewPath = `/p/${token}`
 	const previewUrl = `${origin}${previewPath}`
+	// A verified domain on a live project is the address people actually use, so
+	// the subdomain stops being editable rather than quietly diverging from it.
+	const domainTakesOver = Boolean(domain) && verified && status === 'live'
 	const liveUrl =
 		domain && verified
 			? `https://${domain}`
@@ -127,6 +131,32 @@ export function ProjectSettings({
 		const payload = await response.json()
 		absorb(payload.site)
 		setPending(payload.pending)
+		router.refresh()
+	}
+
+	const removeDomain = async () => {
+		if (
+			!confirm(
+				`Stop serving this project on ${project.customDomain}? It will answer on its ${appHost} address instead.`,
+			)
+		)
+			return
+		setBusy('remove-domain')
+		setError(null)
+		const response = await fetch(`/api/sites/${project.id}/settings`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ customDomain: null }),
+		})
+		setBusy(null)
+		if (!response.ok) {
+			const payload = await response.json().catch(() => ({}))
+			setError(payload.error ?? 'Could not remove that domain.')
+			return
+		}
+		const { site } = await response.json()
+		absorb(site)
+		setPending(null)
 		router.refresh()
 	}
 
@@ -274,10 +304,16 @@ export function ProjectSettings({
 
 					<div className='space-y-2 border-t border-white/10 pt-5'>
 						<Label htmlFor='project-subdomain'>Address</Label>
-						<div className='flex items-stretch'>
+						<div
+							className={
+								domainTakesOver
+									? 'flex items-stretch opacity-50'
+									: 'flex items-stretch'
+							}>
 							<Input
 								id='project-subdomain'
 								value={subdomain}
+								disabled={domainTakesOver}
 								onChange={(event) => setSubdomain(event.target.value)}
 								className='rounded-r-none'
 							/>
@@ -285,21 +321,30 @@ export function ProjectSettings({
 								.{appHost}
 							</span>
 						</div>
-						<p className='text-xs text-slate-500'>
-							Every project gets one. Taken names get a number.
-						</p>
-						<div className='flex items-center gap-3 pt-1'>
-							<Button
-								onClick={() => patch({ subdomain }, 'subdomain')}
-								disabled={busy !== null || subdomain === project.subdomain}
-								className='bg-brand font-bold text-ink hover:bg-brand-strong'>
-								{busy === 'subdomain' && <Loader2 className='animate-spin' />}
-								Save address
-							</Button>
-							{saved === 'subdomain' && (
-								<span className='text-sm text-slate-500'>Saved</span>
-							)}
-						</div>
+						{domainTakesOver ? (
+							<p className='text-xs text-slate-500'>
+								{domain} is serving this project, so this address is locked.
+								Remove the domain below to use it again.
+							</p>
+						) : (
+							<p className='text-xs text-slate-500'>
+								Every project gets one. Taken names get a number.
+							</p>
+						)}
+						{!domainTakesOver && (
+							<div className='flex items-center gap-3 pt-1'>
+								<Button
+									onClick={() => patch({ subdomain }, 'subdomain')}
+									disabled={busy !== null || subdomain === project.subdomain}
+									className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+									{busy === 'subdomain' && <Loader2 className='animate-spin' />}
+									Save address
+								</Button>
+								{saved === 'subdomain' && (
+									<span className='text-sm text-slate-500'>Saved</span>
+								)}
+							</div>
+						)}
 					</div>
 
 					<div className='space-y-2 border-t border-white/10 pt-5'>
@@ -310,103 +355,79 @@ export function ProjectSettings({
 							placeholder='example.com'
 							onChange={(event) => setDomain(event.target.value)}
 						/>
-						{domain ? (
-							verified ? (
-								<p className='flex items-center gap-1.5 text-xs text-brand'>
-									<Check className='size-3' /> Verified and serving this
-									project.
-								</p>
-							) : (
-								<div className='space-y-3 rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
-									<p className='text-white'>
-										{domain !== (project.customDomain ?? '')
-											? 'Save the domain to get its DNS records.'
-											: pending === 'ownership'
-												? 'Waiting on the ownership record below.'
-												: 'Add these at your registrar, then check again.'}
-									</p>
 
-									{records.length > 0 && (
-										<div className='overflow-x-auto'>
-											<table className='w-full min-w-[22rem] border-collapse font-mono'>
-												<thead>
-													<tr className='text-[10px] uppercase tracking-widest text-slate-500'>
-														<th className='py-1 pr-3 text-left font-semibold'>
-															Type
-														</th>
-														<th className='py-1 pr-3 text-left font-semibold'>
-															Name
-														</th>
-														<th className='py-1 text-left font-semibold'>
-															Value
-														</th>
-													</tr>
-												</thead>
-												<tbody>
-													{records.map((record, index) => (
-														<tr
-															key={`${record.type}-${index}`}
-															className='border-t border-white/5 text-slate-300'>
-															<td className='py-1.5 pr-3'>{record.type}</td>
-															<td className='py-1.5 pr-3 break-all'>
-																{record.name}
-															</td>
-															<td className='py-1.5 break-all'>
-																{record.value}
-															</td>
-														</tr>
-													))}
-												</tbody>
-											</table>
-										</div>
-									)}
-
-									{records.some((record) => record.type === 'A') && (
-										<p>
-											GoDaddy and most registrars will not accept a CNAME on a
-											root domain. That is why this is an A record.
-										</p>
-									)}
-
-									<div className='flex flex-wrap items-center gap-3'>
-										<Button
-											type='button'
-											variant='outline'
-											onClick={checkDomain}
-											disabled={
-												busy !== null || domain !== (project.customDomain ?? '')
-											}
-											className='h-8 border-white/15 bg-transparent text-white hover:bg-white/5'>
-											{busy === 'check' ? (
-												<Loader2 className='animate-spin' />
-											) : (
-												<RefreshCw />
-											)}
-											Check status
-										</Button>
-										{checkedAt && (
-											<span>
-												{misconfigured
-													? 'Not resolving here yet'
-													: 'DNS looks right'}
-												{' · checked '}
-												{new Date(checkedAt).toLocaleTimeString()}
-											</span>
-										)}
-									</div>
-
-									<p>
-										Until it verifies, the project keeps answering on its{' '}
-										{appHost} address.
-									</p>
-								</div>
-							)
-						) : (
+						{!domain && (
 							<p className='text-xs text-slate-500'>
 								Optional. Leave blank to stay on the {appHost} address.
 							</p>
 						)}
-						<div className='flex items-center gap-3 pt-1'>
+
+						{domain && verified && (
+							<div className='space-y-3 rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
+								<p className='flex items-center gap-1.5 text-brand'>
+									<Check className='size-3' /> Verified. This project answers on{' '}
+									{domain}.
+								</p>
+								{/* Still reachable once verified: people need it to audit or
+								    rebuild their DNS later. */}
+								<details className='group'>
+									<summary className='cursor-pointer list-none text-slate-400 transition-colors hover:text-white'>
+										<ChevronRight className='mr-1 inline size-3 transition-transform group-open:rotate-90' />
+										DNS records
+									</summary>
+									<div className='mt-3 space-y-3'>
+										<RecordsTable records={records} />
+										<CheckRow
+											busy={busy}
+											onCheck={checkDomain}
+											disabled={
+												busy !== null || domain !== (project.customDomain ?? '')
+											}
+											checkedAt={checkedAt}
+											misconfigured={misconfigured}
+										/>
+									</div>
+								</details>
+							</div>
+						)}
+
+						{domain && !verified && (
+							<div className='space-y-3 rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
+								<p className='text-white'>
+									{domain !== (project.customDomain ?? '')
+										? 'Save the domain to get its DNS records.'
+										: pending === 'ownership'
+											? 'Waiting on the ownership record below.'
+											: 'Add these at your registrar, then check again.'}
+								</p>
+
+								<RecordsTable records={records} />
+
+								{records.some((record) => record.type === 'A') && (
+									<p>
+										GoDaddy and most registrars will not accept a CNAME on a
+										root domain. That is why this is an A record.
+									</p>
+								)}
+
+								<CheckRow
+									busy={busy}
+									onCheck={checkDomain}
+									disabled={
+										busy !== null || domain !== (project.customDomain ?? '')
+									}
+									checkedAt={checkedAt}
+									misconfigured={misconfigured}
+								/>
+
+								<p>
+									Until it verifies, the project keeps answering on its{' '}
+									{appHost} address.
+								</p>
+							</div>
+						)}
+
+						<div className='flex flex-wrap items-center gap-3 pt-1'>
 							<Button
 								onClick={() =>
 									patch({ customDomain: domain.trim() || null }, 'domain')
@@ -419,6 +440,22 @@ export function ProjectSettings({
 								{busy === 'domain' && <Loader2 className='animate-spin' />}
 								Save domain
 							</Button>
+
+							{project.customDomain && (
+								<Button
+									variant='outline'
+									onClick={removeDomain}
+									disabled={busy !== null}
+									className='border-white/15 bg-transparent text-slate-300 hover:bg-white/5'>
+									{busy === 'remove-domain' ? (
+										<Loader2 className='animate-spin' />
+									) : (
+										<Trash2 />
+									)}
+									Remove
+								</Button>
+							)}
+
 							{saved === 'domain' && (
 								<span className='text-sm text-slate-500'>Saved</span>
 							)}
@@ -474,6 +511,74 @@ export function ProjectSettings({
 						Delete project
 					</Button>
 				</section>
+			)}
+		</div>
+	)
+}
+
+function RecordsTable({ records }: { records: DnsRecord[] }) {
+	if (records.length === 0) return null
+
+	return (
+		<div className='overflow-x-auto'>
+			<table className='w-full min-w-88 border-collapse font-mono'>
+				<thead>
+					<tr className='text-[10px] uppercase tracking-widest text-slate-500'>
+						<th className='py-1 pr-3 text-left font-semibold'>Type</th>
+						<th className='py-1 pr-3 text-left font-semibold'>Name</th>
+						<th className='py-1 text-left font-semibold'>Value</th>
+					</tr>
+				</thead>
+				<tbody>
+					{records.map((record, index) => (
+						<tr
+							key={`${record.type}-${index}`}
+							className='border-t border-white/5 text-slate-300'>
+							<td className='py-1.5 pr-3'>{record.type}</td>
+							<td className='py-1.5 pr-3 break-all'>{record.name}</td>
+							<td className='py-1.5 break-all'>{record.value}</td>
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</div>
+	)
+}
+
+function CheckRow({
+	busy,
+	onCheck,
+	disabled,
+	checkedAt,
+	misconfigured,
+}: {
+	busy: string | null
+	onCheck: () => void
+	disabled: boolean
+	checkedAt: string | null
+	misconfigured: boolean
+}) {
+	return (
+		<div className='flex flex-wrap items-center gap-3'>
+			<Button
+				type='button'
+				variant='outline'
+				onClick={onCheck}
+				disabled={disabled}
+				className='h-8 border-white/15 bg-transparent text-white hover:bg-white/5'>
+				{busy === 'check' ? (
+					<Loader2 className='animate-spin' />
+				) : (
+					<RefreshCw />
+				)}
+				Check status
+			</Button>
+			{checkedAt && (
+				<span>
+					{misconfigured ? 'Not resolving here yet' : 'DNS looks right'}
+					{' · checked '}
+					{new Date(checkedAt).toLocaleTimeString()}
+				</span>
 			)}
 		</div>
 	)

@@ -35,22 +35,44 @@ export async function siteByPreviewToken(token: string) {
 	return doc ? toPublic(doc) : null
 }
 
-/** A hostname only resolves while the project is actually live. */
-export async function liveSiteByHost(input: {
+/**
+ * Three outcomes, because they mean different things to a visitor. A hostname
+ * nobody has claimed is a genuine 404. A hostname that belongs to a project
+ * which is not serving yet is somebody's site that is simply switched off, and
+ * telling them that is more use than a 404.
+ */
+export type HostLookup =
+	| { state: 'live'; site: PublicSite }
+	| { state: 'inactive' }
+	| { state: 'unknown' }
+
+export async function resolveHost(input: {
 	subdomain?: string
 	customDomain?: string
-}) {
+}): Promise<HostLookup> {
 	const db = await getDb()
-	const query = input.subdomain
-		? { subdomain: input.subdomain, status: 'live' as const }
-		: {
-				customDomain: input.customDomain,
-				customDomainVerifiedAt: { $ne: null },
-				status: 'live' as const,
-			}
 
-	const doc = await db.collection<SiteDoc>('sites').findOne(query)
-	return doc ? toPublic(doc) : null
+	// Deliberately not filtered by status: "off" and "does not exist" have to be
+	// told apart before either is answered.
+	const doc = await db
+		.collection<SiteDoc>('sites')
+		.findOne(
+			input.subdomain
+				? { subdomain: input.subdomain }
+				: { customDomain: input.customDomain },
+		)
+
+	if (!doc) return { state: 'unknown' }
+
+	// An unverified custom domain must never serve a project: the DNS pointing
+	// here is not proof that whoever typed the name owns it.
+	if (input.customDomain && !doc.customDomainVerifiedAt)
+		return { state: 'inactive' }
+
+	if (doc.status !== 'live') return { state: 'inactive' }
+
+	const site = toPublic(doc)
+	return site ? { state: 'live', site } : { state: 'inactive' }
 }
 
 export async function siteById(id: string) {

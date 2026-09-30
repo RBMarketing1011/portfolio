@@ -139,11 +139,13 @@ record(
 	`got ${badToken.status}`,
 )
 
-// A draft must not answer on its hostname yet.
+// A draft must not serve its pages, but its address does belong to a project,
+// so it parks rather than pretending the hostname does not exist.
 const draftHost = await asHost('/', `${site.subdomain}.${APP_HOSTNAME}`)
 record(
-	'a draft does not answer on its address',
-	draftHost.status === 404,
+	'a draft does not serve its pages on its address',
+	!draftHost.body.includes('data-block-id') &&
+		/isn.{0,8}t live yet/i.test(draftHost.body),
 	`got ${draftHost.status}`,
 )
 
@@ -304,8 +306,9 @@ await client
 
 const unverified = await asHost('/', claimedDomain)
 record(
-	'an unverified custom domain serves nothing',
-	unverified.status === 404,
+	'an unverified custom domain serves no project content',
+	!unverified.body.includes('data-block-id') &&
+		/isn.{0,8}t live yet/i.test(unverified.body),
 	`got ${unverified.status}`,
 )
 

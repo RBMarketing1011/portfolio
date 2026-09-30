@@ -149,8 +149,11 @@ const asHost = async (host) => {
 				headers: { host },
 			},
 			(res) => {
-				res.resume()
-				res.on('end', () => resolve(res.statusCode))
+				let body = ''
+				res.on('data', (chunk) => {
+					body += chunk
+				})
+				res.on('end', () => resolve({ status: res.statusCode, body }))
 			},
 		)
 		req.on('error', reject)
@@ -158,10 +161,17 @@ const asHost = async (host) => {
 	})
 }
 
+const statusOf = async (host) => (await asHost(host)).status
+
+// DNS pointing here is not proof of ownership, so an unverified domain must
+// never serve the project's pages. It parks instead, because the hostname does
+// belong to a project.
+const beforeVerification = await asHost(domain)
 record(
-	'an unverified domain serves nothing',
-	(await asHost(domain)) === 404,
-	'404 expected',
+	'an unverified domain serves no project content',
+	!beforeVerification.body.includes('data-block-id') &&
+		/isn.{0,8}t live yet/i.test(beforeVerification.body),
+	`got ${beforeVerification.status}`,
 )
 
 await sites.updateOne(
@@ -170,16 +180,41 @@ await sites.updateOne(
 )
 record(
 	'a verified domain serves the project',
-	(await asHost(domain)) === 200,
+	(await statusOf(domain)) === 200,
 	'200 expected',
 )
 
-// Taking it back down must stop serving immediately.
+// Taking it offline must stop serving its pages, but a visitor on a hostname
+// that genuinely points here deserves better than a 404.
 await sites.updateOne({ _id: id }, { $set: { status: 'draft' } })
+const parked = await asHost(domain)
 record(
-	'a draft does not serve on its custom domain',
-	(await asHost(domain)) === 404,
-	'404 expected',
+	'a draft does not serve its pages on the custom domain',
+	parked.status === 200 && !parked.body.includes('data-block-id'),
+	`got ${parked.status}`,
+)
+record(
+	'a parked domain explains itself instead of 404ing',
+	/isn.{0,8}t live yet/i.test(parked.body),
+	'inactive page',
+)
+record(
+	'the parked page credits us with a link back',
+	parked.body.includes('Powered by') && parked.body.includes('ReynoldsBuilt'),
+	'powered-by present',
+)
+record(
+	'the parked page is not indexable',
+	/noindex/i.test(parked.body),
+	'noindex',
+)
+
+// A hostname nobody has claimed is still a genuine 404, not a parked page.
+const stranger = await asHost(`nobody-${rand()}.example`)
+record(
+	'an unclaimed hostname is still a 404',
+	stranger.status === 404,
+	`got ${stranger.status}`,
 )
 
 await sites.updateOne({ _id: id }, { $set: { status: 'live' } })
@@ -203,6 +238,47 @@ record(
 	steal.status === 409,
 	`got ${steal.status}`,
 )
+
+// A project answers on one address or the other. Removing the custom domain has
+// to stop it serving there and leave the subdomain working.
+const removed = await owner.call(`/api/sites/${site.id}/settings`, {
+	method: 'PATCH',
+	headers: { 'Content-Type': 'application/json' },
+	body: JSON.stringify({ customDomain: null }),
+})
+record(
+	'the custom domain can be removed',
+	removed.status === 200,
+	`got ${removed.status}`,
+)
+
+const afterRemoval = await sites.findOne({ _id: id })
+record(
+	'removal clears the domain and its verification',
+	afterRemoval.customDomain === null &&
+		afterRemoval.customDomainVerifiedAt === null,
+	`${afterRemoval.customDomain}`,
+)
+record(
+	'a removed domain stops serving',
+	(await statusOf(domain)) === 404,
+	'404 expected',
+)
+record(
+	'the project still answers on its subdomain',
+	(await statusOf(`${afterRemoval.subdomain}.${APP_HOSTNAME}`)) === 200,
+	'200 expected',
+)
+
+// The subdomain only takes over while the project is live; otherwise it parks.
+await sites.updateOne({ _id: id }, { $set: { status: 'draft' } })
+const parkedSub = await asHost(`${afterRemoval.subdomain}.${APP_HOSTNAME}`)
+record(
+	'a drafted project parks its subdomain too',
+	parkedSub.status === 200 && /isn.{0,8}t live yet/i.test(parkedSub.body),
+	`got ${parkedSub.status}`,
+)
+await sites.updateOne({ _id: id }, { $set: { status: 'live' } })
 
 // The verify endpoint is a publish right, not an edit right.
 const viewerRole = await client

@@ -96,7 +96,9 @@ export async function PATCH(request: Request, { params }: Params) {
 
 			const previous = site.customDomain ?? null
 			if (domain !== previous) {
-				if (!domainsConfigured())
+				// Connecting needs Vercel; disconnecting must not, or a deployment
+				// that loses its token leaves the domain stuck on the project.
+				if (domain && !domainsConfigured())
 					return NextResponse.json(
 						{
 							error:
@@ -109,7 +111,8 @@ export async function PATCH(request: Request, { params }: Params) {
 				// the registration has to happen before the database claims it.
 				try {
 					const status = domain ? await attachDomain(domain) : null
-					if (previous) await detachDomain(previous)
+					if (previous && domainsConfigured())
+						await detachDomain(previous).catch(() => {})
 
 					next.customDomain = domain
 					next.customDomainVerifiedAt = null

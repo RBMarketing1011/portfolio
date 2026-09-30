@@ -1,4 +1,9 @@
 import 'server-only'
+import {
+	requiredRecords,
+	type DnsRecord,
+	type DomainConfig,
+} from './dns-records'
 
 /**
  * Vercel only answers for hostnames attached to a project, so a customer's
@@ -24,11 +29,7 @@ export class VercelDomainError extends Error {
 	}
 }
 
-export type DnsRecord = {
-	type: 'A' | 'CNAME' | 'TXT'
-	name: string
-	value: string
-}
+export type { DnsRecord }
 
 export type DomainStatus = {
 	domain: string
@@ -37,52 +38,6 @@ export type DomainStatus = {
 	/** DNS does not yet resolve to Vercel. */
 	misconfigured: boolean
 	records: DnsRecord[]
-}
-
-/** Vercel's documented targets. */
-const APEX_A_RECORD = '76.76.21.21'
-const SUBDOMAIN_CNAME = 'cname.vercel-dns.com'
-
-/**
- * Multi-label public suffixes we are likely to meet. A full public suffix list
- * is the only exact answer; being wrong here costs a misleading hint, not a
- * broken domain, because Vercel's own `misconfigured` flag is the real check.
- */
-const TWO_PART_TLDS = new Set([
-	'co.uk',
-	'org.uk',
-	'me.uk',
-	'ac.uk',
-	'gov.uk',
-	'co.nz',
-	'co.za',
-	'com.au',
-	'net.au',
-	'org.au',
-	'com.br',
-	'com.mx',
-	'co.jp',
-	'co.in',
-	'co.kr',
-])
-
-export function isApex(domain: string) {
-	const parts = domain.split('.')
-	if (parts.length <= 2) return true
-	return parts.length === 3 && TWO_PART_TLDS.has(parts.slice(-2).join('.'))
-}
-
-/** What the customer has to add at their registrar. */
-export function requiredRecords(domain: string): DnsRecord[] {
-	return isApex(domain)
-		? [{ type: 'A', name: '@', value: APEX_A_RECORD }]
-		: [
-				{
-					type: 'CNAME',
-					name: domain.split('.')[0],
-					value: SUBDOMAIN_CNAME,
-				},
-			]
 }
 
 async function call<T>(
@@ -129,7 +84,8 @@ type ProjectDomain = {
 	verification?: { type: string; domain: string; value: string }[]
 }
 
-type DomainConfig = { misconfigured: boolean }
+const readConfig = (domain: string) =>
+	call<DomainConfig>(`/v6/domains/${domain}/config`).catch(() => null)
 
 /** Ownership challenges Vercel wants when the domain is already in use elsewhere. */
 const challengeRecords = (domain: ProjectDomain | null): DnsRecord[] =>
@@ -160,7 +116,8 @@ export async function attachDomain(domain: string): Promise<DomainStatus> {
 		else throw error
 	}
 
-	return statusFrom(domain, added, null)
+	// Read straight away so the records shown after saving are the current ones.
+	return statusFrom(domain, added, await readConfig(domain))
 }
 
 export async function detachDomain(domain: string) {
@@ -192,9 +149,7 @@ export async function checkDomain(domain: string): Promise<DomainStatus> {
 		).catch(() => null)
 	}
 
-	const config = await call<DomainConfig>(`/v6/domains/${domain}/config`).catch(
-		() => null,
-	)
+	const config = await readConfig(domain)
 
 	return statusFrom(domain, project, config)
 }
@@ -211,6 +166,6 @@ function statusFrom(
 		// Unknown config is treated as not yet pointing here, so a project is
 		// never served on a domain we have not seen resolve.
 		misconfigured: config ? config.misconfigured : true,
-		records: [...requiredRecords(domain), ...challenges],
+		records: [...requiredRecords(domain, config), ...challenges],
 	}
 }
