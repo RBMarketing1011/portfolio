@@ -25,8 +25,6 @@ class TooManyAttempts extends CredentialsSignin {
 	code = 'too_many_attempts'
 }
 
-// Needs AUTH_SECRET, MONGODB_URI and the SMTP_* set; a missing one surfaces as
-// Auth.js's opaque `error=Configuration` rather than as itself.
 export const { handlers, auth, signIn, signOut } = NextAuth({
 	...authConfig,
 	adapter: MongoDBAdapter(getMongoClient()),
