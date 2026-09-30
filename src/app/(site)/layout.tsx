@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import SiteFooter from '@/components/site-footer'
 import SiteHeader from '@/components/site-header'
+import { EnvironmentBadge } from '@/components/environment-badge'
 import { site } from '@/lib/site'
 import { baseUrl, JsonLd, organizationSchema, websiteSchema } from '@/lib/seo'
 
@@ -73,6 +74,7 @@ export default function SiteLayout({
 			<SiteHeader />
 			<main id='main'>{children}</main>
 			<SiteFooter />
+			<EnvironmentBadge />
 		</>
 	)
 }
