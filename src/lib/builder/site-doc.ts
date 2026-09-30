@@ -98,6 +98,8 @@ export const siteSettingsSchema = z.object({
 	status: z.enum(SITE_STATUSES).optional(),
 })
 
+export type DnsRecord = { type: 'A' | 'CNAME' | 'TXT'; name: string; value: string }
+
 export type SiteDoc = {
 	_id: import('mongodb').ObjectId
 	workspaceId: import('mongodb').ObjectId
@@ -108,6 +110,11 @@ export type SiteDoc = {
 	subdomain: string
 	customDomain: string | null
 	customDomainVerifiedAt: Date | null
+	/** What Vercel says the customer must add at their registrar. */
+	customDomainRecords: DnsRecord[]
+	/** Vercel can see the domain but DNS does not point here yet. */
+	customDomainMisconfigured: boolean
+	customDomainCheckedAt: Date | null
 	/** Secret. Anyone holding it can view the project whether or not it is live. */
 	previewToken: string
 	status: SiteStatus
@@ -127,6 +134,9 @@ export type SiteResponse = {
 	subdomain: string
 	customDomain: string | null
 	customDomainVerified: boolean
+	customDomainRecords: DnsRecord[]
+	customDomainMisconfigured: boolean
+	customDomainCheckedAt: string | null
 	previewToken: string
 	status: SiteStatus
 	publishedAt: string | null
@@ -143,6 +153,9 @@ export const toSiteResponse = (doc: SiteDoc): SiteResponse => ({
 	subdomain: doc.subdomain,
 	customDomain: doc.customDomain ?? null,
 	customDomainVerified: Boolean(doc.customDomainVerifiedAt),
+	customDomainRecords: doc.customDomainRecords ?? [],
+	customDomainMisconfigured: doc.customDomainMisconfigured ?? true,
+	customDomainCheckedAt: doc.customDomainCheckedAt?.toISOString() ?? null,
 	previewToken: doc.previewToken,
 	status: doc.status ?? 'draft',
 	publishedAt: doc.publishedAt?.toISOString() ?? null,

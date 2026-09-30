@@ -281,24 +281,28 @@ record(
 
 const client = new MongoClient(process.env.MONGODB_URI)
 await client.connect()
+const { ObjectId } = await import('mongodb')
+
+// An unverified custom domain must not serve anything, or anyone could point a
+// name at us and claim a project by typing it in. Written straight to the
+// database so this holds whether or not the Vercel API is configured here —
+// `prove-custom-domains.mjs` covers the API path.
+const claimedDomain = `claimed-${rand()}.example`
 await client
 	.db()
 	.collection('sites')
-	.updateOne({ customDomain: null, _id: { $exists: true } }, { $set: {} })
-	.catch(() => {})
+	.updateOne(
+		{ _id: new ObjectId(theirSite.id) },
+		{
+			$set: {
+				customDomain: claimedDomain,
+				customDomainVerifiedAt: null,
+				status: 'live',
+			},
+		},
+	)
 
-// An unverified custom domain must not serve anything, or anyone could point a
-// name at us and claim a project by typing it in.
-await other.call(`/api/sites/${theirSite.id}/settings`, {
-	method: 'PATCH',
-	headers: { 'Content-Type': 'application/json' },
-	body: JSON.stringify({ customDomain: `claimed-${rand()}.example` }),
-})
-const claimed = await client
-	.db()
-	.collection('sites')
-	.findOne({ _id: new (await import('mongodb')).ObjectId(theirSite.id) })
-const unverified = await asHost('/', claimed.customDomain)
+const unverified = await asHost('/', claimedDomain)
 record(
 	'an unverified custom domain serves nothing',
 	unverified.status === 404,

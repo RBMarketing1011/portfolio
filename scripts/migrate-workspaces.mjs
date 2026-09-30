@@ -139,6 +139,11 @@ for (const site of sites) {
 	if (site.customDomain === undefined) patch.customDomain = null
 	if (site.customDomainVerifiedAt === undefined)
 		patch.customDomainVerifiedAt = null
+	if (site.customDomainRecords === undefined) patch.customDomainRecords = []
+	if (site.customDomainMisconfigured === undefined)
+		patch.customDomainMisconfigured = true
+	if (site.customDomainCheckedAt === undefined)
+		patch.customDomainCheckedAt = null
 	if (!site.previewToken)
 		patch.previewToken = randomBytes(24).toString('base64url')
 	if (!site.status) patch.status = 'draft'

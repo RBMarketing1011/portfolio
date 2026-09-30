@@ -19,12 +19,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { StatusPill } from '../projects-table'
 
+export type DnsRecord = { type: string; name: string; value: string }
+
 export type Project = {
 	id: string
 	name: string
 	subdomain: string
 	customDomain: string | null
 	customDomainVerified: boolean
+	customDomainRecords: DnsRecord[]
+	customDomainMisconfigured: boolean
+	customDomainCheckedAt: string | null
 	previewToken: string
 	status: 'draft' | 'live'
 	publishedAt: string | null
@@ -52,6 +57,12 @@ export function ProjectSettings({
 	const [token, setToken] = useState(project.previewToken)
 	const [status, setStatus] = useState(project.status)
 	const [verified, setVerified] = useState(project.customDomainVerified)
+	const [records, setRecords] = useState(project.customDomainRecords)
+	const [misconfigured, setMisconfigured] = useState(
+		project.customDomainMisconfigured,
+	)
+	const [checkedAt, setCheckedAt] = useState(project.customDomainCheckedAt)
+	const [pending, setPending] = useState<string | null>(null)
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [saved, setSaved] = useState<string | null>(null)
@@ -85,13 +96,38 @@ export function ProjectSettings({
 			return null
 		}
 		const { site } = await response.json()
-		setSubdomain(site.subdomain)
-		setDomain(site.customDomain ?? '')
-		setVerified(site.customDomainVerified)
-		setStatus(site.status)
+		absorb(site)
 		setSaved(kind)
 		router.refresh()
 		return site
+	}
+
+	function absorb(site: Project) {
+		setSubdomain(site.subdomain)
+		setDomain(site.customDomain ?? '')
+		setVerified(site.customDomainVerified)
+		setRecords(site.customDomainRecords ?? [])
+		setMisconfigured(site.customDomainMisconfigured)
+		setCheckedAt(site.customDomainCheckedAt)
+		setStatus(site.status)
+	}
+
+	const checkDomain = async () => {
+		setBusy('check')
+		setError(null)
+		const response = await fetch(`/api/sites/${project.id}/domain`, {
+			method: 'POST',
+		})
+		setBusy(null)
+		if (!response.ok) {
+			const payload = await response.json().catch(() => ({}))
+			setError(payload.error ?? 'Could not check that domain.')
+			return
+		}
+		const payload = await response.json()
+		absorb(payload.site)
+		setPending(payload.pending)
+		router.refresh()
 	}
 
 	const regenerate = async () => {
@@ -281,13 +317,84 @@ export function ProjectSettings({
 									project.
 								</p>
 							) : (
-								<div className='rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
-									<p className='text-white'>Point it here, then verify:</p>
-									<p className='mt-1 font-mono'>
-										CNAME {domain} → {appHost}
+								<div className='space-y-3 rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
+									<p className='text-white'>
+										{domain !== (project.customDomain ?? '')
+											? 'Save the domain to get its DNS records.'
+											: pending === 'ownership'
+												? 'Waiting on the ownership record below.'
+												: 'Add these at your registrar, then check again.'}
 									</p>
-									<p className='mt-1'>
-										Until it resolves, the project keeps answering on its{' '}
+
+									{records.length > 0 && (
+										<div className='overflow-x-auto'>
+											<table className='w-full min-w-[22rem] border-collapse font-mono'>
+												<thead>
+													<tr className='text-[10px] uppercase tracking-widest text-slate-500'>
+														<th className='py-1 pr-3 text-left font-semibold'>
+															Type
+														</th>
+														<th className='py-1 pr-3 text-left font-semibold'>
+															Name
+														</th>
+														<th className='py-1 text-left font-semibold'>
+															Value
+														</th>
+													</tr>
+												</thead>
+												<tbody>
+													{records.map((record, index) => (
+														<tr
+															key={`${record.type}-${index}`}
+															className='border-t border-white/5 text-slate-300'>
+															<td className='py-1.5 pr-3'>{record.type}</td>
+															<td className='py-1.5 pr-3 break-all'>
+																{record.name}
+															</td>
+															<td className='py-1.5 break-all'>
+																{record.value}
+															</td>
+														</tr>
+													))}
+												</tbody>
+											</table>
+										</div>
+									)}
+
+									{records.some((record) => record.type === 'A') && (
+										<p>
+											GoDaddy and most registrars will not accept a CNAME on a
+											root domain. That is why this is an A record.
+										</p>
+									)}
+
+									<div className='flex flex-wrap items-center gap-3'>
+										<Button
+											type='button'
+											variant='outline'
+											onClick={checkDomain}
+											disabled={
+												busy !== null || domain !== (project.customDomain ?? '')
+											}
+											className='h-8 border-white/15 bg-transparent text-white hover:bg-white/5'>
+											{busy === 'check' ? (
+												<Loader2 className='animate-spin' />
+											) : (
+												<RefreshCw />
+											)}
+											Check status
+										</Button>
+										{checkedAt && (
+											<span>
+												{misconfigured ? 'Not resolving here yet' : 'DNS looks right'}
+												{' · checked '}
+												{new Date(checkedAt).toLocaleTimeString()}
+											</span>
+										)}
+									</div>
+
+									<p>
+										Until it verifies, the project keeps answering on its{' '}
 										{appHost} address.
 									</p>
 								</div>

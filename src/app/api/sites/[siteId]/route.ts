@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { del } from '@vercel/blob'
 import { errorResponse, requireSitePermission } from '@/lib/auth/guards'
+import { detachDomain } from '@/lib/builder/vercel-domains'
 import {
 	sitePatchSchema,
 	toSiteResponse,
@@ -81,6 +82,10 @@ export async function DELETE(_request: Request, { params }: Params) {
 	try {
 		const { siteId } = await params
 		const { site, db } = await requireSitePermission(siteId, 'projects.delete')
+
+		// Left attached, the domain stays claimed on the Vercel project and nobody
+		// else can ever connect it.
+		if (site.customDomain) await detachDomain(site.customDomain).catch(() => {})
 
 		// Blobs outlive their document unless they go first.
 		const urls = (site.media ?? []).map((item) => item.url)

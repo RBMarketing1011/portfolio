@@ -8,6 +8,12 @@ import {
 } from '@/lib/builder/site-doc'
 import { newPreviewToken, uniqueSubdomain } from '@/lib/builder/site-slug'
 import { appHostname } from '@/lib/builder/hosting'
+import {
+	attachDomain,
+	detachDomain,
+	domainsConfigured,
+	VercelDomainError,
+} from '@/lib/builder/vercel-domains'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,10 +94,37 @@ export async function PATCH(request: Request, { params }: Params) {
 					)
 			}
 
-			next.customDomain = domain
-			// Changing the domain always restarts verification.
-			if (domain !== (site.customDomain ?? null))
-				next.customDomainVerifiedAt = null
+			const previous = site.customDomain ?? null
+			if (domain !== previous) {
+				if (!domainsConfigured())
+					return NextResponse.json(
+						{
+							error:
+								'Custom domains are not configured on this deployment yet.',
+						},
+						{ status: 503 },
+					)
+
+				// Vercel will not answer for a hostname that is not on the project, so
+				// the registration has to happen before the database claims it.
+				try {
+					const status = domain ? await attachDomain(domain) : null
+					if (previous) await detachDomain(previous)
+
+					next.customDomain = domain
+					next.customDomainVerifiedAt = null
+					next.customDomainRecords = status?.records ?? []
+					next.customDomainMisconfigured = status ? status.misconfigured : true
+					next.customDomainCheckedAt = status ? new Date() : null
+				} catch (cause) {
+					if (cause instanceof VercelDomainError)
+						return NextResponse.json(
+							{ error: cause.message },
+							{ status: cause.status === 409 ? 409 : 502 },
+						)
+					throw cause
+				}
+			}
 		}
 
 		if (parsed.data.status !== undefined) {
