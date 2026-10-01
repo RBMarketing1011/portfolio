@@ -32,7 +32,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { PERMISSION_GROUPS, ALL_PERMISSIONS, type Permission } from '@/lib/workspace/permissions'
+import {
+	PERMISSION_GROUPS,
+	ALL_PERMISSIONS,
+	type Permission,
+} from '@/lib/workspace/permissions'
 
 type Member = {
 	id: string
@@ -536,35 +540,34 @@ function RoleDialog({
 						{/* Split explicitly rather than with CSS columns: a multicol box
 						    mis-sizes inside the flex scroller and forces a scrollbar. */}
 						<div className='grid gap-x-8 gap-y-5 sm:grid-cols-2'>
-							{[
-								PERMISSION_GROUPS.slice(0, 2),
-								PERMISSION_GROUPS.slice(2),
-							].map((column, index) => (
-								<div key={index} className='min-w-0 space-y-5'>
-									{column.map((group) => (
-										<fieldset key={group.id}>
-											<legend className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
-												{group.label}
-											</legend>
-											<ul className='mt-2.5 space-y-1.5'>
-												{group.permissions.map((permission) => (
-													<li key={permission.key}>
-														<label className='flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/3 px-3 py-2 text-sm leading-6 text-slate-300 transition-colors hover:border-white/20 hover:bg-white/6 has-checked:border-brand/40 has-checked:bg-brand/10 has-checked:text-white'>
-															<input
-																type='checkbox'
-																checked={selected.has(permission.key)}
-																onChange={() => toggle(permission.key)}
-																className='mt-1 size-4 shrink-0 accent-brand'
-															/>
-															{permission.label}
-														</label>
-													</li>
-												))}
-											</ul>
-										</fieldset>
-									))}
-								</div>
-							))}
+							{[PERMISSION_GROUPS.slice(0, 2), PERMISSION_GROUPS.slice(2)].map(
+								(column, index) => (
+									<div key={index} className='min-w-0 space-y-5'>
+										{column.map((group) => (
+											<fieldset key={group.id}>
+												<legend className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
+													{group.label}
+												</legend>
+												<ul className='mt-2.5 space-y-1.5'>
+													{group.permissions.map((permission) => (
+														<li key={permission.key}>
+															<label className='flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/3 px-3 py-2 text-sm leading-6 text-slate-300 transition-colors hover:border-white/20 hover:bg-white/6 has-checked:border-brand/40 has-checked:bg-brand/10 has-checked:text-white'>
+																<input
+																	type='checkbox'
+																	checked={selected.has(permission.key)}
+																	onChange={() => toggle(permission.key)}
+																	className='mt-1 size-4 shrink-0 accent-brand'
+																/>
+																{permission.label}
+															</label>
+														</li>
+													))}
+												</ul>
+											</fieldset>
+										))}
+									</div>
+								),
+							)}
 						</div>
 					</div>
 

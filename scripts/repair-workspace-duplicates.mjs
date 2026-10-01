@@ -33,7 +33,8 @@ const sites = db.collection('sites')
 const oldest = (docs) =>
 	[...docs].sort((a, b) => {
 		const byDate =
-			new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime()
+			new Date(a.createdAt ?? 0).getTime() -
+			new Date(b.createdAt ?? 0).getTime()
 		return byDate !== 0 ? byDate : String(a._id).localeCompare(String(b._id))
 	})
 
@@ -62,7 +63,9 @@ for (const group of ownerGroups) {
 		})),
 	)
 	const heaviest = Math.max(...weighed.map((w) => w.weight))
-	const contenders = weighed.filter((w) => w.weight === heaviest).map((w) => w.doc)
+	const contenders = weighed
+		.filter((w) => w.weight === heaviest)
+		.map((w) => w.doc)
 	const keeper = oldest(contenders)[0]
 	const losers = docs.filter((d) => !d._id.equals(keeper._id))
 

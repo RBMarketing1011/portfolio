@@ -68,9 +68,7 @@ export function AccountShell({
 					<AccountNav items={items} />
 				</SidebarContent>
 				<SidebarFooter>
-					<NavUser
-						user={{ name: userName, email, avatar: userImage }}
-					/>
+					<NavUser user={{ name: userName, email, avatar: userImage }} />
 				</SidebarFooter>
 				<SidebarRail />
 			</Sidebar>

@@ -226,11 +226,7 @@ export function LibraryNav({
 				)}
 			</Tabs>
 
-			<BuilderAccount
-				email={email}
-				userName={userName}
-				userImage={userImage}
-			/>
+			<BuilderAccount email={email} userName={userName} userImage={userImage} />
 
 			<BackgroundDrawer
 				slug={settingsSlug ?? ''}
@@ -275,9 +271,7 @@ function BuilderAccount({
 	return (
 		<div className='shrink-0 border-t border-white/10 p-2'>
 			{email ? (
-				<NavUser
-					user={{ name: userName || email, email, avatar: userImage }}
-				/>
+				<NavUser user={{ name: userName || email, email, avatar: userImage }} />
 			) : (
 				<SidebarMenu>
 					<SidebarMenuItem>
