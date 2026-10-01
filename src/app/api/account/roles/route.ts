@@ -76,15 +76,27 @@ export async function POST(request: Request) {
 				{ status: 409 },
 			)
 
-		const result = await roles.insertOne({
-			workspaceId: workspace._id,
-			name,
-			// Unknown keys are dropped here, so a crafted body cannot invent a
-			// permission that some future check might honour.
-			permissions: sanitizePermissions(parsed.data.permissions),
-			system: false,
-			createdAt: new Date(),
-		} as RoleDoc)
+		// The findOne above loses to a concurrent request; the unique index is what
+		// actually enforces one name per account.
+		let result
+		try {
+			result = await roles.insertOne({
+				workspaceId: workspace._id,
+				name,
+				// Unknown keys are dropped here, so a crafted body cannot invent a
+				// permission that some future check might honour.
+				permissions: sanitizePermissions(parsed.data.permissions),
+				system: false,
+				createdAt: new Date(),
+			} as RoleDoc)
+		} catch (error) {
+			if ((error as { code?: number }).code === 11000)
+				return NextResponse.json(
+					{ error: 'A role with that name already exists.' },
+					{ status: 409 },
+				)
+			throw error
+		}
 
 		return NextResponse.json(
 			{ role: { id: (result.insertedId as ObjectId).toString(), name } },

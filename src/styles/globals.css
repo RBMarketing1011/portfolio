@@ -155,6 +155,28 @@
 	}
 }
 
+/* Browsers force an opaque pale background on autofilled fields with a UA
+   !important rule that background-color cannot override. Clipping the painted
+   background to the glyphs, then painting those glyphs ourselves, leaves the
+   field transparent and the text readable on the dark surface. The two
+   selectors are separate rules so a browser that knows only one alias does not
+   drop the whole group. */
+:is(input, textarea, select):-webkit-autofill {
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: var(--foreground);
+	caret-color: var(--foreground);
+	filter: none;
+}
+
+:is(input, textarea, select):autofill {
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: var(--foreground);
+	caret-color: var(--foreground);
+	filter: none;
+}
+
 * {
 	scroll-behavior: smooth;
 	scroll-margin-top: 2rem;

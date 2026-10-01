@@ -7,6 +7,7 @@ import { pageHref } from '@/lib/builder/page-schema'
 import { LOCAL_SITE_ID } from '@/lib/builder/drivers'
 import { SaveIndicator } from '../save-indicator'
 import { SiteLoadError } from '../site-load-error'
+import { BuilderSkeleton } from '../builder-skeleton'
 import { globalBackground } from '../background-settings'
 import { BackgroundDrawer } from '../background-drawer'
 import { BlockInspector } from '../builder/block-inspector'
@@ -45,13 +46,7 @@ export function PageEditor({
 
 	if (store.loadError) return <SiteLoadError message={store.loadError} />
 
-	if (!store.hydrated) {
-		return (
-			<div className='flex h-screen items-center justify-center text-sm text-slate-500'>
-				Loading…
-			</div>
-		)
-	}
+	if (!store.hydrated) return <BuilderSkeleton />
 
 	const page = store.pages.find((p) => p.id === pageId)
 	if (!page) {

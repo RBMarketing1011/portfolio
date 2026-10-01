@@ -8,6 +8,7 @@ import { useBuilder } from '@/lib/builder/builder-context'
 import { LOCAL_SITE_ID } from '@/lib/builder/drivers'
 import type { Template } from '@/lib/builder/page-schema'
 import { SiteLoadError } from '../site-load-error'
+import { BuilderSkeleton } from '../builder-skeleton'
 import { AddPageDialog } from '../builder/add-page-dialog'
 
 export function BuilderStart({
@@ -32,13 +33,8 @@ export function BuilderStart({
 
 	if (store.loadError) return <SiteLoadError message={store.loadError} />
 
-	if (!store.hydrated || store.pages.length > 0) {
-		return (
-			<div className='flex h-screen items-center justify-center text-sm text-slate-500'>
-				Loading…
-			</div>
-		)
-	}
+	// Pages present means the redirect above is already in flight.
+	if (!store.hydrated || store.pages.length > 0) return <BuilderSkeleton />
 
 	return (
 		<div className='flex h-screen items-center justify-center px-6'>

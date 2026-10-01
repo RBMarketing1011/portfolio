@@ -5,6 +5,18 @@ import { Loader2, Mail, Plus, Shield, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import {
 	Dialog,
 	DialogContent,
@@ -20,7 +32,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
-import { PERMISSION_GROUPS, type Permission } from '@/lib/workspace/permissions'
+import { PERMISSION_GROUPS, ALL_PERMISSIONS, type Permission } from '@/lib/workspace/permissions'
 
 type Member = {
 	id: string
@@ -80,12 +92,7 @@ export function TeamManager({
 		void refresh()
 	}, [])
 
-	if (members === null)
-		return (
-			<div className='flex items-center gap-2 py-20 text-sm text-slate-500'>
-				<Loader2 className='size-4 animate-spin' /> Loading your team…
-			</div>
-		)
+	if (members === null) return <TeamSkeleton />
 
 	return (
 		<div className='space-y-12'>
@@ -179,19 +186,23 @@ export function TeamManager({
 									</td>
 									<td className='py-3 text-right'>
 										{can.manage && !member.isOwner && (
-											<button
-												type='button'
-												aria-label={`Remove ${member.email}`}
-												onClick={async () => {
-													if (!confirm(`Remove ${member.email}?`)) return
-													await fetch(`/api/account/team/${member.id}`, {
-														method: 'DELETE',
-													})
-													void refresh()
+											<ConfirmButton
+												label={`Remove ${member.email}`}
+												title={`Remove ${member.email}?`}
+												description='They lose access to this account immediately. Anything they built stays.'
+												action='Remove'
+												onConfirm={async () => {
+													const response = await fetch(
+														`/api/account/team/${member.id}`,
+														{ method: 'DELETE' },
+													)
+													if (!response.ok) {
+														const body = await response.json().catch(() => ({}))
+														setError(body.error ?? 'Could not remove them.')
+													}
+													await refresh()
 												}}
-												className='text-slate-600 transition-colors hover:text-destructive'>
-												<Trash2 className='size-4' />
-											</button>
+											/>
 										)}
 									</td>
 								</tr>
@@ -409,10 +420,17 @@ function RolesSection({
 										className='rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-white/5 hover:text-white'>
 										Edit
 									</button>
-									<button
-										type='button'
-										aria-label={`Delete ${role.name}`}
-										onClick={async () => {
+									<ConfirmButton
+										label={`Delete ${role.name}`}
+										title={`Delete the ${role.name} role?`}
+										description={
+											role.members
+												? `${role.members} ${role.members === 1 ? 'person holds' : 'people hold'} this role. Move them to another role first.`
+												: 'This cannot be undone.'
+										}
+										action='Delete role'
+										size='sm'
+										onConfirm={async () => {
 											const response = await fetch(
 												`/api/account/roles/${role.id}`,
 												{ method: 'DELETE' },
@@ -423,9 +441,7 @@ function RolesSection({
 											}
 											await onChanged()
 										}}
-										className='text-slate-600 transition-colors hover:text-destructive'>
-										<Trash2 className='size-3.5' />
-									</button>
+									/>
 								</div>
 							)}
 						</div>
@@ -495,16 +511,17 @@ function RoleDialog({
 
 	return (
 		<Dialog open onOpenChange={(next) => !next && onClose()}>
-			<DialogContent className='flex h-[85vh] flex-col sm:max-w-lg'>
+			<DialogContent className='flex max-h-[90vh] flex-col sm:max-w-3xl'>
 				<DialogHeader>
 					<DialogTitle>{role ? `Edit ${role.name}` : 'New role'}</DialogTitle>
 					<DialogDescription>
-						Pick exactly what this role can do.
+						Pick exactly what this role can do. Anything left unchecked is
+						hidden from the people who hold it.
 					</DialogDescription>
 				</DialogHeader>
 
-				<form onSubmit={submit} className='flex min-h-0 flex-1 flex-col gap-4'>
-					<div className='space-y-2'>
+				<form onSubmit={submit} className='flex min-h-0 flex-1 flex-col gap-5'>
+					<div className='grid gap-2 sm:max-w-sm'>
 						<Label htmlFor='role-name'>Name</Label>
 						<Input
 							id='role-name'
@@ -515,32 +532,46 @@ function RoleDialog({
 						/>
 					</div>
 
-					<div className='min-h-0 flex-1 space-y-5 overflow-y-auto pr-1'>
-						{PERMISSION_GROUPS.map((group) => (
-							<fieldset key={group.id}>
-								<legend className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
-									{group.label}
-								</legend>
-								<ul className='mt-2 space-y-1'>
-									{group.permissions.map((permission) => (
-										<li key={permission.key}>
-											<label className='flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm text-slate-300 hover:bg-white/5'>
-												<input
-													type='checkbox'
-													checked={selected.has(permission.key)}
-													onChange={() => toggle(permission.key)}
-													className='size-4 accent-brand'
-												/>
-												{permission.label}
-											</label>
-										</li>
+					<div className='min-h-0 flex-1 overflow-y-auto pr-1'>
+						{/* Split explicitly rather than with CSS columns: a multicol box
+						    mis-sizes inside the flex scroller and forces a scrollbar. */}
+						<div className='grid gap-x-8 gap-y-5 sm:grid-cols-2'>
+							{[
+								PERMISSION_GROUPS.slice(0, 2),
+								PERMISSION_GROUPS.slice(2),
+							].map((column, index) => (
+								<div key={index} className='min-w-0 space-y-5'>
+									{column.map((group) => (
+										<fieldset key={group.id}>
+											<legend className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
+												{group.label}
+											</legend>
+											<ul className='mt-2.5 space-y-1.5'>
+												{group.permissions.map((permission) => (
+													<li key={permission.key}>
+														<label className='flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/3 px-3 py-2 text-sm leading-6 text-slate-300 transition-colors hover:border-white/20 hover:bg-white/6 has-checked:border-brand/40 has-checked:bg-brand/10 has-checked:text-white'>
+															<input
+																type='checkbox'
+																checked={selected.has(permission.key)}
+																onChange={() => toggle(permission.key)}
+																className='mt-1 size-4 shrink-0 accent-brand'
+															/>
+															{permission.label}
+														</label>
+													</li>
+												))}
+											</ul>
+										</fieldset>
 									))}
-								</ul>
-							</fieldset>
-						))}
+								</div>
+							))}
+						</div>
 					</div>
 
-					<DialogFooter className='shrink-0'>
+					<DialogFooter className='shrink-0 border-t border-white/10 pt-4'>
+						<span className='mr-auto self-center text-xs text-slate-500'>
+							{selected.size} of {ALL_PERMISSIONS.length} permissions
+						</span>
 						<Button type='button' variant='outline' onClick={onClose}>
 							Cancel
 						</Button>
@@ -554,5 +585,94 @@ function RoleDialog({
 				</form>
 			</DialogContent>
 		</Dialog>
+	)
+}
+
+function ConfirmButton({
+	label,
+	title,
+	description,
+	action,
+	size = 'default',
+	onConfirm,
+}: {
+	label: string
+	title: string
+	description: string
+	action: string
+	size?: 'default' | 'sm'
+	onConfirm: () => Promise<void>
+}) {
+	const [busy, setBusy] = useState(false)
+
+	return (
+		<AlertDialog>
+			<AlertDialogTrigger
+				aria-label={label}
+				className='text-slate-600 transition-colors hover:text-destructive'>
+				<Trash2 className={size === 'sm' ? 'size-3.5' : 'size-4'} />
+			</AlertDialogTrigger>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>{title}</AlertDialogTitle>
+					<AlertDialogDescription>{description}</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogAction
+						disabled={busy}
+						onClick={async (event) => {
+							event.preventDefault()
+							setBusy(true)
+							await onConfirm()
+							setBusy(false)
+						}}
+						className='bg-destructive text-white hover:bg-destructive/90'>
+						{busy && <Loader2 className='animate-spin' />} {action}
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+	)
+}
+
+function TeamSkeleton() {
+	return (
+		<div role='status' aria-label='Loading your team' className='space-y-12'>
+			<div className='flex flex-wrap items-end justify-between gap-4'>
+				<div className='space-y-3'>
+					<Skeleton className='h-9 w-32 rounded-md' />
+					<Skeleton className='h-4 w-80 max-w-full rounded' />
+				</div>
+				<Skeleton className='h-9 w-36 rounded-md' />
+			</div>
+
+			<section className='space-y-4'>
+				<Skeleton className='h-6 w-24 rounded-md' />
+				<div className='border-b border-white/10 pb-3'>
+					<Skeleton className='h-3 w-full max-w-md rounded' />
+				</div>
+				{Array.from({ length: 3 }, (_, index) => (
+					<div
+						key={index}
+						className='flex items-center gap-4 border-b border-white/5 pb-4'>
+						<Skeleton className='h-4 flex-1 rounded' />
+						<Skeleton className='h-8 w-44 shrink-0 rounded-md' />
+						<Skeleton className='size-4 shrink-0 rounded' />
+					</div>
+				))}
+			</section>
+
+			<section className='space-y-4'>
+				<Skeleton className='h-6 w-20 rounded-md' />
+				<div className='grid gap-3 sm:grid-cols-2'>
+					{Array.from({ length: 2 }, (_, index) => (
+						<Skeleton key={index} className='h-24 rounded-xl' />
+					))}
+				</div>
+			</section>
+
+			<span className='sr-only'>Loading your team</span>
+		</div>
 	)
 }

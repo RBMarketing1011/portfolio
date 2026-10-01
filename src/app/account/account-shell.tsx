@@ -1,15 +1,39 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { Menu } from 'lucide-react'
 import {
-	Sheet,
-	SheetContent,
-	SheetTitle,
-	SheetTrigger,
-} from '@/components/ui/sheet'
-import { AccountNav, type AccountOption, type NavItem } from './account-nav'
+	Sidebar,
+	SidebarContent,
+	SidebarFooter,
+	SidebarHeader,
+	SidebarInset,
+	SidebarProvider,
+	SidebarRail,
+	SidebarTrigger,
+	useSidebar,
+} from '@/components/ui/sidebar'
+import { NavUser } from '@/components/nav-user'
+import { TeamSwitcher, type AccountOption } from '@/components/team-switcher'
+import { AccountNav, type NavItem } from './account-nav'
+
+// Must live outside <Sidebar>: on mobile that subtree only mounts while the
+// sheet is open, so the effect would close the sheet the moment it opened.
+function CloseSheetOnNavigate() {
+	const pathname = usePathname()
+	const { setOpenMobile } = useSidebar()
+	const first = useRef(true)
+
+	useEffect(() => {
+		if (first.current) {
+			first.current = false
+			return
+		}
+		setOpenMobile(false)
+	}, [pathname, setOpenMobile])
+
+	return null
+}
 
 export function AccountShell({
 	items,
@@ -17,7 +41,8 @@ export function AccountShell({
 	accounts,
 	currentAccountId,
 	email,
-	roleName,
+	userName,
+	userImage,
 	children,
 }: {
 	items: NavItem[]
@@ -25,57 +50,41 @@ export function AccountShell({
 	accounts: AccountOption[]
 	currentAccountId: string
 	email: string
-	roleName: string
+	userName: string
+	userImage: string | null
 	children: React.ReactNode
 }) {
-	const pathname = usePathname()
-	const [open, setOpen] = useState(false)
-
-	// Navigating inside the drawer has to close it, or the new page is hidden
-	// behind the sheet that opened it.
-	useEffect(() => setOpen(false), [pathname])
-
-	const nav = (
-		<AccountNav
-			items={items}
-			accountName={accountName}
-			accounts={accounts}
-			currentAccountId={currentAccountId}
-			email={email}
-			roleName={roleName}
-		/>
-	)
-
 	return (
-		<div className='flex min-h-screen'>
-			<aside className='sticky top-0 hidden h-screen w-64 shrink-0 border-r border-white/10 md:block'>
-				{nav}
-			</aside>
+		<SidebarProvider>
+			<CloseSheetOnNavigate />
+			<Sidebar collapsible='icon'>
+				<SidebarHeader>
+					<TeamSwitcher
+						accounts={accounts}
+						currentAccountId={currentAccountId}
+					/>
+				</SidebarHeader>
+				<SidebarContent>
+					<AccountNav items={items} />
+				</SidebarContent>
+				<SidebarFooter>
+					<NavUser
+						user={{ name: userName, email, avatar: userImage }}
+					/>
+				</SidebarFooter>
+				<SidebarRail />
+			</Sidebar>
 
-			<div className='flex min-w-0 flex-1 flex-col'>
-				<header className='sticky top-0 z-30 flex items-center gap-3 border-b border-white/10 bg-ink/80 px-4 py-3 backdrop-blur md:hidden'>
-					<Sheet open={open} onOpenChange={setOpen}>
-						<SheetTrigger
-							aria-label='Open account menu'
-							className='flex size-9 items-center justify-center rounded-md border border-white/12 text-slate-300'>
-							<Menu className='size-4' />
-						</SheetTrigger>
-						<SheetContent side='left' className='w-72 p-0'>
-							<SheetTitle className='sr-only'>Account menu</SheetTitle>
-							{nav}
-						</SheetContent>
-					</Sheet>
-					<span className='truncate text-sm font-semibold text-white'>
-						{accountName}
-					</span>
+			<SidebarInset className='min-w-0'>
+				<header className='sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-sidebar-border bg-background/80 px-4 backdrop-blur'>
+					<SidebarTrigger className='-ml-1' />
+					<span className='truncate text-sm font-semibold'>{accountName}</span>
 				</header>
 
-				<main className='min-w-0 flex-1'>
-					<div className='mx-auto w-full max-w-6xl px-6 py-10 lg:px-10'>
-						{children}
-					</div>
-				</main>
-			</div>
-		</div>
+				<div className='mx-auto w-full max-w-6xl px-6 py-10 lg:px-10'>
+					{children}
+				</div>
+			</SidebarInset>
+		</SidebarProvider>
 	)
 }

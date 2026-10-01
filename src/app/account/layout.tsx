@@ -22,6 +22,7 @@ export default async function AccountLayout({
 	if (!membership) redirect('/sign-in?next=/account')
 
 	const accounts = await listMemberships(session.user.id)
+	const email = session.user.email ?? 'Account'
 
 	// The sidebar must not advertise a page the role cannot open.
 	const items: NavItem[] = [
@@ -48,8 +49,9 @@ export default async function AccountLayout({
 			accountName={membership.workspace.name}
 			accounts={accounts}
 			currentAccountId={membership.workspace._id.toString()}
-			email={session.user.email ?? 'Account'}
-			roleName={membership.isOwner ? 'Account owner' : membership.role.name}>
+			email={email}
+			userName={session.user.name?.trim() || email.replace(/@.*$/, '')}
+			userImage={session.user.image ?? null}>
 			{children}
 		</AccountShell>
 	)

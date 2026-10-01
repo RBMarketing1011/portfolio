@@ -3,13 +3,18 @@
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { ChevronLeft, SlidersHorizontal } from 'lucide-react'
+import { ChevronLeft, LogIn, SlidersHorizontal } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
+} from '@/components/ui/sidebar'
+import { NavUser } from '@/components/nav-user'
 import { cn } from '@/lib/utils'
 import { LOCAL_SITE_ID } from '@/lib/builder/site-ids'
 import type { Template } from '@/lib/builder/page-schema'
-import { AccountMenu } from './account-menu'
 import { BackgroundDrawer } from './background-drawer'
 import { readBackground, writeBackground } from './background-settings'
 import { readSettings } from './theme-settings'
@@ -25,16 +30,24 @@ type NavGroup = {
 const tabClass =
 	'flex-1 rounded-none border-0 border-b-2 border-transparent bg-transparent pb-2 text-sm font-medium text-slate-400 data-[state=active]:border-brand data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none'
 
+// Landing on bare /builder shows only an empty state, so every way in opens the
+// first section instead.
+const LIBRARY_HOME = '/builder/site-header'
+
 export function LibraryNav({
 	groups,
 	templates,
 	signedIn = false,
 	email = null,
+	userName = '',
+	userImage = null,
 }: {
 	groups: NavGroup[]
 	templates: Template[]
 	signedIn?: boolean
 	email?: string | null
+	userName?: string
+	userImage?: string | null
 }) {
 	const pathname = usePathname()
 	const router = useRouter()
@@ -137,7 +150,7 @@ export function LibraryNav({
 						href={
 							signedIn
 								? `/account/projects/${openSite.split('/').pop()}`
-								: '/builder'
+								: LIBRARY_HOME
 						}
 						className='flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white'>
 						<ChevronLeft className='size-4 shrink-0' />
@@ -149,9 +162,11 @@ export function LibraryNav({
 					<PagesNav templates={templates} signedIn={signedIn} />
 				</div>
 
-				<div className='shrink-0 border-t border-white/10 p-2'>
-					<AccountMenu email={email} />
-				</div>
+				<BuilderAccount
+					email={email}
+					userName={userName}
+					userImage={userImage}
+				/>
 
 				<BackgroundDrawer
 					slug={settingsSlug ?? ''}
@@ -177,10 +192,12 @@ export function LibraryNav({
 			ref={navRef}
 			aria-label='Section library'
 			className='flex min-h-0 flex-1 flex-col'>
+			<BuilderBrand signedIn={signedIn} />
+
 			<Tabs
 				value={onPages ? 'pages' : 'sections'}
 				onValueChange={(value) =>
-					router.push(value === 'pages' ? pagesHref : '/builder')
+					router.push(value === 'pages' ? pagesHref : LIBRARY_HOME)
 				}
 				className='flex min-h-0 flex-1 flex-col gap-0'>
 				<TabsList className='h-auto w-full shrink-0 gap-4 rounded-none border-b border-white/10 bg-transparent px-4 pt-4'>
@@ -209,9 +226,11 @@ export function LibraryNav({
 				)}
 			</Tabs>
 
-			<div className='shrink-0 border-t border-white/10 p-2'>
-				<AccountMenu email={email} />
-			</div>
+			<BuilderAccount
+				email={email}
+				userName={userName}
+				userImage={userImage}
+			/>
 
 			<BackgroundDrawer
 				slug={settingsSlug ?? ''}
@@ -228,5 +247,49 @@ export function LibraryNav({
 				}}
 			/>
 		</nav>
+	)
+}
+
+function BuilderBrand({ signedIn }: { signedIn: boolean }) {
+	return (
+		<div className='shrink-0 border-b border-white/10 px-4 py-3'>
+			<Link
+				href={signedIn ? '/account' : '/'}
+				className='flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-white'>
+				<ChevronLeft className='size-4 shrink-0' />
+				{signedIn ? 'Back to account' : 'Back to site'}
+			</Link>
+		</div>
+	)
+}
+
+function BuilderAccount({
+	email,
+	userName,
+	userImage,
+}: {
+	email: string | null
+	userName: string
+	userImage: string | null
+}) {
+	return (
+		<div className='shrink-0 border-t border-white/10 p-2'>
+			{email ? (
+				<NavUser
+					user={{ name: userName || email, email, avatar: userImage }}
+				/>
+			) : (
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton asChild>
+							<Link href='/sign-in?next=/account'>
+								<LogIn />
+								<span>Sign in to save your sites</span>
+							</Link>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			)}
+		</div>
 	)
 }

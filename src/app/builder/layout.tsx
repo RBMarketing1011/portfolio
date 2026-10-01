@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { auth } from '@/lib/auth'
 import { loadTemplates } from '@/lib/builder/load-templates'
+import { SidebarProvider } from '@/components/ui/sidebar'
 import { BuilderShell } from './builder-shell'
 import { LibraryNav } from './library-nav'
 import { entryVariants, library } from './library'
@@ -32,23 +33,28 @@ export default async function SectionsLayout({
 	// a client provider higher up the tree is not something it can rely on.
 	const session = await auth()
 	const signedIn = Boolean(session?.user?.id)
+	const email = session?.user?.email ?? null
 
 	return (
 		<BuilderShell>
-			<div className='flex'>
+			<SidebarProvider>
 				<aside className='sticky top-0 flex h-screen w-72 shrink-0 flex-col border-r border-white/10'>
 					<Suspense fallback={null}>
 						<LibraryNav
 							groups={navGroups}
 							templates={templates}
 							signedIn={signedIn}
-							email={signedIn ? session?.user?.email : null}
+							email={email}
+							userName={
+								session?.user?.name?.trim() || email?.replace(/@.*$/, '') || ''
+							}
+							userImage={session?.user?.image ?? null}
 						/>
 					</Suspense>
 				</aside>
 
 				<main className='min-w-0 flex-1'>{children}</main>
-			</div>
+			</SidebarProvider>
 		</BuilderShell>
 	)
 }
