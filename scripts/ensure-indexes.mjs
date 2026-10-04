@@ -64,6 +64,50 @@ await db
 	.collection('authAttempts')
 	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
+// Media library. Every query leads with the workspace, so every index does too.
+const media = db.collection('mediaAssets')
+// A blob is registered once per workspace. The unique index is what makes the
+// upload webhook and the browser's own registration safe to race.
+await media.createIndex({ workspaceId: 1, pathname: 1 }, { unique: true })
+// One index per sort the library offers, each ending in _id in the same direction.
+// Paging needs the _id tiebreak, and an index on { workspaceId, createdAt } cannot
+// serve a sort by { createdAt, _id }: measured, it scans and sorts the whole library
+// on every page. With _id in the key the default view reads 60 entries, not 5,000.
+await media.createIndex({ workspaceId: 1, createdAt: -1, _id: -1 })
+await media.createIndex({ workspaceId: 1, folderId: 1, createdAt: -1, _id: -1 })
+await media.createIndex({ workspaceId: 1, nameKey: 1, _id: 1 })
+await media.createIndex({ workspaceId: 1, bytes: -1, _id: -1 })
+await media.createIndex({ workspaceId: 1, pixels: -1, _id: -1 })
+// Multikey: `terms` narrows a text search, `tags.slug` serves tag: and the review queue.
+await media.createIndex({ workspaceId: 1, terms: 1 })
+await media.createIndex({ workspaceId: 1, 'tags.slug': 1 })
+await media.createIndex({ workspaceId: 1, colorNames: 1 })
+await media.createIndex({ workspaceId: 1, sha256: 1 })
+await media.createIndex({ workspaceId: 1, 'tagging.status': 1 })
+// Superseded by the _id-suffixed versions above (and by dropping project import).
+for (const stale of [
+	'workspaceId_1_createdAt_-1',
+	'workspaceId_1_folderId_1_createdAt_-1',
+	'workspaceId_1_origin.siteId_1',
+]) {
+	await media.dropIndex(stale).catch(() => {})
+}
+// Two siblings cannot share a name. A null parent is a value, so top-level
+// folders collide with each other too, which is what we want.
+await db
+	.collection('mediaFolders')
+	.createIndex({ workspaceId: 1, parentId: 1, nameKey: 1 }, { unique: true })
+await db
+	.collection('mediaTagRules')
+	.createIndex({ workspaceId: 1, from: 1 }, { unique: true })
+await db
+	.collection('mediaSavedSearches')
+	.createIndex({ workspaceId: 1, createdAt: -1 })
+// Daily AI-spend counters. Housekeeping only; the day is part of the key.
+await db
+	.collection('mediaAiUsage')
+	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
 const names = await db.listCollections().toArray()
 console.log(
 	'indexes ensured on:',

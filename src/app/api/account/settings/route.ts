@@ -4,6 +4,7 @@ import { del } from '@vercel/blob'
 import { z } from 'zod'
 import { errorResponse, requirePermission } from '@/lib/auth/guards'
 import type { SiteDoc } from '@/lib/builder/site-doc'
+import { purgeWorkspaceMedia } from '@/lib/media/purge'
 import { WORKSPACE_COOKIE } from '@/lib/workspace/current'
 import {
 	INVITES,
@@ -76,6 +77,14 @@ export async function DELETE(request: Request) {
 			(site.media ?? []).map((item) => item.url),
 		)
 		if (urls.length) await del(urls).catch(() => {})
+
+		// The shared library lives outside any site, so it is purged on its own. Best
+		// effort like the blobs above: an outage must not stop the account going.
+		try {
+			await purgeWorkspaceMedia(db, workspace._id)
+		} catch (error) {
+			console.error('Could not purge the media library:', error)
+		}
 
 		await db.collection('sites').deleteMany({ workspaceId: workspace._id })
 		for (const name of [MEMBERS, ROLES, INVITES])

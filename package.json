@@ -10,9 +10,11 @@
 		"db:up": "node scripts/ensure-mongo.cjs",
 		"db:down": "docker compose down",
 		"db:seed": "node --env-file=.env scripts/seed-templates.mjs",
-		"db:indexes": "node --env-file=.env scripts/ensure-indexes.mjs"
+		"db:indexes": "node --env-file=.env scripts/ensure-indexes.mjs",
+		"prove:media": "node scripts/prove-media-all.mjs"
 	},
 	"dependencies": {
+		"@anthropic-ai/sdk": "^0.131.0",
 		"@auth/mongodb-adapter": "^3.11.3",
 		"@node-rs/argon2": "^2.2.1",
 		"@radix-ui/react-aspect-ratio": "^1.1.3",
@@ -41,6 +43,7 @@
 		"radix-ui": "^1.6.7",
 		"react": "^19.0.0",
 		"react-dom": "^19.0.0",
+		"sharp": "^0.34.5",
 		"tailwind-merge": "^3.0.2",
 		"tailwindcss-animate": "^1.0.7",
 		"zod": "^4.5.4"

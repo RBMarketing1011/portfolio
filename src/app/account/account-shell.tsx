@@ -15,7 +15,16 @@ import {
 } from '@/components/ui/sidebar'
 import { NavUser } from '@/components/nav-user'
 import { TeamSwitcher, type AccountOption } from '@/components/team-switcher'
+import { cn } from '@/lib/utils'
 import { AccountNav, type NavItem } from './account-nav'
+
+/**
+ * The media library is a working surface (a rail, a grid, a detail sheet), not a page of
+ * prose, so it gets the full width instead of the reading column the other pages use.
+ */
+export const isWidePath = (pathname: string | null | undefined) =>
+	typeof pathname === 'string' &&
+	(pathname === '/account/media' || pathname.startsWith('/account/media/'))
 
 // Must live outside <Sidebar>: on mobile that subtree only mounts while the
 // sheet is open, so the effect would close the sheet the moment it opened.
@@ -54,6 +63,8 @@ export function AccountShell({
 	userImage: string | null
 	children: React.ReactNode
 }) {
+	const wide = isWidePath(usePathname())
+
 	return (
 		<SidebarProvider>
 			<CloseSheetOnNavigate />
@@ -79,7 +90,11 @@ export function AccountShell({
 					<span className='truncate text-sm font-semibold'>{accountName}</span>
 				</header>
 
-				<div className='mx-auto w-full max-w-6xl px-6 py-10 lg:px-10'>
+				<div
+					className={cn(
+						'mx-auto w-full',
+						wide ? 'max-w-none px-4 py-6 lg:px-6' : 'max-w-6xl px-6 py-10 lg:px-10',
+					)}>
 					{children}
 				</div>
 			</SidebarInset>
