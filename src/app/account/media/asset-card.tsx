@@ -2,7 +2,10 @@
 
 import Image from 'next/image'
 import { memo, useRef, useState } from 'react'
-import { Check, Film, ImageOff, Layers, Sparkles } from 'lucide-react'
+import { Film, ImageOff, Layers, Sparkles } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { DRAG_MIME, type Density } from '@/app/account/media/contracts'
 import {
@@ -208,8 +211,9 @@ export const AssetCard = memo(function AssetCard({
 						? 'border-brand/50 bg-white/8'
 						: 'border-white/10 bg-white/3 hover:bg-white/5',
 				)}>
-				<button
+				<Button
 					type='button'
+					variant='ghost'
 					aria-label={cardAriaLabel(asset)}
 					aria-current={active ? 'true' : undefined}
 					onClick={(event) => {
@@ -229,7 +233,8 @@ export const AssetCard = memo(function AssetCard({
 						if (event.key === ' ' || event.key === 'Spacebar')
 							event.preventDefault()
 					}}
-					className='flex w-full flex-1 cursor-pointer flex-col text-left outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white'>
+					// The whole card face is the button: no padding, gap, rounding or hover fill of its own.
+					className='flex h-auto w-full flex-1 cursor-pointer flex-col items-stretch justify-start gap-0 rounded-none p-0 text-left font-normal whitespace-normal hover:bg-transparent focus-visible:ring-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-white dark:hover:bg-transparent'>
 					<span className='relative block aspect-square w-full bg-white/5'>
 						{showImage ? (
 							<Image
@@ -256,31 +261,31 @@ export const AssetCard = memo(function AssetCard({
 									aria-hidden='true'
 									className='pointer-events-none absolute inset-0 bg-linear-to-r from-transparent via-white/15 to-transparent motion-safe:animate-pulse'
 								/>
-								<span
+								<Badge
 									data-slot='tagging-badge'
-									className='absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-md bg-black/65 px-1.5 py-0.5 text-[11px] font-medium text-slate-100'>
+									className='absolute bottom-1.5 left-1.5 gap-1 border-transparent bg-black/65 px-1.5 py-0.5 text-[11px] font-medium text-slate-100'>
 									<Sparkles className='size-3 text-brand' />
 									{taggingLabel(tagging)}
-								</span>
+								</Badge>
 							</>
 						) : null}
 						{asset.animated || asset.hasAlpha ? (
 							<span className='absolute top-1.5 right-1.5 inline-flex items-center gap-1'>
 								{asset.animated ? (
-									<span
+									<Badge
 										data-slot='animated-icon'
 										title='Animated'
-										className='grid size-5 place-items-center rounded bg-black/65 text-slate-100'>
+										className='size-5 rounded border-transparent bg-black/65 p-0 text-slate-100'>
 										<Film className='size-3' />
-									</span>
+									</Badge>
 								) : null}
 								{asset.hasAlpha ? (
-									<span
+									<Badge
 										data-slot='transparent-icon'
 										title='Has transparency'
-										className='grid size-5 place-items-center rounded bg-black/65 text-slate-100'>
+										className='size-5 rounded border-transparent bg-black/65 p-0 text-slate-100'>
 										<Layers className='size-3' />
-									</span>
+									</Badge>
 								) : null}
 							</span>
 						) : null}
@@ -315,35 +320,26 @@ export const AssetCard = memo(function AssetCard({
 							</span>
 						) : null}
 					</span>
-				</button>
-				<button
-					type='button'
-					role='checkbox'
-					aria-checked={selected}
+				</Button>
+				<Checkbox
+					checked={selected}
 					aria-label={`Select ${name}`}
 					// Space on the card already toggles, so the checkbox is not another stop per card.
 					tabIndex={-1}
 					draggable={false}
 					{...{ [CHECKBOX_ATTR]: '' }}
+					// onClick, not onCheckedChange: Shift on the click makes it a range select.
 					onClick={(event) =>
 						onToggleSelect(asset.id, { range: event.shiftKey })
 					}
+					// The box is 20px; the pseudo-element keeps the old 36px hit area around it.
 					className={cn(
-						'absolute top-0.5 left-0.5 z-10 grid size-9 cursor-pointer place-items-center',
+						"absolute top-2.5 left-2.5 z-10 grid size-5 cursor-pointer place-items-center rounded border-2 border-white/80 bg-black/50 text-white shadow-none transition-colors after:absolute after:-inset-2 after:content-[''] data-[state=checked]:border-brand data-[state=checked]:bg-brand dark:bg-black/50 dark:data-[state=checked]:bg-brand",
 						showCheckbox || selected
 							? 'opacity-100'
 							: 'opacity-0 group-focus-within/card:opacity-100 group-hover/card:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100',
-					)}>
-					<span
-						className={cn(
-							'grid size-5 place-items-center rounded border-2 transition-colors',
-							selected
-								? 'border-brand bg-brand text-white'
-								: 'border-white/80 bg-black/50 text-transparent',
-						)}>
-						<Check className='size-3.5' strokeWidth={3} />
-					</span>
-				</button>
+					)}
+				/>
 			</div>
 		</li>
 	)

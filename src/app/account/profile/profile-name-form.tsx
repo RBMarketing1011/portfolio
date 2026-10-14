@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { FormAlert } from '@/components/form-alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,7 +35,7 @@ export function ProfileNameForm({ name }: { name: string }) {
 	}
 
 	return (
-		<form onSubmit={submit} className='mt-4 space-y-3'>
+		<form onSubmit={submit} className='space-y-3'>
 			<div className='space-y-2'>
 				<Label htmlFor='profile-name'>Name</Label>
 				<Input
@@ -45,17 +46,11 @@ export function ProfileNameForm({ name }: { name: string }) {
 				/>
 			</div>
 			{note && (
-				<p
-					className={
-						note.ok ? 'text-sm text-brand' : 'text-sm text-destructive'
-					}>
-					{note.text}
-				</p>
+				<FormAlert tone={note.ok ? 'success' : 'error'}>{note.text}</FormAlert>
 			)}
 			<Button
 				type='submit'
-				disabled={busy}
-				className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+				disabled={busy}>
 				{busy && <Loader2 className='animate-spin' />} Save
 			</Button>
 		</form>

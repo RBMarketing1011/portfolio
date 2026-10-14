@@ -57,13 +57,13 @@ export function BuilderStart({
 			</div>
 
 			<AddPageDialog
+				usesCustomMenu={store.chrome.menu.length > 0}
 				open={open}
 				onOpenChange={setOpen}
 				templates={templates}
 				isHome
-				onCreate={({ name, slug, templateSlug, inHeader }) => {
-					const template = templates.find((t) => t.slug === templateSlug)
-					const id = store.addPage(name, slug, template?.blocks ?? [], inHeader)
+				onCreate={({ name, slug, blocks, inHeader }) => {
+					const id = store.addPage(name, slug, blocks, inHeader)
 					router.push(`${base}/${id}`)
 				}}
 			/>

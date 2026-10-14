@@ -8,6 +8,7 @@ import {
 	type ReactNode,
 } from 'react'
 import { Info, LoaderCircle, TriangleAlert, X } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AiStatusBannerProps } from '@/app/account/media/contracts'
@@ -179,11 +180,12 @@ const TONES = {
 } as const
 
 const actionButton =
-	'h-6 shrink-0 border border-white/15 px-2 text-xs text-white hover:bg-white/10 dark:hover:bg-white/10'
+	'h-6 shrink-0 border border-white/15 px-2 text-xs text-white hover:bg-white/10 dark:hover:bg-white/10 motion-reduce:transition-none'
 
 /**
  * Not a live region: the library's own region already announces tagging progress and
- * errors, and two would read the same news twice.
+ * errors, and two would read the same news twice. So the Alert drops its built-in
+ * `role="alert"`.
  */
 export function AiStatusBanner({
 	status,
@@ -267,12 +269,13 @@ export function AiStatusBanner({
 	}
 
 	return (
-		<div
+		<Alert
+			role={undefined}
 			data-slot='ai-status-banner'
 			data-kind={note.kind}
 			data-tone={note.tone}
 			className={cn(
-				'flex items-start gap-2 rounded-lg border px-3 py-2 text-xs leading-5',
+				'flex items-start gap-2 rounded-lg border px-3 py-2 text-xs leading-5 has-[>svg]:gap-x-2 [&>svg]:size-3.5 [&>svg]:translate-y-0',
 				TONES[note.tone],
 			)}>
 			<Icon
@@ -282,18 +285,22 @@ export function AiStatusBanner({
 					note.tone === 'progress' && 'animate-spin motion-reduce:animate-none',
 				)}
 			/>
-			<p className='min-w-0 flex-1 wrap-break-word'>{body}</p>
+			<AlertDescription className='block min-w-0 flex-1 text-xs leading-5 text-current wrap-break-word'>
+				{body}
+			</AlertDescription>
 			{action}
 			{dismiss ? (
-				<button
+				<Button
 					type='button'
+					variant='ghost'
+					size='icon-xs'
 					aria-label='Dismiss this note'
 					title='Dismiss'
 					onClick={dismiss}
-					className='grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-slate-400 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-[3px] focus-visible:ring-white/40 motion-reduce:transition-none'>
+					className='text-slate-400 hover:bg-white/10 hover:text-white focus-visible:ring-white/40 dark:hover:bg-white/10 motion-reduce:transition-none'>
 					<X aria-hidden='true' className='size-3.5' />
-				</button>
+				</Button>
 			) : null}
-		</div>
+		</Alert>
 	)
 }

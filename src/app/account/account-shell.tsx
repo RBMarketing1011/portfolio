@@ -14,8 +14,11 @@ import {
 	useSidebar,
 } from '@/components/ui/sidebar'
 import { NavUser } from '@/components/nav-user'
-import { TeamSwitcher, type AccountOption } from '@/components/team-switcher'
+import { AccountBrand } from '@/components/account-brand'
 import Link from 'next/link'
+import { ShieldCheck } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { AccountNav, type NavItem } from './account-nav'
 
@@ -48,8 +51,6 @@ function CloseSheetOnNavigate() {
 export function AccountShell({
 	items,
 	accountName,
-	accounts,
-	currentAccountId,
 	email,
 	userName,
 	userImage,
@@ -58,8 +59,6 @@ export function AccountShell({
 }: {
 	items: NavItem[]
 	accountName: string
-	accounts: AccountOption[]
-	currentAccountId: string
 	email: string
 	userName: string
 	userImage: string | null
@@ -73,10 +72,7 @@ export function AccountShell({
 			<CloseSheetOnNavigate />
 			<Sidebar collapsible='icon'>
 				<SidebarHeader>
-					<TeamSwitcher
-						accounts={accounts}
-						currentAccountId={currentAccountId}
-					/>
+					<AccountBrand />
 				</SidebarHeader>
 				<SidebarContent>
 					<AccountNav items={items} />
@@ -94,14 +90,17 @@ export function AccountShell({
 				</header>
 
 				{viaAdmin && (
-					<div className='flex items-center justify-between gap-3 border-b border-brand/30 bg-brand/10 px-4 py-2 text-sm'>
-						<span>
-							Viewing <strong>{accountName}</strong> as an administrator.
-						</span>
-						<Link href='/admin/accounts' className='shrink-0 font-semibold text-brand hover:underline'>
-							Back to admin
-						</Link>
-					</div>
+					<Alert className='rounded-none border-x-0 border-t-0'>
+						<ShieldCheck />
+						<AlertDescription className='flex flex-wrap items-center justify-between gap-3'>
+							<span>
+								Viewing <strong>{accountName}</strong> as an administrator.
+							</span>
+							<Button asChild size='sm' variant='outline'>
+								<Link href='/admin/accounts'>Back to admin</Link>
+							</Button>
+						</AlertDescription>
+					</Alert>
 				)}
 
 				<div

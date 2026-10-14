@@ -4243,10 +4243,20 @@ await check('ssr: the committed query shows its chips and the parser\'s warnings
 	assert(/tag: kitchen/.test(text) && /sink/.test(text), text)
 	assert(text.includes('Unknown type "xyz" was ignored.'), 'the parser\'s warning is shown inline')
 	eq(findAllNodes(search, (n) => n.attrs.role === 'combobox')[0].attrs.value, 'tag:kitchen sink type:xyz', 'the box holds what was typed')
-	const options = (r) => findAllNodes(findAllNodes(r, (n) => n.tag === 'select')[0], (n) => n.tag === 'option').map(textOfNode)
-	assert(options(root).includes('Best match'))
+	// The sort is a shadcn Select: a labelled combobox showing the sort in effect. Its options are
+	// portalled and only drawn when opened, so which ones are offered is proved in the wiring
+	// section below (the toolbar is handed hasText) and in prove-media-ui-grid (hasText -> options).
+	const sortControl = (r) => {
+		const label = findAllNodes(r, (n) => n.tag === 'label' && textOfNode(n) === 'Sort images')[0]
+		assert(label, 'the sort has a visible-to-AT label')
+		const control = findAllNodes(r, (n) => n.attrs.id === label.attrs.for)
+		eq(control.length, 1, 'the label points at exactly one control')
+		eq(control[0].attrs.role, 'combobox')
+		return textOfNode(control[0])
+	}
+	eq(sortControl(root), 'Newest first', 'the server applied no sort, so the default is what shows')
 	const plain = renderLibrary(baseProps({ initial: richInitial() }))
-	assert(!options(plain.root).includes('Best match'), 'no text, no relevance')
+	eq(sortControl(plain.root), 'Newest first')
 })
 
 await check('ssr: an empty library teaches, an empty folder and a missing folder say what happened, and a search with no hits names the dropped words and the corrections', () => {
@@ -4404,6 +4414,7 @@ await check('ssr: the library is keyed by account, never reads the router, and e
 // what each leaf is handed from the state, and what its callbacks do to it.
 const realFacet = loadTs('src/app/account/media/facet-panel.tsx')
 const realFolderDialogs = loadTs('src/app/account/media/folder-dialogs.tsx')
+const realToolbar = loadTs('src/app/account/media/grid-toolbar.tsx')
 
 const seen = { latest: {}, all: {} }
 const fakeInput = { calls: [], focus() { this.calls.push('focus') }, select() { this.calls.push('select') } }
@@ -4600,6 +4611,18 @@ await check('wiring: every leaf is handed what the state says, and a viewer gets
 	assert(!viewer.button('New folder'), 'no New folder button')
 	assert(viewer.button('Tags'), 'but the tag manager can be opened to look')
 	viewer.close()
+})
+
+await check('wiring: the sort offers "Best match" only for a text query (the toolbar is told whether there is text)', () => {
+	const query = { chips: [{ key: 'b', kind: 'term', label: 'sink', clause: 'sink', negated: false, start: 0, end: 4 }], warnings: [], sort: null, hasText: true }
+	const text = mountLibrary({ initial: richInitial({ params: { q: 'sink' }, search: searchResponse(realisticSixty(), { total: 312, hasMore: true, query }) }) })
+	eq(text.leaf('GridToolbar').hasText, true)
+	assert(realToolbar.sortOptions(text.leaf('GridToolbar').hasText).includes('relevance'))
+	text.close()
+	const plain = mountLibrary({ initial: richInitial() })
+	eq(plain.leaf('GridToolbar').hasText, false)
+	assert(!realToolbar.sortOptions(plain.leaf('GridToolbar').hasText).includes('relevance'), 'no text, no relevance')
+	plain.close()
 })
 
 await check('wiring: state -> props keeps up with the controller (selection, a folder, the open image, sort, density, the typed box)', () => {
@@ -5381,7 +5404,7 @@ mock('@/components/ui/sidebar', {
 	useSidebar: () => ({ setOpenMobile() {} }),
 })
 mock('@/components/nav-user', { NavUser: () => null })
-mock('@/components/team-switcher', { TeamSwitcher: () => null })
+mock('@/components/account-brand', { AccountBrand: () => null })
 mock('./account-nav', { AccountNav: () => null })
 const shell = loadTs('src/app/account/account-shell.tsx')
 const shellProps = {

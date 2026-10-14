@@ -34,6 +34,8 @@ import {
 import type { NavPage } from '@/components/built-chrome'
 import type { Chrome } from '@/lib/builder/page-schema'
 import type { Block } from '@/lib/builder/types'
+import { useBuilderAi } from './builder-ai'
+import { SectionAiDialog } from './section-ai-dialog'
 
 const viewports = [
 	{
@@ -107,6 +109,8 @@ export function CanvasFrame({
 	const setSettings = (theme: ThemeSettings) => store.setLook({ theme })
 	const background = store.look.page
 	const [frameReady, setFrameReady] = useState(false)
+	const aiEnabled = useBuilderAi(store.siteId, store.remote)
+	const [aiBlockId, setAiBlockId] = useState<string | null>(null)
 	const [drag, setDrag] = useState<{
 		side: 'left' | 'right'
 		startX: number
@@ -146,6 +150,8 @@ export function CanvasFrame({
 				chrome,
 				currentSlug,
 				surfaceCss,
+				brand: store.brand ?? null,
+				ai: aiEnabled,
 				// The iframe is its own document, so a signed-in library cannot be read
 				// from localStorage there.
 				mediaIndex: store.remote
@@ -163,6 +169,8 @@ export function CanvasFrame({
 		surfaceCss,
 		store.remote,
 		store.media,
+		store.brand,
+		aiEnabled,
 	])
 
 	useEffect(() => {
@@ -174,6 +182,8 @@ export function CanvasFrame({
 				store.duplicateSection(event.data.id)
 			if (event.data?.kind === 'builder:remove' && event.data.id)
 				store.removeSection(event.data.id)
+			if (event.data?.kind === 'builder:ai' && event.data.id)
+				setAiBlockId(event.data.id)
 		}
 		window.addEventListener('message', onMessage)
 		return () => window.removeEventListener('message', onMessage)
@@ -395,6 +405,12 @@ export function CanvasFrame({
 					{measured && handle('right')}
 				</div>
 			</div>
+			<SectionAiDialog
+				blockId={aiEnabled ? aiBlockId : null}
+				onOpenChange={(open) => {
+					if (!open) setAiBlockId(null)
+				}}
+			/>
 		</TooltipProvider>
 	)
 }

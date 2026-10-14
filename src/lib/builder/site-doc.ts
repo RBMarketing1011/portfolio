@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { siteSchema } from './page-schema'
+import { readSiteProfile, type SiteProfile } from './site-profile'
 
 /** The saved theme/background settings. Shape-checked loosely: the builder's own
  *  merge fills in anything an older save is missing. */
@@ -126,6 +127,8 @@ export type SiteDoc = {
 	site: z.infer<typeof siteSchema>
 	look: Record<string, unknown>
 	media: MediaEntry[]
+	/** Brand, SEO and business details. Missing on projects made before it existed. */
+	profile?: unknown
 	rev: number
 	createdAt: Date
 	updatedAt: Date
@@ -147,6 +150,7 @@ export type SiteResponse = {
 	site: z.infer<typeof siteSchema>
 	look: Record<string, unknown>
 	media: MediaEntry[]
+	profile: SiteProfile
 	rev: number
 	updatedAt: string
 }
@@ -166,6 +170,7 @@ export const toSiteResponse = (doc: SiteDoc): SiteResponse => ({
 	site: doc.site,
 	look: doc.look ?? {},
 	media: doc.media ?? [],
+	profile: readSiteProfile(doc.profile),
 	rev: doc.rev,
 	updatedAt: doc.updatedAt.toISOString(),
 })

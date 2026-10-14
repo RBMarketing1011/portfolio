@@ -2084,7 +2084,11 @@ mock('@/components/ui/popover', {
 })
 mock('@/components/ui/dropdown-menu', {
 	DropdownMenu: ({ children }) => h('div', { 'data-menu': '' }, children),
-	DropdownMenuTrigger: ({ children, ...rest }) => h('button', { type: 'button', 'aria-haspopup': 'menu', ...rest }, children),
+	// Like Radix: with asChild the trigger props land on the child (the bar's Button), never a button around a button.
+	DropdownMenuTrigger: ({ asChild, children, ...rest }) => {
+		const props = { type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': false, 'data-state': 'closed', ...rest }
+		return asChild ? React.cloneElement(children, props) : h('button', props, children)
+	},
 	DropdownMenuContent: ({ children }) => h('div', { role: 'menu' }, children),
 	DropdownMenuRadioGroup: ({ value, onValueChange, children }) => {
 		menuGroup = { value, onValueChange }
@@ -3278,6 +3282,50 @@ await check('facet ssr: hostile facets are drawn as text and cannot break the la
 /* FacetPanel: interaction                                                    */
 /* ========================================================================== */
 
+// Radix ToggleGroup reads its value through context, which the mini renderer cannot expand. The interactive
+// copy of the panel gets a stand-in with the same host elements, roles, ARIA and callback semantics as the
+// real SSR output: type='multiple' is a toolbar of buttons with aria-pressed (single: a radiogroup of radios
+// with aria-checked), every item tabindex=-1 under roving focus, and a click hands onValueChange the whole
+// new value (multiple: the set with that value added or removed; single: the value, or '' when it was on).
+const { toggleVariants } = loadTs('src/components/ui/toggle.tsx')
+const { cn: mergeClasses } = loadTs('src/lib/utils.ts')
+let toggleGroup = null
+mock('@/components/ui/toggle-group', {
+	ToggleGroup: ({ type, value, onValueChange, children, className, spacing = 0, variant, size, ...rest }) => {
+		toggleGroup = { type, value: value ?? (type === 'multiple' ? [] : ''), onValueChange, spacing, variant, size }
+		return h('div', { role: type === 'single' ? 'radiogroup' : 'toolbar', dir: 'ltr', 'data-slot': 'toggle-group', 'data-spacing': spacing, tabIndex: -1, className, ...rest }, children)
+	},
+	ToggleGroupItem: ({ value, children, className, onClick, variant, size, ...rest }) => {
+		const group = toggleGroup
+		const single = group.type === 'single'
+		const on = single ? group.value === value : group.value.includes(value)
+		return h(
+			'button',
+			{
+				type: 'button',
+				...(single ? { role: 'radio', 'aria-checked': on } : { 'aria-pressed': on }),
+				'data-state': on ? 'on' : 'off',
+				'data-slot': 'toggle-group-item',
+				'data-spacing': group.spacing,
+				tabIndex: -1,
+				'data-radix-collection-item': '',
+				className: mergeClasses(toggleVariants({ variant: group.variant || variant, size: group.size || size }), 'w-auto min-w-0 shrink-0 px-3 focus:z-10 focus-visible:z-10', className),
+				...rest,
+				onClick: (event) => {
+					onClick?.(event)
+					if (single) group.onValueChange?.(on ? '' : value)
+					else group.onValueChange?.(on ? group.value.filter((v) => v !== value) : [...group.value, value])
+				},
+			},
+			children,
+		)
+	},
+})
+clearCache()
+const liveFacet = loadTs('src/app/account/media/facet-panel.tsx')
+mock('@/components/ui/toggle-group', loadTs('src/components/ui/toggle-group.tsx'))
+clearCache()
+
 function newFacets(over = {}) {
 	const doc = createDocument()
 	const calls = { toggles: [], folders: [], manage: 0 }
@@ -3288,7 +3336,7 @@ function newFacets(over = {}) {
 		...over,
 		...extra,
 	})
-	const m = mount(facet.FacetPanel, props(), doc)
+	const m = mount(liveFacet.FacetPanel, props(), doc)
 	const t = {
 		m,
 		calls,
@@ -3406,16 +3454,24 @@ await check('facet ui: Show more reveals the rest (at most 30 tags), Show less f
 	eq(t.calls.toggles.at(-1), ['tag:t29', false])
 })
 
-await check('facet ui: everything is a native button in the tab order, with no tabindex tricks and a visible focus ring', () => {
+await check('facet ui: everything is a native button reachable by keyboard: values through one labelled roving toolbar per group, the rest in the natural tab order, all with a visible focus ring', () => {
 	const t = newFacets({ activeValues: new Set(['type:png']) })
 	const buttons = t.m.findAll((n) => n.type === 'button')
 	assert(buttons.length > 20)
+	const toolbars = t.m.findAll((n) => n.props?.role === 'toolbar' && n.props['data-slot'] === 'toggle-group')
+	eq(toolbars.map((g) => g.props['aria-label']), ['Tags', 'Colors', 'Type', 'Orientation', 'Kind'], 'each group of values is one labelled toolbar')
+	const inToolbar = new Set(toolbars.flatMap((g) => t.m.findAll((n) => n.type === 'button' && (n.path.startsWith(`${g.path}[`) || n.path.startsWith(`${g.path}/`)))))
 	for (const b of buttons) {
 		eq(b.props.type, 'button', 'never submits a form')
-		eq(b.props.tabIndex, undefined, 'natural tab order: no roving tabindex to get lost in')
+		if (b.props['aria-pressed'] !== undefined) {
+			// Radix roving focus: the group is one tab stop and the arrow keys move between values.
+			assert(inToolbar.has(b), `${squash(t.m.text(b))} is a value outside its toolbar`)
+			eq(b.props['data-radix-collection-item'], '', 'the item is in the roving-focus collection')
+		} else eq(b.props.tabIndex, undefined, 'natural tab order for every control that is not a value')
 		assert(/focus-visible:ring/.test(b.props.className), `no focus ring on ${squash(t.m.text(b))}`)
 		assert(squash(t.m.text(b)) !== '' || b.props['aria-label'], 'every button has a name')
 	}
+	eq([...inToolbar].filter((b) => b.props['aria-pressed'] === undefined).length, 0, 'a toolbar holds only values')
 	for (const b of buttons.filter((x) => x.props['aria-pressed'] !== undefined)) eq(typeof b.props['aria-pressed'], 'boolean', 'aria-pressed is a real state, never undefined')
 	// Nothing depends on hover: no element is only revealed on hover.
 	assert(!buttons.some((b) => /(^|\s)(hidden|invisible)\s/.test(b.props.className) || /group-hover:(block|visible|opacity-100)/.test(b.props.className)))

@@ -21,7 +21,7 @@ import {
 	type KeyboardEvent,
 } from 'react'
 import { Folder, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import {
 	AlertDialog,
@@ -668,9 +668,12 @@ export function FolderNameForm({
 				className='h-8 border-white/15 bg-ink/60 px-2 text-white'
 			/>
 			{error && (
-				<p id={errorId} role='alert' className='mt-1 text-xs text-destructive'>
-					{error}
-				</p>
+				<Alert
+					id={errorId}
+					variant='destructive'
+					className='mt-1 border-0 bg-transparent p-0 text-xs'>
+					<AlertDescription className='text-xs text-destructive'>{error}</AlertDescription>
+				</Alert>
 			)}
 		</form>
 	)
@@ -758,9 +761,9 @@ export function DeleteFolderDialog({
 					<AlertDialogDescription>{deleteExplanation(info)}</AlertDialogDescription>
 				</AlertDialogHeader>
 				{error && (
-					<p role='alert' className='text-sm text-destructive'>
-						{error}
-					</p>
+					<Alert variant='destructive'>
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
 				)}
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>

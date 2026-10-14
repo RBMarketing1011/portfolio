@@ -5,7 +5,15 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { Loader2 } from 'lucide-react'
+import { FormAlert } from '@/components/form-alert'
 import { Button } from '@/components/ui/button'
+import {
+	Card,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -46,22 +54,24 @@ export function WelcomeForm({ token }: { token: string }) {
 
 	if (state.kind === 'loading')
 		return (
-			<p className='flex items-center gap-2 text-sm text-slate-500'>
+			<p className='flex items-center gap-2 text-sm text-muted-foreground'>
 				<Loader2 className='size-4 animate-spin' /> Checking that invitation…
 			</p>
 		)
 
 	if (state.kind === 'error')
 		return (
-			<div className='rounded-xl border border-white/10 bg-white/3 p-8 text-center'>
-				<h1 className='font-display text-xl font-semibold text-white'>
-					This invitation cannot be used
-				</h1>
-				<p className='mt-2 text-sm leading-6 text-slate-400'>{state.message}</p>
-				<Button asChild variant='outline' className='mt-6 border-white/15'>
-					<Link href='/sign-in'>Go to sign in</Link>
-				</Button>
-			</div>
+			<Card className='text-center'>
+				<CardHeader>
+					<CardTitle>This invitation cannot be used</CardTitle>
+					<CardDescription>{state.message}</CardDescription>
+				</CardHeader>
+				<CardFooter className='justify-center'>
+					<Button asChild variant='outline'>
+						<Link href='/sign-in'>Go to sign in</Link>
+					</Button>
+				</CardFooter>
+			</Card>
 		)
 
 	const submit = async (event: React.FormEvent) => {
@@ -121,13 +131,13 @@ export function WelcomeForm({ token }: { token: string }) {
 						value={password}
 						onChange={(event) => setPassword(event.target.value)}
 					/>
-					<p className='text-xs text-slate-500'>At least 10 characters.</p>
+					<p className='text-xs text-muted-foreground'>At least 10 characters.</p>
 				</div>
-				{error && <p className='text-sm text-destructive'>{error}</p>}
+				{error && <FormAlert>{error}</FormAlert>}
 				<Button
 					type='submit'
 					disabled={busy}
-					className='w-full bg-brand font-bold text-ink hover:bg-brand-strong'>
+					className='w-full'>
 					{busy && <Loader2 className='animate-spin' />} Create login
 				</Button>
 			</form>

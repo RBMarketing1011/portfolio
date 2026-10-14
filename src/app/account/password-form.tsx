@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { Loader2 } from 'lucide-react'
+import { FormAlert } from '@/components/form-alert'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { PasswordInput } from '@/components/ui/password-input'
 
 export function PasswordForm() {
-	const [current, setCurrent] = useState('')
 	const [next, setNext] = useState('')
 	const [busy, setBusy] = useState(false)
 	const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
@@ -20,7 +20,7 @@ export function PasswordForm() {
 		const response = await fetch('/api/account/password', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ current, next }),
+			body: JSON.stringify({ next }),
 		})
 		const body = await response.json().catch(() => ({}))
 		setBusy(false)
@@ -31,23 +31,12 @@ export function PasswordForm() {
 				: (body.error ?? 'That did not work.'),
 		})
 		if (response.ok) {
-			setCurrent('')
 			setNext('')
 		}
 	}
 
 	return (
-		<form onSubmit={submit} className='mt-8 max-w-sm space-y-5'>
-			<div className='space-y-2'>
-				<Label htmlFor='current'>Current password</Label>
-				<PasswordInput
-					id='current'
-					autoComplete='current-password'
-					value={current}
-					onChange={(event) => setCurrent(event.target.value)}
-					placeholder='Leave blank if you have never set one'
-				/>
-			</div>
+		<form onSubmit={submit} className='space-y-5'>
 			<div className='space-y-2'>
 				<Label htmlFor='next'>New password</Label>
 				<PasswordInput
@@ -60,26 +49,19 @@ export function PasswordForm() {
 				/>
 			</div>
 			{note && (
-				<p
-					className={
-						note.ok ? 'text-sm text-brand' : 'text-sm text-destructive'
-					}>
-					{note.text}
-				</p>
+				<FormAlert tone={note.ok ? 'success' : 'error'}>{note.text}</FormAlert>
 			)}
 			<div className='flex items-center gap-3'>
 				<Button
 					type='submit'
-					disabled={busy}
-					className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+					disabled={busy}>
 					{busy && <Loader2 className='animate-spin' />}
 					Update password
 				</Button>
 				<Button
 					type='button'
 					variant='outline'
-					onClick={() => signOut({ callbackUrl: '/' })}
-					className='border-white/15 bg-transparent text-white hover:bg-white/5'>
+					onClick={() => signOut({ callbackUrl: '/' })}>
 					Sign out
 				</Button>
 			</div>

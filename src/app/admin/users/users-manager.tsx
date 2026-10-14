@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Send, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { FormAlert } from '@/components/form-alert'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -103,12 +105,12 @@ export function UsersManager({
 				<h1 className='font-display text-3xl font-semibold text-white'>
 					Users
 				</h1>
-				<p className='mt-2 leading-7 text-slate-400'>
+				<p className='mt-2 text-muted-foreground'>
 					Only people you invite can sign in.
 				</p>
 			</div>
 
-			{error && <p className='text-sm text-destructive'>{error}</p>}
+			{error && <FormAlert>{error}</FormAlert>}
 
 			<Tabs defaultValue='admin'>
 				<TabsList>
@@ -169,7 +171,7 @@ function UsersPanel({
 				</TabsList>
 			</Tabs>
 
-			<div className='rounded-xl border border-white/10'>
+			<Card className='py-0'>
 				<Table>
 					<TableHeader>
 						<TableRow>
@@ -269,7 +271,7 @@ function UsersPanel({
 						)}
 					</TableBody>
 				</Table>
-			</div>
+			</Card>
 		</div>
 	)
 }
@@ -309,9 +311,9 @@ function InviteForm({ role, onSent }: { role: Role; onSent: () => void }) {
 
 	return (
 		<div className='space-y-2'>
-			<form
-				onSubmit={submit}
-				className='grid gap-4 rounded-xl border border-white/10 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end'>
+			<Card>
+				<CardContent>
+			<form onSubmit={submit} className='grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end'>
 				<div className='space-y-2'>
 					<Label htmlFor={`invite-email-${role}`}>Email</Label>
 					<Input
@@ -337,14 +339,15 @@ function InviteForm({ role, onSent }: { role: Role; onSent: () => void }) {
 				)}
 				<Button
 					type='submit'
-					disabled={busy}
-					className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+					disabled={busy}>
 					{busy ? <Loader2 className='animate-spin' /> : <Send />}
 					Invite {role === 'admin' ? 'admin' : 'account holder'}
 				</Button>
 			</form>
-			{error && <p className='text-sm text-destructive'>{error}</p>}
-			{notice && <p className='text-sm text-brand'>{notice}</p>}
+				</CardContent>
+			</Card>
+			{error && <FormAlert>{error}</FormAlert>}
+			{notice && <FormAlert tone='success'>{notice}</FormAlert>}
 		</div>
 	)
 }

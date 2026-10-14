@@ -3,6 +3,7 @@
 import { siteSchema, type Site } from './page-schema'
 import { LOCAL_SITE_ID, LOOK_KEY, SITE_KEY } from './site-ids'
 import type { MediaEntry } from './site-doc'
+import { readSiteProfile, type SiteProfile } from './site-profile'
 
 export { LOCAL_SITE_ID, LOOK_KEY, SITE_KEY }
 
@@ -13,6 +14,8 @@ export type LoadedSite = {
 	site: Site | null
 	look: Record<string, unknown> | null
 	media: MediaEntry[]
+	/** Brand and business details. Null for a site that lives only in this browser. */
+	profile: SiteProfile | null
 	rev: number
 }
 
@@ -46,6 +49,7 @@ export const localDriver: Driver = {
 			site: parsed?.success ? parsed.data : null,
 			look: readLocal<Record<string, unknown>>(LOOK_KEY),
 			media: [],
+			profile: null,
 			rev: 0,
 		}
 	},
@@ -77,6 +81,7 @@ export function remoteDriver(siteId: string): Driver {
 				site: parsed.success ? parsed.data : null,
 				look: site.look ?? null,
 				media: site.media ?? [],
+				profile: readSiteProfile(site.profile),
 				rev: site.rev,
 			}
 		},

@@ -24,6 +24,8 @@ import {
 	RotateCw,
 	X,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import {
 	DRAG_MIME,
@@ -1096,11 +1098,12 @@ export function attachBeforeUnload(target: EventTarget) {
 
 // The panel
 
+// Classes on top of Button's ghost icon and link variants, for the dark panel.
 const rowButton =
-	'grid size-7 shrink-0 cursor-pointer place-items-center rounded-md text-slate-400 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-[3px] focus-visible:ring-white/40 motion-reduce:transition-none'
+	'size-7 text-slate-400 hover:bg-white/10 hover:text-white focus-visible:ring-white/40 dark:hover:bg-white/10 motion-reduce:transition-none'
 
 const textButton =
-	'cursor-pointer rounded text-xs font-medium text-brand underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-white/40'
+	'h-auto rounded p-0 text-xs font-medium text-brand focus-visible:ring-white/40 motion-reduce:transition-none'
 
 function StateIcon({ state }: { state: UploadItemState }) {
 	if (state === 'uploading' || state === 'processing')
@@ -1186,32 +1189,38 @@ const UploadRow = memo(function UploadRow({
 			{readOnly ? null : (
 				<div className='flex shrink-0 items-center gap-1'>
 					{item.state === 'duplicate' && item.asset ? (
-						<button
+						<Button
 							type='button'
+							variant='link'
+							size='xs'
 							aria-label={`View ${assetLabel(item.asset)}`}
 							onClick={() => onView(item.asset?.id ?? '')}
 							className={textButton}>
 							View
-						</button>
+						</Button>
 					) : null}
 					{canRetry ? (
-						<button
+						<Button
 							type='button'
+							variant='ghost'
+							size='icon-sm'
 							title='Retry'
 							aria-label={`Retry ${item.name}`}
 							onClick={() => onRetry(item.id)}
 							className={rowButton}>
 							<RotateCw aria-hidden='true' className='size-3.5' />
-						</button>
+						</Button>
 					) : null}
-					<button
+					<Button
 						type='button'
+						variant='ghost'
+						size='icon-sm'
 						title={active ? 'Cancel' : 'Remove'}
 						aria-label={`${active ? 'Cancel upload of' : 'Remove'} ${item.name}`}
 						onClick={() => onRemove(item.id)}
 						className={rowButton}>
 						<X aria-hidden='true' className='size-3.5' />
-					</button>
+					</Button>
 				</div>
 			)}
 		</li>
@@ -1285,8 +1294,10 @@ export function UploadQueuePanel({
 					) : null}
 				</div>
 				{hasRows && !readOnly ? (
-					<button
+					<Button
 						type='button'
+						variant='ghost'
+						size='icon-sm'
 						aria-expanded={!collapsed}
 						aria-controls={listId}
 						aria-label={collapsed ? 'Show upload details' : 'Hide upload details'}
@@ -1297,7 +1308,7 @@ export function UploadQueuePanel({
 						) : (
 							<ChevronDown aria-hidden='true' className='size-4' />
 						)}
-					</button>
+					</Button>
 				) : null}
 			</div>
 			{hasRows && busy ? (
@@ -1317,14 +1328,24 @@ export function UploadQueuePanel({
 			{hasRows && !readOnly && !collapsed && (retryable > 1 || hasFinished) ? (
 				<div className='flex items-center gap-4 border-t border-white/10 px-4 py-1.5'>
 					{retryable > 1 ? (
-						<button type='button' onClick={onRetryAll} className={textButton}>
+						<Button
+							type='button'
+							variant='link'
+							size='xs'
+							onClick={onRetryAll}
+							className={textButton}>
 							{`Retry ${retryable} failed`}
-						</button>
+						</Button>
 					) : null}
 					{hasFinished ? (
-						<button type='button' onClick={onClear} className={textButton}>
+						<Button
+							type='button'
+							variant='link'
+							size='xs'
+							onClick={onClear}
+							className={textButton}>
 							Clear finished
-						</button>
+						</Button>
 					) : null}
 				</div>
 			) : null}
@@ -1356,10 +1377,15 @@ export function UploadQueuePanel({
 					className='flex items-center justify-between gap-3 border-t border-white/10 bg-brand/10 px-4 py-2.5'>
 					<span className='text-sm text-white'>{`${formatCount(added)} added. `}</span>
 					{readOnly ? null : (
-						<button type='button' onClick={onSelectBatch} className={textButton}>
+						<Button
+							type='button'
+							variant='link'
+							size='xs'
+							onClick={onSelectBatch}
+							className={textButton}>
 							Select them
 							<span className='sr-only'>{` (${pluralize(added, 'new image')})`}</span>
-						</button>
+						</Button>
 					)}
 				</div>
 			) : null}
@@ -1375,11 +1401,11 @@ export function DropOverlay({ label }: { label: string }) {
 			// No pointer events: the drag keeps crossing the page underneath, so the enter
 			// and leave events the counter reads stay the same whether this is shown or not.
 			className='pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-6 backdrop-blur-sm animate-in fade-in-0 duration-150 motion-reduce:animate-none'>
-			<div className='flex max-w-md flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-brand/70 bg-panel/90 px-10 py-12 text-center'>
+			<Card className='max-w-md items-center gap-3 rounded-2xl border-2 border-dashed border-brand/70 bg-panel/90 px-10 py-12 text-center shadow-none'>
 				<CloudUpload className='size-10 text-brand' />
 				<p className='text-lg font-semibold text-white'>{label}</p>
 				<p className='text-sm text-slate-300'>Drop the images anywhere to add them</p>
-			</div>
+			</Card>
 		</div>
 	)
 }

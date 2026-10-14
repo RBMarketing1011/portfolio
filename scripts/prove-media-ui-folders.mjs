@@ -1162,10 +1162,22 @@ function renderBody(over) {
 	const html = renderToString(h(MoveDialogBody, bodyProps(over)))
 	return { html, warnings: reactErrors.slice(before) }
 }
+// Each row is a <label> around a Radix radio: the accessible control is the
+// role="radio" button (state from aria-checked and disabled), and the group name
+// lives on Radix's hidden form mirror (an aria-hidden radio input).
 const radios = (html) =>
-	[...html.matchAll(/<label\b[^>]*>([\s\S]*?)<\/label>/g)].map((m) => {
-		const tag = m[1].match(/<input\b[^>]*>/)[0]
-		return { attrs: readAttrs(tag), checked: /\schecked(=|\s|>)/.test(tag), disabled: /\sdisabled(=|\s|>)/.test(tag), text: textOf(m[1]).trim() }
+	[...html.matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/g)].map((m) => {
+		const label = readAttrs(`<label${m[1]}>`)
+		const radio = readAttrs(m[2].match(/<button\b[^>]*\brole="radio"[^>]*>/)[0])
+		const mirror = readAttrs(m[2].match(/<input\b[^>]*>/)[0])
+		assert.equal(mirror['aria-hidden'], 'true', 'the form mirror is hidden from assistive tech')
+		assert.equal(label.for, radio.id, 'the row labels its radio')
+		return {
+			attrs: { ...radio, type: mirror.type, name: mirror.name },
+			checked: radio['aria-checked'] === 'true',
+			disabled: 'disabled' in radio,
+			text: textOf(m[2]).trim(),
+		}
 	})
 
 test('move dialog: open and closed render without throwing (portalled content is a browser concern)', () => {
@@ -1186,7 +1198,8 @@ test('move dialog: first choice is the library root; every folder follows, inden
 	const pads = [...html.matchAll(/padding-left:([\d.]+)rem/g)].map((m) => Number(m[1]))
 	assert.deepEqual(pads, [0.5, 1.5, 2.5, 3.5, 1.5])
 	assert.equal(new Set(rows.map((r) => r.attrs.name)).size, 1, 'one radio group')
-	assert.ok(rows.every((r) => r.attrs.type === 'radio'))
+	assert.ok(rows.every((r) => r.attrs.role === 'radio' && r.attrs.type === 'radio'))
+	assert.equal(new Set(rows.map((r) => r.attrs.id)).size, rows.length, 'every radio has its own id')
 	assert.match(html, /role="radiogroup"[^>]*aria-label="Destination folder"|aria-label="Destination folder"[^>]*role="radiogroup"/)
 })
 

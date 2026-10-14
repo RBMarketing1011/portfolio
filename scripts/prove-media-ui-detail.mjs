@@ -1232,11 +1232,13 @@ await check('bulk dialog: the form has an Add field, checkable existing tags wit
 	const input = findNode(root, (n) => n.tag === 'input' && n.attrs.role === 'combobox')
 	ok(input, 'the Add box is the same combobox as the editor')
 	eq(accessibleName(input, root), 'Add tags', 'named by its visible label')
-	const checkboxes = findAllNodes(root, (n) => n.tag === 'input' && n.attrs.type === 'checkbox')
+	// Radix Checkbox: a button with role=checkbox (its hidden form mirror is aria-hidden and skipped).
+	const checkboxes = findAllNodes(root, (n) => n.attrs.role === 'checkbox' && n.attrs['aria-hidden'] !== 'true')
 	eq(checkboxes.length, 2)
-	const items = byTag(root, 'label').filter((l) => findNode(l, (n) => n.attrs.type === 'checkbox'))
+	eq(checkboxes.map((c) => accessibleName(c, root).replace(/\s+/g, ' ')), ['Kitchen, 12 of 37', 'Van, 3 of 37'], 'each is named by its Label')
+	const items = byTag(root, 'label').filter((l) => findNode(l, (n) => n.attrs.role === 'checkbox'))
 	eq(items.map((l) => textOf(l).replace(/\s+/g, ' ').trim()), ['Kitchen, 12 of 37', 'Van, 3 of 37'])
-	ok(checkboxes.every((c) => !('checked' in c.attrs)), 'nothing is ticked at first')
+	ok(checkboxes.every((c) => c.attrs['aria-checked'] === 'false'), 'nothing is ticked at first')
 	const apply = byTag(root, 'button').find((b) => textOf(b).trim() === 'Apply')
 	ok('disabled' in apply.attrs, 'Apply starts disabled')
 	eq(apply.attrs.type, 'submit')
@@ -1248,7 +1250,7 @@ await check('bulk dialog: the form has an Add field, checkable existing tags wit
 
 await check('bulk dialog: with nothing to list, Remove explains and the typed fallback remains', () => {
 	const root = staticChecks(renderToString(h(bulk.BulkTagForm, bulkProps({ existing: [] }))), 'no existing')
-	eq(findAllNodes(root, (n) => n.attrs.type === 'checkbox').length, 0)
+	eq(findAllNodes(root, (n) => n.attrs.type === 'checkbox' || n.attrs.role === 'checkbox').length, 0)
 	ok(textOf(root).includes('Type one below to remove it'))
 	ok(findNode(root, (n) => n.attrs.id?.endsWith('-remove')))
 })
@@ -3808,6 +3810,26 @@ mock('@/components/ui/select', {
 	SelectContent: ({ children }) => h('div', { 'data-slot': 'select-content' }, children),
 	SelectItem: ({ children, value, textValue }) => h('div', { 'data-slot': 'select-item', 'data-value': value, 'data-text': textValue }, children),
 })
+// Faithful to Radix Checkbox: a button with role=checkbox and aria-checked; a click runs the
+// caller's onClick, then (unless that prevented it) onCheckedChange with the flipped value.
+mock('@/components/ui/checkbox', {
+	Checkbox: ({ checked, onCheckedChange, onClick, disabled, className, ...rest }) =>
+		h('button', {
+			...rest,
+			type: 'button',
+			role: 'checkbox',
+			'aria-checked': checked === 'indeterminate' ? 'mixed' : Boolean(checked),
+			'data-state': checked === 'indeterminate' ? 'indeterminate' : checked ? 'checked' : 'unchecked',
+			'data-slot': 'checkbox',
+			value: 'on',
+			disabled,
+			className,
+			onClick: (event) => {
+				onClick?.(event)
+				if (!event.defaultPrevented) onCheckedChange?.(checked === 'indeterminate' ? true : !checked)
+			},
+		}),
+})
 mock('@/components/ui/alert-dialog', {
 	AlertDialog: (props) => {
 		captured.alert = props
@@ -3870,12 +3892,11 @@ panel = loadTs('src/app/account/media/detail-panel.tsx')
 bulk = loadTs('src/app/account/media/bulk-tag-dialog.tsx')
 manager = loadTs('src/app/account/media/tag-manager-dialog.tsx')
 
-/** A checkbox changes, it is not clicked. */
+/** A Radix checkbox is a button: a click flips it through onCheckedChange. A disabled one gets no click. */
 function toggle(app, node) {
-	if (node.props.disabled) return
-	node.props.onChange(ev({ target: { checked: !node.props.checked } }))
-	app.flush()
+	click(app, node)
 }
+const checkboxes = (app) => app.all((n) => n.props.role === 'checkbox')
 const within = (node) => {
 	const out = []
 	const visit = (n) => {
@@ -4867,7 +4888,7 @@ await check('bulk form: Apply stays disabled until something is entered, then se
 		eq(rig.app.bySlot('staged-tag').length, 1)
 		typeInto(rig.app, rig.addBox(), 'Remodel,')
 		eq(rig.app.bySlot('staged-tag').length, 2)
-		toggle(rig.app, rig.app.all((n) => n.type === 'input' && n.props.type === 'checkbox')[0])
+		toggle(rig.app, checkboxes(rig.app)[0])
 		typeInto(rig.app, rig.removeBox(), '  Old Logo , ')
 		await rig.submit()
 		eq(rig.log.submit, [{ add: ['alpha', 'Remodel'], remove: ['kitchen', 'old-logo'] }])
@@ -4889,7 +4910,7 @@ await check('bulk form: typed text counts without Enter, and a ticked tag alone 
 	}
 	const ticked = bulkRig()
 	try {
-		toggle(ticked.app, ticked.app.all((n) => n.type === 'input' && n.props.type === 'checkbox')[1])
+		toggle(ticked.app, checkboxes(ticked.app)[1])
 		ok(!ticked.apply().props.disabled)
 		await ticked.submit()
 		eq(ticked.log.submit, [{ add: [], remove: ['van'] }])
@@ -4931,7 +4952,7 @@ await check('bulk form: a failed apply says why, stays open, and can be tried ag
 		ok(rig.busy.current, 'the dialog is told it is busy (Esc and the overlay are refused)')
 		ok(rig.apply().props.disabled)
 		ok(rig.addBox().props.disabled, 'inputs wait while it applies')
-		ok(rig.app.all((n) => n.type === 'input' && n.props.type === 'checkbox').every((c) => c.props.disabled))
+		ok(checkboxes(rig.app).length === 2 && checkboxes(rig.app).every((c) => c.props.disabled))
 		rig.gates[0].reject(new Error('Only 38 of 40 could be changed.'))
 		await rig.app.settle()
 		eq(rig.app.byRole('alert').map((n) => flatText(rig.app, n)), ['Only 38 of 40 could be changed.'])
@@ -4968,7 +4989,7 @@ await check('bulk form: a tag in both lists blocks Apply and says so; a staged c
 	try {
 		typeInto(rig.app, rig.addBox(), 'Kitchen')
 		press(rig.app, rig.addBox(), 'Enter')
-		toggle(rig.app, rig.app.all((n) => n.type === 'input' && n.props.type === 'checkbox')[0])
+		toggle(rig.app, checkboxes(rig.app)[0])
 		ok(rig.apply().props.disabled)
 		ok(rig.app.text().includes('"Kitchen" is in both Add and Remove'))
 		click(rig.app, rig.app.byLabel('Do not add Kitchen'))
@@ -5623,6 +5644,13 @@ await check('source: the contract types are used as written, and nothing outside
 		ok(new RegExp(`\\b${type}\\b`).test(sources[file]), `${file} does not use ${type}`)
 	for (const [file, names] of [['detail-panel', ['DetailPanel']], ['tag-editor', ['TagEditor']], ['bulk-tag-dialog', ['BulkTagDialog']], ['tag-manager-dialog', ['TagManagerDialog']]])
 		for (const name of names) ok(new RegExp(`^export function ${name}\\(`, 'm').test(sources[file]), `${file} must export ${name}`)
+})
+
+await check('source: built from the shadcn kit (no raw controls, tables or labels; no hand-built switches or checkboxes)', () => {
+	for (const name of MEDIA_UI) {
+		const raw = codeLines(name).filter(({ text }) => /<(button|input|select|textarea|table|thead|tbody|tr|th|td|label|option)\b|role=.(switch|checkbox)|aria-pressed/.test(text))
+		eq(raw.map((l) => `${name}:${l.number} ${l.text.trim().slice(0, 60)}`), [], `${name} renders raw markup the kit provides`)
+	}
 })
 
 await check('source: Radix is the only way a dialog or sheet opens, and every one has a title and a description', () => {

@@ -48,12 +48,13 @@ export function SelectionBar({
 			</p>
 
 			{showSelectAll ? (
-				<button
+				<Button
 					type='button'
+					variant='link'
 					onClick={onSelectAllMatching}
-					className='cursor-pointer rounded text-sm text-brand underline-offset-4 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-white/40'>
+					className='h-auto cursor-pointer rounded px-0 py-0 font-normal text-brand focus-visible:ring-white/40'>
 					Select all {formatCount(total)} matching
-				</button>
+				</Button>
 			) : null}
 
 			<div className='ml-auto flex flex-wrap items-center gap-1'>

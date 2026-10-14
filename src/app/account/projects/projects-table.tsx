@@ -3,9 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { CircleDot, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
+import { FormAlert } from '@/components/form-alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from '@/components/ui/table'
 import {
 	Dialog,
 	DialogContent,
@@ -105,14 +116,12 @@ export function ProjectsTable({
 					<h1 className='font-display text-3xl font-semibold text-white'>
 						Projects
 					</h1>
-					<p className='mt-2 leading-7 text-slate-400'>
+					<p className='mt-2 text-muted-foreground'>
 						Every site on this account.
 					</p>
 				</div>
 				{canCreate && (
-					<Button
-						onClick={openCreate}
-						className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+					<Button onClick={openCreate}>
 						<Plus /> New project
 					</Button>
 				)}
@@ -126,49 +135,45 @@ export function ProjectsTable({
 			)}
 
 			{rows.length === 0 ? (
-				<div className='rounded-xl border border-dashed border-white/15 py-16 text-center'>
-					<p className='font-medium text-white'>No projects yet</p>
-					<p className='mx-auto mt-2 max-w-sm text-sm leading-6 text-slate-500'>
-						A project holds one website: its pages, images, and settings.
-					</p>
-				</div>
+				<Card className='border-dashed text-center'>
+					<CardHeader>
+						<CardTitle>No projects yet</CardTitle>
+						<CardDescription>
+							A project holds one website: its pages, images, and settings.
+						</CardDescription>
+					</CardHeader>
+				</Card>
 			) : (
-				<div className='-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0'>
-					<table className='w-full min-w-[40rem] border-collapse text-sm'>
-						<thead>
-							<tr className='border-b border-white/10 text-left text-xs font-semibold uppercase tracking-widest text-slate-500'>
-								<th className='py-3 pr-4 font-semibold'>Project</th>
-								<th className='py-3 pr-4 font-semibold'>Status</th>
-								<th className='py-3 pr-4 font-semibold'>Pages</th>
-								<th className='py-3 pr-4 font-semibold'>Last edited</th>
-								<th className='py-3 font-semibold'>
+				<Card className='py-0'>
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Project</TableHead>
+								<TableHead>Status</TableHead>
+								<TableHead>Pages</TableHead>
+								<TableHead>Last edited</TableHead>
+								<TableHead className='w-12'>
 									<span className='sr-only'>Actions</span>
-								</th>
-							</tr>
-						</thead>
-						<tbody>
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
 							{rows.map((row) => (
-								<tr
-									key={row.id}
-									className='border-b border-white/5 transition-colors hover:bg-white/3'>
-									<td className='py-3 pr-4'>
-										<Link
-											href={`/account/projects/${row.id}`}
-											className='font-medium text-white hover:text-brand'>
-											{row.name}
-										</Link>
-										<span className='block text-xs text-slate-500'>
-											{row.address}
-										</span>
-									</td>
-									<td className='py-3 pr-4'>
+								<TableRow key={row.id}>
+									<TableCell>
+										<Button asChild variant='link' className='h-auto p-0 font-medium'>
+											<Link href={`/account/projects/${row.id}`}>{row.name}</Link>
+										</Button>
+										<div className='text-xs text-muted-foreground'>{row.address}</div>
+									</TableCell>
+									<TableCell>
 										<StatusPill status={row.status} />
-									</td>
-									<td className='py-3 pr-4 text-slate-400'>{row.pages}</td>
-									<td className='py-3 pr-4 text-slate-400'>
+									</TableCell>
+									<TableCell className='text-muted-foreground'>{row.pages}</TableCell>
+									<TableCell className='text-muted-foreground'>
 										{new Date(row.updatedAt).toLocaleDateString()}
-									</td>
-									<td className='py-3 text-right'>
+									</TableCell>
+									<TableCell className='text-right'>
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
 												<Button
@@ -193,12 +198,12 @@ export function ProjectsTable({
 												)}
 											</DropdownMenuContent>
 										</DropdownMenu>
-									</td>
-								</tr>
+									</TableCell>
+								</TableRow>
 							))}
-						</tbody>
-					</table>
-				</div>
+						</TableBody>
+					</Table>
+				</Card>
 			)}
 
 			<Dialog open={creating} onOpenChange={(open) => !busy && setCreating(open)}>
@@ -221,7 +226,7 @@ export function ProjectsTable({
 								onChange={(event) => setName(event.target.value)}
 							/>
 						</div>
-						{error && <p className='text-sm text-destructive'>{error}</p>}
+						{error && <FormAlert>{error}</FormAlert>}
 						<DialogFooter>
 							<Button
 								type='button'
@@ -230,10 +235,7 @@ export function ProjectsTable({
 								onClick={() => setCreating(false)}>
 								Cancel
 							</Button>
-							<Button
-								type='submit'
-								disabled={busy || !name.trim()}
-								className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+							<Button type='submit' disabled={busy || !name.trim()}>
 								{busy && <Loader2 className='animate-spin' />} Create project
 							</Button>
 						</DialogFooter>
@@ -254,18 +256,11 @@ export function ProjectsTable({
 }
 
 export function StatusPill({ status }: { status: 'draft' | 'live' }) {
-	return (
-		<span
-			className={
-				status === 'live'
-					? 'inline-flex items-center gap-1.5 rounded-full bg-brand/15 px-2 py-0.5 text-xs font-semibold text-brand'
-					: 'inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-xs font-semibold text-slate-400'
-			}>
-			<span
-				aria-hidden
-				className={`size-1.5 rounded-full ${status === 'live' ? 'bg-brand' : 'bg-slate-500'}`}
-			/>
-			{status === 'live' ? 'Live' : 'Draft'}
-		</span>
+	return status === 'live' ? (
+		<Badge>
+			<CircleDot /> Live
+		</Badge>
+	) : (
+		<Badge variant='secondary'>Draft</Badge>
 	)
 }

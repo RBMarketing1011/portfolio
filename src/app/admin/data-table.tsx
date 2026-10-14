@@ -1,3 +1,4 @@
+import { Card } from '@/components/ui/card'
 import {
 	Table,
 	TableBody,
@@ -17,7 +18,7 @@ export function DataTable({
 	empty: string
 }) {
 	return (
-		<div className='rounded-xl border border-white/10'>
+		<Card className='py-0'>
 			<Table>
 				<TableHeader>
 					<TableRow>
@@ -47,6 +48,6 @@ export function DataTable({
 					)}
 				</TableBody>
 			</Table>
-		</div>
+		</Card>
 	)
 }

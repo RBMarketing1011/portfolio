@@ -1,10 +1,24 @@
-// Seeds the template catalog into MongoDB. Run with `pnpm db:seed`.
+// Seeds the page template catalog into MongoDB. Run with `pnpm db:seed`.
+// The catalog is TypeScript split across modules, so it is loaded through the
+// same loader the proofs use rather than imported directly.
+import { createRequire } from 'node:module'
 import { MongoClient } from 'mongodb'
-import { builderTemplates } from '../src/lib/builder/templates.ts'
+
+const require = createRequire(import.meta.url)
+const { loadTs } = require('./lib/load-ts.cjs')
+const { builderTemplates } = loadTs('src/lib/builder/templates/index.ts')
+const { templateSchema } = loadTs('src/lib/builder/page-schema.ts')
 
 const uri = process.env.MONGODB_URI
 if (!uri) {
 	console.error('MONGODB_URI is not set. Run `pnpm db:up` first.')
+	process.exit(1)
+}
+
+// Refuse to seed anything the app would then throw away when it reads it back.
+const invalid = builderTemplates.filter((t) => !templateSchema.safeParse(t).success)
+if (invalid.length) {
+	console.error(`not seeding: ${invalid.map((t) => t.slug).join(', ')} fail templateSchema`)
 	process.exit(1)
 }
 
@@ -16,9 +30,11 @@ const collection = db.collection('templates')
 await collection.createIndex({ slug: 1 }, { unique: true })
 
 for (const [index, template] of builderTemplates.entries()) {
-	await collection.updateOne(
+	// JSON round trip so no `undefined` reaches the driver (it would store null).
+	const doc = JSON.parse(JSON.stringify(template))
+	await collection.replaceOne(
 		{ slug: template.slug },
-		{ $set: { ...template, order: index, seededAt: new Date() } },
+		{ ...doc, order: index, seededAt: new Date() },
 		{ upsert: true },
 	)
 }

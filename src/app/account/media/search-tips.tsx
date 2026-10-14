@@ -1,7 +1,9 @@
 'use client'
 
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import { MEDIA_LIMITS } from '@/lib/media/types'
-import { cn } from '@/lib/utils'
 
 export type SearchTip = { example: string; note: string }
 export type SearchTipGroup = { title: string; tips: SearchTip[] }
@@ -108,39 +110,41 @@ export function SearchTips({
 			id={id}
 			aria-label='Search tips'
 			data-slot='search-tips'
-			className={cn(
-				'rounded-xl border border-white/10 bg-white/3 p-4',
-				className,
-			)}>
-			<div className='grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3'>
-				{SEARCH_TIPS.map((group) => (
-					<div key={group.title} className='min-w-0'>
-						<h3 className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
-							{group.title}
-						</h3>
-						<ul className='mt-2 space-y-1.5'>
-							{group.tips.map((tip) => (
-								<li
-									key={tip.example}
-									className='flex flex-wrap items-center gap-x-2 gap-y-1'>
-									<button
-										type='button'
-										aria-label={`Add ${tip.example} to your search`}
-										onClick={() => onPick(tip.example)}
-										className='max-w-full cursor-pointer break-all rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-left font-mono text-xs text-brand transition-colors hover:border-brand/30 hover:bg-brand/10 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none motion-reduce:transition-none'>
-										{tip.example}
-									</button>
-									<span className='text-xs text-slate-400'>{tip.note}</span>
-								</li>
-							))}
-						</ul>
-					</div>
-				))}
-			</div>
-			<p className='mt-4 border-t border-white/10 pt-3 text-xs leading-5 text-slate-400'>
-				Click an example to add it to your search. Operators are not case
-				sensitive, but OR and NOT must be capitals.
-			</p>
+			className={className}>
+			<Card className='gap-0 border-white/10 bg-white/3 p-4 shadow-none'>
+				<div className='grid gap-x-8 gap-y-5 sm:grid-cols-2 xl:grid-cols-3'>
+					{SEARCH_TIPS.map((group) => (
+						<div key={group.title} className='min-w-0'>
+							<h3 className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
+								{group.title}
+							</h3>
+							<ul className='mt-2 space-y-1.5'>
+								{group.tips.map((tip) => (
+									<li
+										key={tip.example}
+										className='flex flex-wrap items-center gap-x-2 gap-y-1'>
+										<Button
+											type='button'
+											variant='outline'
+											size='xs'
+											aria-label={`Add ${tip.example} to your search`}
+											onClick={() => onPick(tip.example)}
+											className='h-auto max-w-full shrink cursor-pointer justify-start break-all whitespace-normal border-white/10 bg-white/5 px-2 py-0.5 text-left font-mono font-normal text-brand shadow-none transition-colors hover:border-brand/30 hover:bg-brand/10 hover:text-brand motion-reduce:transition-none dark:border-white/10 dark:bg-white/5 dark:hover:bg-brand/10'>
+											{tip.example}
+										</Button>
+										<span className='text-xs text-slate-400'>{tip.note}</span>
+									</li>
+								))}
+							</ul>
+						</div>
+					))}
+				</div>
+				<Separator className='mt-4 bg-white/10' />
+				<p className='pt-3 text-xs leading-5 text-slate-400'>
+					Click an example to add it to your search. Operators are not case
+					sensitive, but OR and NOT must be capitals.
+				</p>
+			</Card>
 		</section>
 	)
 }

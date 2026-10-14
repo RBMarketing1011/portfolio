@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { brandOf } from '@/components/hosted-site'
 import { RenderedSite } from '@/components/rendered-site'
 import { siteByPreviewToken } from '@/lib/builder/public-site'
 
@@ -26,6 +27,7 @@ export default async function SharedPreviewPage({
 			media={project.media}
 			slug={slug}
 			linkBase={`/p/${token}`}
+			brand={brandOf(project)}
 		/>
 	)
 }

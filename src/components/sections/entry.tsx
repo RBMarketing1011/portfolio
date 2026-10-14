@@ -130,7 +130,13 @@ export function SplitHero({
 					)}>
 					<div className='absolute inset-0 z-0 hidden scale-85 sm:block lg:scale-100'>
 						{backdropLayouts.map((layout, index) => {
-							const { brightness, shadow, z, ...position } = layout
+							const { brightness, shadow, z, left, ...rest } = layout
+							// The fan bleeds off the outer edge of the page. With the media on the
+							// left that edge is the left one, so the layout is mirrored rather than
+							// fanning across the copy.
+							const position = mediaLeft
+								? { ...rest, right: left }
+								: { ...rest, left }
 							const src = backdrop[index]
 							return (
 								<div

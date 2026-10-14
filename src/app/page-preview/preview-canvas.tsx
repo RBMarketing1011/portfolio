@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Copy, Trash2 } from 'lucide-react'
+import { Copy, Sparkles, Trash2 } from 'lucide-react'
 import {
 	BuiltFooter,
 	BuiltHeader,
+	type SiteBrand,
 	type NavPage,
 } from '@/components/built-chrome'
 import { defaultChrome, type Chrome } from '@/lib/builder/page-schema'
@@ -22,6 +23,10 @@ export type PreviewMessage =
 			currentSlug?: string
 			surfaceCss?: string
 			mediaIndex?: { id: string; url: string }[] | null
+			/** The site's logo and name; null for a browser-only site, which keeps the kit's wordmark. */
+			brand?: SiteBrand | null
+			/** Whether the pill offers AI writing for the selected section. */
+			ai?: boolean
 	  }
 	| { kind: 'builder:select'; id: string | null }
 	| { kind: 'builder:scroll-to'; id: string }
@@ -55,13 +60,15 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 	const [nav, setNav] = useState<NavPage[]>([])
 	const [currentSlug, setCurrentSlug] = useState<string | undefined>()
 	const [chrome, setChrome] = useState<Chrome>(defaultChrome)
+	const [brand, setBrand] = useState<SiteBrand | undefined>(undefined)
 	const [surfaceCss, setSurfaceCss] = useState('')
 	const [flashId, setFlashId] = useState<string | null>(null)
+	const [ai, setAi] = useState(false)
 	// Page coordinates of the selected section's top edge, for the action pill.
 	const [pill, setPill] = useState<{ top: number; left: number } | null>(null)
 
 	const act = useCallback(
-		(kind: 'builder:duplicate' | 'builder:remove') => {
+		(kind: 'builder:duplicate' | 'builder:remove' | 'builder:ai') => {
 			if (!selectedId) return
 			window.parent?.postMessage(
 				{ kind, id: selectedId },
@@ -103,8 +110,10 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 				if (data.selectedId !== undefined) setSelectedId(data.selectedId)
 				if (data.nav) setNav(data.nav)
 				if (data.chrome) setChrome(data.chrome)
+				if (data.brand !== undefined) setBrand(data.brand ?? undefined)
 				if (data.currentSlug !== undefined) setCurrentSlug(data.currentSlug)
 				if (data.surfaceCss !== undefined) setSurfaceCss(data.surfaceCss)
+				if (data.ai !== undefined) setAi(data.ai)
 			}
 		}
 		window.addEventListener('message', onMessage)
@@ -208,7 +217,12 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 		<div className='relative' data-selected={selectedId ?? undefined}>
 			{!inert && <style dangerouslySetInnerHTML={{ __html: HIGHLIGHT_CSS }} />}
 			{surfaceCss && <style dangerouslySetInnerHTML={{ __html: surfaceCss }} />}
-			<BuiltHeader chrome={chrome} pages={nav} current={currentSlug} />
+			<BuiltHeader
+				chrome={chrome}
+				pages={nav}
+				current={currentSlug}
+				brand={brand}
+			/>
 			<main>
 				<RenderBlocks
 					blocks={blocks}
@@ -217,7 +231,7 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 					flashId={flashId}
 				/>
 			</main>
-			<BuiltFooter chrome={chrome} pages={nav} />
+			<BuiltFooter chrome={chrome} pages={nav} brand={brand} />
 
 			{/* Straddles the outline's top edge, so the border runs through its middle. */}
 			{pill && (
@@ -225,6 +239,16 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 					data-builder-pill
 					style={{ top: pill.top, left: pill.left }}
 					className='absolute z-10000 flex -translate-x-1/2 -translate-y-1/2 items-center gap-0.5 rounded-full border border-brand/50 bg-ink/95 p-1 shadow-[0_6px_20px_-6px_rgba(0,0,0,0.9)] backdrop-blur'>
+					{ai && (
+						<button
+							type='button'
+							title='Write this section with AI'
+							aria-label='Write this section with AI'
+							onClick={() => act('builder:ai')}
+							className='flex size-7 items-center justify-center rounded-full text-brand transition-colors hover:bg-brand/15'>
+							<Sparkles className='size-3.5' />
+						</button>
+					)}
 					<button
 						type='button'
 						title='Duplicate this section'

@@ -1,5 +1,14 @@
 import Link from 'next/link'
 import { CloudOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
 import { baseUrl } from '@/lib/app-url'
 import { site } from '@/lib/site'
 
@@ -20,47 +29,40 @@ export function SiteInactive({ host }: { host?: string }) {
 				}}
 			/>
 
-			<div className='relative w-full max-w-lg text-center'>
-				<span className='inline-flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 backdrop-blur'>
-					<CloudOff className='size-6 text-brand' />
-				</span>
-
-				<h1 className='mt-8 font-display text-3xl font-semibold tracking-tight text-white sm:text-4xl'>
-					This site isn&rsquo;t live yet
-				</h1>
-
-				{host && (
-					<p className='mt-3 font-mono text-sm text-slate-500'>{host}</p>
-				)}
-
-				<p className='mx-auto mt-5 max-w-md leading-7 text-slate-400'>
-					The address is pointed here correctly, but whoever owns this site
-					hasn&rsquo;t published it. If it belongs to you, sign in and set it
-					live. Otherwise, get in touch with whoever runs it.
-				</p>
-
-				<div className='mt-9 flex flex-wrap items-center justify-center gap-3'>
-					<Link
-						href={`${baseUrl}/account/projects`}
-						className='rounded-md bg-brand px-4 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-brand-strong'>
-						Sign in to publish
-					</Link>
-					<Link
-						href={`${baseUrl}/contact`}
-						className='rounded-md border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/5'>
-						Get in touch
-					</Link>
-				</div>
-
-				<p className='mt-14 text-xs text-slate-600'>
-					Powered by{' '}
-					<Link
-						href={baseUrl}
-						className='font-semibold text-slate-400 transition-colors hover:text-brand'>
-						{site.name}
-					</Link>
-				</p>
-			</div>
+			<Card className='relative w-full max-w-lg text-center'>
+				<CardHeader className='gap-3'>
+					<CloudOff className='mx-auto size-8 text-primary' />
+					<CardTitle className='font-display text-3xl tracking-tight'>
+						This site isn&rsquo;t live yet
+					</CardTitle>
+					{host && (
+						<CardDescription className='font-mono'>{host}</CardDescription>
+					)}
+				</CardHeader>
+				<CardContent>
+					<p className='text-muted-foreground'>
+						The address is pointed here correctly, but whoever owns this site
+						hasn&rsquo;t published it. If it belongs to you, sign in and set it live.
+						Otherwise, get in touch with whoever runs it.
+					</p>
+				</CardContent>
+				<CardFooter className='flex-col gap-6'>
+					<div className='flex flex-wrap items-center justify-center gap-3'>
+						<Button asChild>
+							<Link href={`${baseUrl}/account/projects`}>Sign in to publish</Link>
+						</Button>
+						<Button asChild variant='outline'>
+							<Link href={`${baseUrl}/contact`}>Get in touch</Link>
+						</Button>
+					</div>
+					<p className='text-xs text-muted-foreground'>
+						Powered by{' '}
+						<Button asChild variant='link' className='h-auto p-0 text-xs'>
+							<Link href={baseUrl}>{site.name}</Link>
+						</Button>
+					</p>
+				</CardFooter>
+			</Card>
 		</div>
 	)
 }

@@ -20,7 +20,7 @@ import { createRequire } from 'node:module'
 process.env.NODE_ENV = 'development'
 
 const require = createRequire(import.meta.url)
-const { loadTs, mock, rootRequire } = require('./lib/load-ts.cjs')
+const { loadTs, mock, clearCache, rootRequire } = require('./lib/load-ts.cjs')
 const React = rootRequire('react')
 const { renderToString } = rootRequire('react-dom/server')
 const h = React.createElement
@@ -92,10 +92,104 @@ mock('next/link', {
 
 const { AssetGrid, GRID_COLUMNS, dedupeAssets } = loadTs('src/app/account/media/asset-grid.tsx')
 const card = loadTs('src/app/account/media/asset-card.tsx')
-const { GridToolbar, formatTotal, sortOptions } = loadTs('src/app/account/media/grid-toolbar.tsx')
+const { GridToolbar, SORT_LABELS, formatTotal, sortOptions } = loadTs('src/app/account/media/grid-toolbar.tsx')
 const { SelectionBar } = loadTs('src/app/account/media/selection-bar.tsx')
 const { DRAG_MIME } = loadTs('src/app/account/media/contracts.ts')
 const { MEDIA_SORTS } = loadTs('src/lib/media/types.ts')
+
+/* -------------------------------------------------------------------------- */
+/* Interactive copies: Radix swapped for faithful plain stand-ins             */
+/* -------------------------------------------------------------------------- */
+
+// The mini renderer below cannot expand context providers, so the copies that are mounted
+// (handlers, effects) get stand-ins with the same host element, role, ARIA and callback
+// semantics as Radix. The server-rendered checks above and below use the real components.
+const captured = {}
+let toggleGroup = null
+const RADIX_UI = ['checkbox', 'switch', 'toggle', 'toggle-group', 'select']
+mock('@/components/ui/checkbox', {
+	// Radix: aria-checked true/false/mixed; a click runs onClick, then (unless prevented)
+	// onCheckedChange with the next state (indeterminate -> true).
+	Checkbox: ({ checked, onCheckedChange, onClick, ...rest }) =>
+		h('button', {
+			type: 'button',
+			role: 'checkbox',
+			'aria-checked': checked === 'indeterminate' ? 'mixed' : String(checked === true),
+			'data-state': checked === 'indeterminate' ? 'indeterminate' : checked ? 'checked' : 'unchecked',
+			value: 'on',
+			'data-slot': 'checkbox',
+			...rest,
+			onClick: (event) => {
+				onClick?.(event)
+				if (!event?.defaultPrevented) onCheckedChange?.(checked === 'indeterminate' ? true : !checked)
+			},
+		}),
+})
+mock('@/components/ui/switch', {
+	Switch: ({ checked, onCheckedChange, ...rest }) =>
+		h('button', {
+			type: 'button',
+			role: 'switch',
+			'aria-checked': String(!!checked),
+			'data-state': checked ? 'checked' : 'unchecked',
+			value: 'on',
+			'data-slot': 'switch',
+			...rest,
+			onClick: () => onCheckedChange?.(!checked),
+		}),
+})
+mock('@/components/ui/toggle', {
+	Toggle: ({ pressed, onPressedChange, variant, size, children, ...rest }) =>
+		h('button', {
+			type: 'button',
+			'aria-pressed': String(!!pressed),
+			'data-state': pressed ? 'on' : 'off',
+			'data-slot': 'toggle',
+			...rest,
+			onClick: () => onPressedChange?.(!pressed),
+		}, children),
+	toggleVariants: () => '',
+})
+mock('@/components/ui/toggle-group', {
+	// type="single": role=radiogroup, items role=radio + aria-checked; pressing the active
+	// item turns it off, which Radix reports as onValueChange('').
+	ToggleGroup: ({ type, value, onValueChange, variant, size, spacing, children, ...rest }) => {
+		toggleGroup = { type, value, onValueChange }
+		return h('div', { role: type === 'single' ? 'radiogroup' : 'toolbar', 'data-slot': 'toggle-group', ...rest }, children)
+	},
+	ToggleGroupItem: ({ value, variant, size, children, ...rest }) => {
+		const group = toggleGroup
+		const on = group.value === value
+		return h('button', {
+			type: 'button',
+			role: 'radio',
+			'aria-checked': String(on),
+			'data-state': on ? 'on' : 'off',
+			'data-slot': 'toggle-group-item',
+			'data-value': value,
+			...rest,
+			onClick: () => group.onValueChange(on ? '' : value),
+		}, children)
+	},
+})
+mock('@/components/ui/select', {
+	Select: (props) => {
+		captured.select = props
+		return h('div', { 'data-slot': 'select' }, props.children)
+	},
+	SelectTrigger: ({ children, size, ...rest }) =>
+		h('button', { type: 'button', role: 'combobox', 'aria-expanded': 'false', 'data-slot': 'select-trigger', ...rest }, children),
+	SelectValue: ({ children }) => h('span', { 'data-slot': 'select-value' }, children),
+	SelectContent: ({ children }) => h('div', { 'data-slot': 'select-content' }, children),
+	SelectItem: ({ children, value }) => h('div', { role: 'option', 'data-slot': 'select-item', 'data-value': value }, children),
+})
+clearCache()
+const MountGrid = loadTs('src/app/account/media/asset-grid.tsx').AssetGrid
+const MountToolbar = loadTs('src/app/account/media/grid-toolbar.tsx').GridToolbar
+const MountBar = loadTs('src/app/account/media/selection-bar.tsx').SelectionBar
+// Back to the real components for anything loaded later.
+for (const name of RADIX_UI) mock(`@/components/ui/${name}`, loadTs(`src/components/ui/${name}.tsx`))
+clearCache()
 
 /* -------------------------------------------------------------------------- */
 /* A small HTML reader for SSR output                                         */
@@ -195,12 +289,13 @@ function accessibleName(node, root) {
 
 const interactive = (n) =>
 	['button', 'select', 'input', 'a', 'textarea'].includes(n.tag) ||
-	['checkbox', 'switch', 'button', 'combobox'].includes(n.attrs.role)
+	['checkbox', 'switch', 'button', 'combobox', 'radio'].includes(n.attrs.role)
 
 /** Static checks that apply to any fragment of output. */
 function staticChecks(html, label) {
 	const root = parseHtml(html)
-	for (const el of findAllNodes(root, interactive)) {
+	// Radix's hidden form mirrors (aria-hidden, tabindex -1) are outside the accessibility tree.
+	for (const el of findAllNodes(root, (n) => interactive(n) && !hiddenFromAt(n))) {
 		assert(accessibleName(el, root), `${label}: <${el.tag}${el.attrs.role ? ` role=${el.attrs.role}` : ''}> has no accessible name`)
 	}
 	const ids = findAllNodes(root, (n) => n.attrs.id !== undefined).map((n) => n.attrs.id)
@@ -209,7 +304,7 @@ function staticChecks(html, label) {
 		for (const id of el.attrs['aria-labelledby'].split(/\s+/))
 			assert(ids.includes(id), `${label}: aria-labelledby points at missing id ${id}`)
 	}
-	for (const el of findAllNodes(root, (n) => n.attrs.role === 'checkbox' || n.attrs.role === 'switch'))
+	for (const el of findAllNodes(root, (n) => ['checkbox', 'switch', 'radio'].includes(n.attrs.role)))
 		assert(['true', 'false', 'mixed'].includes(el.attrs['aria-checked']), `${label}: ${el.attrs.role} without aria-checked`)
 	// A button inside a button (or a link) is invalid and breaks keyboard and screen readers.
 	for (const el of findAllNodes(root, (n) => n.tag === 'button' || n.tag === 'a')) {
@@ -626,7 +721,7 @@ await check('grid: Load more is never removed while loading more, it stays focus
 
 await check('grid: Load more click calls onLoadMore, ignored while loadingMore', () => {
 	let calls = 0
-	const m = mount(AssetGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
+	const m = mount(MountGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
 	m.find((n) => n.props?.['data-slot'] === 'load-more').props.onClick()
 	eq(calls, 1)
 	m.render(gridProps({ assets: many(3), hasMore: true, loadingMore: true, onLoadMore: () => calls++ }))
@@ -874,7 +969,12 @@ await check('grid: draggable only when canDrag; the checkbox is never a drag sou
 	for (const c of cards(on)) eq(c.attrs.draggable, 'true')
 	const off = parseHtml(renderGrid({ assets: many(2), canDrag: false }))
 	for (const c of cards(off)) eq(c.attrs.draggable, undefined)
-	for (const cb of findAllNodes(on, (n) => n.attrs.role === 'checkbox')) eq(cb.attrs.draggable, 'false')
+	const boxes = findAllNodes(on, (n) => n.attrs.role === 'checkbox')
+	eq(boxes.length, 2)
+	for (const cb of boxes) eq(cb.attrs.draggable, 'false')
+	// beginAssetDrag recognises the checkbox by this marker, so it must be on the checkbox itself.
+	for (const cb of boxes) eq(cb.attrs['data-card-checkbox'], '', 'checkbox marker')
+	eq(boxes.map((cb) => cb.attrs['aria-label']), ['Select Kitchen 1', 'Select Kitchen 2'])
 	for (const img of findAllNodes(on, (n) => n.tag === 'img')) eq(img.attrs.draggable, 'false')
 })
 
@@ -964,7 +1064,7 @@ await check('card handlers: click opens, shift-click ranges, ctrl-click toggles,
 	const opened = []
 	const toggled = []
 	const a = many(3)
-	const m = mount(AssetGrid, gridProps({ assets: a, onOpen: (id) => opened.push(id), onToggleSelect: (id, o) => toggled.push([id, o]) }))
+	const m = mount(MountGrid, gridProps({ assets: a, onOpen: (id) => opened.push(id), onToggleSelect: (id, o) => toggled.push([id, o]) }))
 	const { main, checkbox } = handlersFor(m, 2)
 	main.props.onClick(ev())
 	main.props.onClick(ev({ shiftKey: true }))
@@ -986,7 +1086,7 @@ await check('card handlers: Space toggles (and cancels the native click), Enter 
 	const opened = []
 	const toggled = []
 	const a = many(1)
-	const m = mount(AssetGrid, gridProps({ assets: a, onOpen: (id) => opened.push(id), onToggleSelect: (id, o) => toggled.push([id, o]) }))
+	const m = mount(MountGrid, gridProps({ assets: a, onOpen: (id) => opened.push(id), onToggleSelect: (id, o) => toggled.push([id, o]) }))
 	const { main } = handlersFor(m, 1)
 	const space = ev({ key: ' ' })
 	main.props.onKeyDown(space)
@@ -1014,7 +1114,7 @@ await check('card handlers: Space toggles (and cancels the native click), Enter 
 await check('card handlers: dragstart on a selected card carries every selected id, on another card only its own', () => {
 	const a = many(4)
 	const selected = new Set([a[0].id, a[2].id])
-	const m = mount(AssetGrid, gridProps({ assets: a, selectedIds: selected, canDrag: true }))
+	const m = mount(MountGrid, gridProps({ assets: a, selectedIds: selected, canDrag: true }))
 	const dragFrom = (n, origin) => {
 		const dt = dragFake()
 		let prevented = false
@@ -1034,7 +1134,7 @@ await check('card handlers: dragstart on a selected card carries every selected 
 })
 
 await check('card handlers: no drag handlers at all without canDrag', () => {
-	const m = mount(AssetGrid, gridProps({ assets: many(1), canDrag: false }))
+	const m = mount(MountGrid, gridProps({ assets: many(1), canDrag: false }))
 	const { li } = handlersFor(m, 1)
 	eq([li.props.onDragStart, li.props.onMouseDown, li.props.draggable], [undefined, undefined, undefined])
 	m.unmount()
@@ -1044,7 +1144,7 @@ await check('card handlers: callbacks read the latest props (stable card props, 
 	const first = []
 	const second = []
 	const a = many(1)
-	const m = mount(AssetGrid, gridProps({ assets: a, onOpen: (id) => first.push(id) }))
+	const m = mount(MountGrid, gridProps({ assets: a, onOpen: (id) => first.push(id) }))
 	const before = handlersFor(m, 1).main
 	m.render(gridProps({ assets: a, onOpen: (id) => second.push(id) }))
 	before.props.onClick(ev())
@@ -1062,7 +1162,7 @@ await check('sentinel: observes only when hasMore, not loading, not loadingMore,
 	try {
 		const live = (over) => {
 			obs.created.length = 0
-			const m = mount(AssetGrid, gridProps({ assets: many(3), ...over }))
+			const m = mount(MountGrid, gridProps({ assets: many(3), ...over }))
 			const n = obs.live().length
 			m.unmount()
 			return n
@@ -1083,7 +1183,7 @@ await check('sentinel: firing again and again loads once; a non-intersecting ent
 	const obs = installObserver()
 	try {
 		let calls = 0
-		const m = mount(AssetGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
+		const m = mount(MountGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
 		const [o] = obs.live()
 		o.fire(false)
 		eq(calls, 0)
@@ -1100,7 +1200,7 @@ await check('sentinel: asks again after new cards arrive, and never loops when a
 	try {
 		let calls = 0
 		const onLoadMore = () => calls++
-		const m = mount(AssetGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore }))
+		const m = mount(MountGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore }))
 		obs.live()[0].fire()
 		eq(calls, 1)
 		// In flight, then the page lands with no new unique rows (offset paging can do that).
@@ -1126,7 +1226,7 @@ await check('sentinel: a new first page of the same size is not mistaken for one
 		let calls = 0
 		const onLoadMore = () => calls++
 		const a = many(3)
-		const m = mount(AssetGrid, gridProps({ assets: a, hasMore: true, onLoadMore }))
+		const m = mount(MountGrid, gridProps({ assets: a, hasMore: true, onLoadMore }))
 		obs.live()[0].fire()
 		eq(calls, 1)
 		m.render(gridProps({ assets: [], loading: true, onLoadMore }))
@@ -1143,7 +1243,7 @@ await check('sentinel: the button and the sentinel do not double-request', () =>
 	const obs = installObserver()
 	try {
 		let calls = 0
-		const m = mount(AssetGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
+		const m = mount(MountGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
 		m.find((n) => n.props?.['data-slot'] === 'load-more').props.onClick()
 		obs.live()[0].fire()
 		eq(calls, 1, 'a click followed by a sighting before the parent flips loadingMore')
@@ -1156,7 +1256,7 @@ await check('sentinel: the button and the sentinel do not double-request', () =>
 await check('sentinel: no IntersectionObserver (old browser, SSR) is fine and the button still works', () => {
 	assert(typeof globalThis.IntersectionObserver === 'undefined')
 	let calls = 0
-	const m = mount(AssetGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
+	const m = mount(MountGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
 	m.find((n) => n.props?.['data-slot'] === 'load-more').props.onClick()
 	eq(calls, 1)
 	m.unmount()
@@ -1166,7 +1266,7 @@ await check('sentinel: a stale sighting after the parent set an error does not c
 	const obs = installObserver()
 	try {
 		let calls = 0
-		const m = mount(AssetGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
+		const m = mount(MountGrid, gridProps({ assets: many(3), hasMore: true, onLoadMore: () => calls++ }))
 		const [o] = obs.live()
 		// The error arrives; the old observer is disconnected by the effect cleanup, but a
 		// callback already queued by the browser can still run.
@@ -1181,9 +1281,9 @@ await check('sentinel: a stale sighting after the parent set an error does not c
 
 await check('error panel: Retry calls onRetry; so does the end-of-grid Retry', () => {
 	let retries = 0
-	const panel = mount(AssetGrid, gridProps({ error: 'x', onRetry: () => retries++ }))
+	const panel = mount(MountGrid, gridProps({ error: 'x', onRetry: () => retries++ }))
 	panel.find((n) => n.type === 'button' && panel.text(n) === 'Retry').props.onClick()
-	const row = mount(AssetGrid, gridProps({ assets: many(2), error: 'x', onRetry: () => retries++ }))
+	const row = mount(MountGrid, gridProps({ assets: many(2), error: 'x', onRetry: () => retries++ }))
 	row.find((n) => n.type === 'button' && row.text(n) === 'Retry').props.onClick()
 	eq(retries, 2)
 })
@@ -1192,10 +1292,21 @@ await check('error panel: Retry calls onRetry; so does the end-of-grid Retry', (
 /* GridToolbar                                                                */
 /* ========================================================================== */
 
+/** The sort menu's items as rendered (Radix portals them, so they are read from a mounted copy). */
+function sortItems(over) {
+	const m = mount(MountToolbar, toolbarProps(over))
+	const items = m
+		.findAll((n) => n.props?.['data-slot'] === 'select-item')
+		.map((n) => ({ value: n.props['data-value'], label: m.text(n) }))
+	const value = captured.select.value
+	m.unmount()
+	return { items, value }
+}
+
 await check('toolbar: relevance is offered only with hasText', () => {
 	const options = (over) => {
-		const root = staticChecks(renderToolbar(over), 'toolbar')
-		return findAllNodes(root, (n) => n.tag === 'option').map((o) => o.attrs.value)
+		staticChecks(renderToolbar(over), 'toolbar')
+		return sortItems(over).items.map((o) => o.value)
 	}
 	const without = options({ hasText: false })
 	assert(!without.includes('relevance'))
@@ -1206,9 +1317,15 @@ await check('toolbar: relevance is offered only with hasText', () => {
 })
 
 await check('toolbar: the select shows the sort in effect; relevance without text falls back to newest', () => {
+	// The value handed to the select, and the label its trigger shows in the server render.
 	const selected = (over) => {
 		const root = parseHtml(renderToolbar(over))
-		return findAllNodes(root, (n) => n.tag === 'option' && n.attrs.selected !== undefined).map((o) => o.attrs.value)
+		const triggers = findAllNodes(root, (n) => n.attrs.role === 'combobox')
+		eq(triggers.length, 1, 'one sort control')
+		const shown = findAllNodes(triggers[0], (n) => n.attrs['data-slot'] === 'select-value').map(textOf)
+		const { value } = sortItems(over)
+		eq(shown, [SORT_LABELS[value]], 'the trigger shows the sort in effect before hydration')
+		return [value]
 	}
 	eq(selected({ sort: 'name', hasText: false }), ['name'])
 	eq(selected({ sort: 'relevance', hasText: true }), ['relevance'])
@@ -1218,10 +1335,13 @@ await check('toolbar: the select shows the sort in effect; relevance without tex
 
 await check('toolbar: every sort option has a human label and the select is labelled', () => {
 	const root = staticChecks(renderToolbar({ hasText: true }), 'toolbar sort')
-	for (const o of findAllNodes(root, (n) => n.tag === 'option')) {
-		assert(textOf(o).trim() && textOf(o) !== o.attrs.value, `option ${o.attrs.value} has no label`)
+	const { items } = sortItems({ hasText: true })
+	eq(items.length, MEDIA_SORTS.length)
+	for (const o of items) {
+		assert(o.label.trim() && o.label !== o.value, `option ${o.value} has no label`)
 	}
-	const select = findAllNodes(root, (n) => n.tag === 'select')[0]
+	const select = findAllNodes(root, (n) => n.attrs.role === 'combobox' && !hiddenFromAt(n))[0]
+	assert(select, 'no sort control')
 	assert(accessibleName(select, root).length > 0)
 })
 
@@ -1284,14 +1404,16 @@ await check('toolbar: select-all is a tri-state checkbox (none, some, all)', () 
 	eq(state({ allSelected: true, someSelected: false }), 'true')
 })
 
-await check('toolbar: density group marks exactly the current density pressed, with names', () => {
+await check('toolbar: density group marks exactly the current density checked, with names', () => {
 	for (const density of ['compact', 'comfortable', 'large']) {
 		const root = staticChecks(renderToolbar({ density }), `density ${density}`)
-		const group = findAllNodes(root, (n) => n.attrs.role === 'group')[0]
+		// A single-choice group: radiogroup of radios (Radix ToggleGroup type="single").
+		const group = findAllNodes(root, (n) => n.attrs.role === 'radiogroup')[0]
 		assert(group && group.attrs['aria-label'], 'group needs a label')
 		const buttons = findAllNodes(group, (n) => n.tag === 'button')
+		assert(buttons.every((b) => b.attrs.role === 'radio'), 'items are radios')
 		eq(buttons.map((b) => accessibleName(b, root)), ['Compact', 'Comfortable', 'Large'])
-		eq(buttons.filter((b) => b.attrs['aria-pressed'] === 'true').map((b) => accessibleName(b, root)), [density[0].toUpperCase() + density.slice(1)])
+		eq(buttons.filter((b) => b.attrs['aria-checked'] === 'true').map((b) => accessibleName(b, root)), [density[0].toUpperCase() + density.slice(1)])
 	}
 })
 
@@ -1302,7 +1424,7 @@ await check('toolbar: two toolbars on one page never share an id', () => {
 
 await check('toolbar handlers: every control calls the right callback; an invalid sort value is ignored', () => {
 	const log = []
-	const m = mount(GridToolbar, toolbarProps({
+	const m = mount(MountToolbar, toolbarProps({
 		showDeep: true,
 		hasText: true,
 		onToggleSelecting: () => log.push('selecting'),
@@ -1314,13 +1436,20 @@ await check('toolbar handlers: every control calls the right callback; an invali
 	m.find((n) => n.type === 'button' && m.text(n).trim() === 'Select').props.onClick()
 	m.find((n) => n.props?.role === 'checkbox').props.onClick()
 	m.find((n) => n.props?.role === 'switch').props.onClick()
-	const select = m.find((n) => n.type === 'select')
-	select.props.onChange({ target: { value: 'oldest' } })
-	select.props.onChange({ target: { value: 'relevance' } })
-	select.props.onChange({ target: { value: '$where' } })
-	select.props.onChange({ target: { value: '' } })
-	for (const b of m.findAll((n) => n.type === 'button' && n.props['aria-pressed'] !== undefined && n.props.title)) b.props.onClick()
-	eq(log, ['selecting', 'all', 'deep', 'sort:oldest', 'sort:relevance', 'density:compact', 'density:comfortable', 'density:large'])
+	const select = captured.select
+	select.onValueChange('oldest')
+	select.onValueChange('relevance')
+	select.onValueChange('$where')
+	select.onValueChange('')
+	// Density is 'comfortable': pressing it again is Radix turning it off (''), which is ignored
+	// so there is always one size; the other two switch to themselves.
+	const radios = m.findAll((n) => n.type === 'button' && n.props.role === 'radio')
+	eq(radios.map((b) => b.props.title), ['Compact', 'Comfortable', 'Large'])
+	for (const b of radios) b.props.onClick()
+	eq(log, ['selecting', 'all', 'deep', 'sort:oldest', 'sort:relevance', 'density:compact', 'density:large'])
+	m.render(toolbarProps({ density: 'large', onDensity: (d) => log.push(`density:${d}`) }))
+	m.find((n) => n.props?.role === 'radio' && n.props.title === 'Comfortable').props.onClick()
+	eq(log.at(-1), 'density:comfortable')
 	m.unmount()
 })
 
@@ -1417,7 +1546,7 @@ await check('selection bar: it is a labelled, sticky region and has no live regi
 
 await check('selection bar handlers: every button calls its own callback', () => {
 	const log = []
-	const m = mount(SelectionBar, barProps({
+	const m = mount(MountBar, barProps({
 		onSelectAllMatching: () => log.push('all'),
 		onClear: () => log.push('clear'),
 		onMove: () => log.push('move'),
@@ -1449,11 +1578,21 @@ await check('page: toolbar + grid + selection bar together have named controls a
 })
 
 await check('page: no inline style, no dangerouslySetInnerHTML, no semicolon statements in the sources', async () => {
-	assert(!/ style=/.test(renderGrid({ assets: many(5), showFolderPath: true, showMatch: true })), 'inline styles')
+	// Radix owns some inline styles (its hidden form mirrors, indicator and group wrappers);
+	// everything else in the output is ours and must have none.
+	const RADIX_STYLED = new Set(['checkbox-indicator', 'select-value', 'toggle-group'])
+	const radixOwned = (n) =>
+		(hiddenFromAt(n) && ['input', 'select'].includes(n.tag)) || RADIX_STYLED.has(n.attrs['data-slot'])
+	const styled = (html) => findAllNodes(parseHtml(html), (n) => n.attrs.style !== undefined && !radixOwned(n))
+	const a = many(5)
+	eq(styled(renderGrid({ assets: a, showFolderPath: true, showMatch: true, selectedIds: new Set([a[0].id]) })).length, 0, 'inline styles in the grid')
+	eq(styled(renderToolbar({ showDeep: true, someSelected: true })).length, 0, 'inline styles in the toolbar')
+	eq(styled(renderBar({})).length, 0, 'inline styles in the selection bar')
 	const { readFile } = await import('node:fs/promises')
 	for (const f of ['asset-grid', 'asset-card', 'grid-toolbar', 'selection-bar']) {
 		const src = await readFile(new URL(`../src/app/account/media/${f}.tsx`, import.meta.url), 'utf8')
 		assert(!src.includes('dangerouslySetInnerHTML'), `${f} uses dangerouslySetInnerHTML`)
+		assert(!/\sstyle=/.test(src), `${f} sets an inline style`)
 		const stray = src.split('\n').filter((line) => /;\s*$/.test(line) && !/^\s*(\*|\/\/)/.test(line))
 		eq(stray, [], `${f} has lines ending in a semicolon`)
 	}

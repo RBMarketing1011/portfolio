@@ -4,9 +4,17 @@ import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Loader2, Mail } from 'lucide-react'
+import { FormAlert } from '@/components/form-alert'
 import { Button } from '@/components/ui/button'
+import {
+	Card,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
 import { PasswordInput } from '@/components/ui/password-input'
 
 const MESSAGES: Record<string, string> = {
@@ -69,16 +77,16 @@ export function SignInForm() {
 
 	if (sent)
 		return (
-			<div className='rounded-xl border border-white/10 bg-white/3 p-8 text-center'>
-				<Mail className='mx-auto size-8 text-brand' />
-				<h2 className='mt-4 font-display text-xl font-semibold text-white'>
-					Check your email
-				</h2>
-				<p className='mt-2 text-sm leading-6 text-slate-400'>
-					We sent a sign-in link to {email}. It works once and expires in
-					fifteen minutes.
-				</p>
-			</div>
+			<Card className='text-center'>
+				<CardHeader>
+					<Mail className='mx-auto size-8 text-primary' />
+					<CardTitle>Check your email</CardTitle>
+					<CardDescription>
+						We sent a sign-in link to {email}. It works once and expires in fifteen
+						minutes.
+					</CardDescription>
+				</CardHeader>
+			</Card>
 		)
 
 	return (
@@ -105,20 +113,20 @@ export function SignInForm() {
 				/>
 			</div>
 
-			{error && <p className='text-sm text-destructive'>{error}</p>}
+			{error && <FormAlert>{error}</FormAlert>}
 
 			<Button
 				type='submit'
 				disabled={busy !== null}
-				className='w-full bg-brand font-bold text-ink hover:bg-brand-strong'>
+				className='w-full'>
 				{busy === 'password' && <Loader2 className='animate-spin' />}
 				Sign in
 			</Button>
 
-			<div className='flex items-center gap-3 text-xs text-slate-600'>
-				<span className='h-px flex-1 bg-white/10' />
+			<div className='flex items-center gap-3 text-xs text-muted-foreground'>
+				<Separator className='flex-1' />
 				or
-				<span className='h-px flex-1 bg-white/10' />
+				<Separator className='flex-1' />
 			</div>
 
 			<Button
@@ -126,12 +134,12 @@ export function SignInForm() {
 				variant='outline'
 				disabled={busy !== null}
 				onClick={withLink}
-				className='w-full border-white/15 bg-transparent text-white hover:bg-white/5'>
+				className='w-full'>
 				{busy === 'link' ? <Loader2 className='animate-spin' /> : <Mail />}
 				Email me a sign-in link
 			</Button>
 
-			<p className='text-center text-sm text-slate-500'>
+			<p className='text-center text-sm text-muted-foreground'>
 				Access is by invitation. Ask your administrator for one.
 			</p>
 		</form>

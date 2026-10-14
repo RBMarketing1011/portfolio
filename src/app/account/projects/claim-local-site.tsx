@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Upload, X } from 'lucide-react'
+import { HardDrive, Loader2, Upload, X } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { importLocalSite, readLocalPageCount } from '@/lib/builder/claim-local'
 
@@ -47,35 +48,24 @@ export function ClaimLocalSite({
 	}
 
 	return (
-		<div className='mt-8 rounded-xl border border-brand/30 bg-brand/8 p-5'>
-			<div className='flex flex-wrap items-center justify-between gap-4'>
-				<div>
-					<p className='font-medium text-white'>
-						You have a site built in this browser
-					</p>
-					<p className='mt-1 text-sm text-slate-400'>
-						{pages} {pages === 1 ? 'page' : 'pages'}, plus any images. Import it
-						to keep it on your account. Nothing is deleted until the import
-						succeeds.
-					</p>
-					{error && <p className='mt-2 text-sm text-destructive'>{error}</p>}
-				</div>
-				<div className='flex items-center gap-2'>
-					<Button
-						onClick={claim}
-						disabled={busy}
-						className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+		<Alert>
+			<HardDrive />
+			<AlertTitle>You have a site built in this browser</AlertTitle>
+			<AlertDescription>
+				<p>
+					{pages} {pages === 1 ? 'page' : 'pages'}, plus any images. Import it to
+					keep it on your account. Nothing is deleted until the import succeeds.
+				</p>
+				{error && <p className='text-destructive'>{error}</p>}
+				<div className='mt-2 flex items-center gap-2'>
+					<Button size='sm' onClick={claim} disabled={busy}>
 						{busy ? <Loader2 className='animate-spin' /> : <Upload />} Import
 					</Button>
-					<button
-						type='button'
-						onClick={() => setDismissed(true)}
-						aria-label='Dismiss'
-						className='flex size-8 items-center justify-center rounded-md text-slate-500 hover:text-white'>
-						<X className='size-4' />
-					</button>
+					<Button size='sm' variant='ghost' onClick={() => setDismissed(true)}>
+						<X /> Not now
+					</Button>
 				</div>
-			</div>
-		</div>
+			</AlertDescription>
+		</Alert>
 	)
 }

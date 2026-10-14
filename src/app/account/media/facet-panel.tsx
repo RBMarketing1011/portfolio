@@ -8,6 +8,10 @@
  */
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import { Check, ChevronRight, Folder } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { NEUTRAL_COLORS, swatchFor } from '@/lib/media/colors'
 import {
 	MEDIA_FORMATS,
@@ -212,9 +216,6 @@ export function countActive(active: ActiveSet, field: string) {
 	return count
 }
 
-const focusRing =
-	'focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none'
-
 function Swatch({ hex }: { hex?: string }) {
 	return (
 		<span
@@ -229,33 +230,31 @@ function Swatch({ hex }: { hex?: string }) {
 	)
 }
 
+type ChipItem = {
+	value: string
+	label: string
+	count?: number | null
+	/** Present for colors (`''` is a color with no usable hex). */
+	swatch?: string
+}
+
 function ToggleChip({
+	value,
 	label,
 	count,
 	active,
 	swatch,
-	onClick,
-}: {
-	label: string
-	count?: number | null
-	active: boolean
-	/** Present for colors (`''` is a color with no usable hex). */
-	swatch?: string
-	onClick(): void
-}) {
+}: ChipItem & { active: boolean }) {
 	const hasCount = typeof count === 'number'
 	return (
-		<button
-			type='button'
-			aria-pressed={active}
+		<ToggleGroupItem
+			value={value}
 			aria-label={hasCount ? `${label}, ${pluralize(count, 'image')}` : label}
 			title={label.length > 24 ? label : undefined}
-			onClick={onClick}
 			className={cn(
-				'inline-flex min-h-7 max-w-full cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors motion-reduce:transition-none',
-				focusRing,
+				'h-auto min-h-7 max-w-full shrink cursor-pointer gap-1.5 rounded-full border px-2.5 py-1 text-xs font-normal transition-colors motion-reduce:transition-none data-[state=on]:bg-brand/15 data-[state=on]:text-white',
 				active
-					? 'border-brand/50 bg-brand/15 text-white'
+					? 'border-brand/50 bg-brand/15 text-white hover:bg-brand/15 hover:text-white'
 					: 'border-white/10 bg-white/3 text-slate-300 hover:border-white/20 hover:bg-white/8 hover:text-white',
 			)}>
 			{swatch !== undefined && <Swatch hex={swatch || undefined} />}
@@ -275,7 +274,46 @@ function ToggleChip({
 				</>
 			)}
 			{active && <Check aria-hidden strokeWidth={3} className='size-3 shrink-0' />}
-		</button>
+		</ToggleGroupItem>
+	)
+}
+
+/**
+ * One group's values as independent filters (`type='multiple'`): each value is its own
+ * pressed state. Radix hands back the whole new set; the value that changed is the click.
+ */
+function ToggleChips({
+	id,
+	label,
+	items,
+	isActive,
+	onToggle,
+}: {
+	id?: string
+	label: string
+	items: readonly ChipItem[]
+	isActive(value: string): boolean
+	onToggle(value: string): void
+}) {
+	const pressed = items.filter((item) => isActive(item.value)).map((item) => item.value)
+	return (
+		<ToggleGroup
+			type='multiple'
+			id={id}
+			aria-label={label}
+			spacing={1.5}
+			value={pressed}
+			onValueChange={(next) => {
+				const changed =
+					next.find((value) => !pressed.includes(value)) ??
+					pressed.find((value) => !next.includes(value))
+				if (changed !== undefined) onToggle(changed)
+			}}
+			className='w-full flex-wrap'>
+			{items.map((item) => (
+				<ToggleChip key={item.value} {...item} active={isActive(item.value)} />
+			))}
+		</ToggleGroup>
 	)
 }
 
@@ -303,15 +341,13 @@ function FacetSection({
 		<div data-slot='facet-section' data-facet={slot}>
 			<div className='flex items-center gap-1'>
 				<h3 className='min-w-0 flex-1'>
-					<button
+					<Button
 						type='button'
+						variant='ghost'
 						aria-expanded={open}
 						aria-controls={bodyId}
 						onClick={() => setChoice(!open)}
-						className={cn(
-							'flex min-h-8 w-full cursor-pointer items-center gap-1.5 rounded-md px-1 text-left text-sm font-medium text-slate-200 transition-colors hover:text-white motion-reduce:transition-none',
-							focusRing,
-						)}>
+						className='h-auto min-h-8 w-full cursor-pointer justify-start gap-1.5 px-1 text-left text-sm font-medium text-slate-200 transition-colors hover:bg-transparent hover:text-white motion-reduce:transition-none'>
 						<ChevronRight
 							aria-hidden
 							className={cn(
@@ -322,15 +358,16 @@ function FacetSection({
 						<span>{title}</span>
 						{activeCount > 0 && (
 							<>
-								<span
+								<Badge
 									aria-hidden
-									className='rounded-full bg-brand/15 px-1.5 text-xs font-medium tabular-nums text-brand'>
+									variant='secondary'
+									className='rounded-full border-transparent bg-brand/15 px-1.5 py-0 text-xs font-medium tabular-nums text-brand'>
 									{activeCount}
-								</span>
+								</Badge>
 								<span className='sr-only'>{`${activeCount} selected`}</span>
 							</>
 						)}
-					</button>
+					</Button>
 				</h3>
 				{action}
 			</div>
@@ -354,18 +391,16 @@ function ShowMore({
 }) {
 	const text = expanded ? 'Show less' : 'Show more'
 	return (
-		<button
+		<Button
 			type='button'
+			variant='link'
 			aria-expanded={expanded}
 			aria-controls={controls}
 			aria-label={`${text} ${noun}`}
 			onClick={onToggle}
-			className={cn(
-				'mt-1.5 min-h-7 cursor-pointer rounded-md px-1.5 text-xs text-brand underline-offset-2 hover:underline',
-				focusRing,
-			)}>
+			className='mt-1.5 h-auto min-h-7 cursor-pointer px-1.5 py-0 text-xs font-normal text-brand underline-offset-2'>
 			{text}
-		</button>
+		</Button>
 	)
 }
 
@@ -375,27 +410,21 @@ function ExpandableList<T extends FacetItem>({
 	shown,
 	noun,
 	isActive,
-	as,
-	className,
-	render,
+	renderList,
 }: {
 	items: readonly T[]
 	shown: number
 	noun: string
 	isActive(item: T): boolean
-	as: 'div' | 'ul'
-	className: string
-	render(item: T): ReactNode
+	/** Draws the visible rows; `id` goes on the list so "Show more" can point at it. */
+	renderList(id: string, visible: T[]): ReactNode
 }) {
 	const id = useId()
 	const [expanded, setExpanded] = useState(false)
 	const visible = visibleItems(items, shown, expanded, isActive)
-	const Wrapper = as
 	return (
 		<>
-			<Wrapper id={id} className={className}>
-				{visible.map(render)}
-			</Wrapper>
+			{renderList(id, visible)}
 			{(expanded || visible.length < items.length) && (
 				<ShowMore
 					expanded={expanded}
@@ -419,17 +448,15 @@ function FolderRow({
 	const count = item.count
 	return (
 		<li>
-			<button
+			<Button
 				type='button'
+				variant='ghost'
 				aria-label={
 					count === null ? item.label : `${item.label}, ${pluralize(count, 'image')}`
 				}
 				title={item.label}
 				onClick={() => onSelect(item.value)}
-				className={cn(
-					'flex min-h-8 w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white motion-reduce:transition-none',
-					focusRing,
-				)}>
+				className='h-auto min-h-8 w-full cursor-pointer justify-start gap-2 px-1.5 py-1 text-left text-sm font-normal text-slate-300 transition-colors hover:bg-white/5 hover:text-white motion-reduce:transition-none'>
 				<Folder aria-hidden className='size-4 shrink-0 text-slate-500' />
 				<span className='flex min-w-0 flex-1 items-baseline'>
 					{parent && (
@@ -447,7 +474,7 @@ function FolderRow({
 						</span>
 					</>
 				)}
-			</button>
+			</Button>
 		</li>
 	)
 }
@@ -475,10 +502,10 @@ function SkeletonSection({
 				aria-hidden
 				className={cn('pb-3 pt-1', rows ? 'space-y-1.5' : 'flex flex-wrap gap-1.5')}>
 				{widths.map((width, index) => (
-					<span
+					<Skeleton
 						key={index}
 						className={cn(
-							'block animate-pulse bg-white/8 motion-reduce:animate-none',
+							'bg-white/8 motion-reduce:animate-none',
 							rows ? 'h-6 rounded-md' : 'h-7 rounded-full',
 							width,
 						)}
@@ -493,8 +520,6 @@ const TAG_SKELETON = ['w-16', 'w-24', 'w-14', 'w-20', 'w-28', 'w-16', 'w-20', 'w
 const COLOR_SKELETON = ['w-20', 'w-16', 'w-24', 'w-16', 'w-20', 'w-14']
 const FOLDER_SKELETON = ['w-full', 'w-5/6', 'w-2/3', 'w-3/4']
 
-const chipListClass = 'flex flex-wrap gap-1.5'
-
 export function FacetPanel({
 	facets,
 	loading,
@@ -507,10 +532,12 @@ export function FacetPanel({
 	const data = useMemo(() => normalizeFacets(facets), [facets])
 
 	/** The state is read when the click lands, so a rapid second click sees the first one's result. */
-	const toggle = (field: string, value: string) =>
+	const toggle = (field: string) => (value: string) =>
 		onToggle(clauseFor(field, value), isActivePair(activeValues, facetPair(field, value)))
+	const isOn = (field: string) => (value: string) =>
+		isActivePair(activeValues, facetPair(field, value))
 	const pressed = (field: string) => (item: { value: string }) =>
-		isActivePair(activeValues, facetPair(field, item.value))
+		isOn(field)(item.value)
 
 	return (
 		<section
@@ -540,15 +567,13 @@ export function FacetPanel({
 							defaultOpen
 							action={
 								onManageTags && (
-									<button
+									<Button
 										type='button'
+										variant='link'
 										onClick={onManageTags}
-										className={cn(
-											'shrink-0 cursor-pointer rounded-md px-1.5 py-1 text-xs text-brand underline-offset-2 hover:underline',
-											focusRing,
-										)}>
+										className='h-auto shrink-0 cursor-pointer px-1.5 py-1 text-xs font-normal text-brand underline-offset-2'>
 										Manage tags
-									</button>
+									</Button>
 								)
 							}>
 							<ExpandableList
@@ -556,15 +581,17 @@ export function FacetPanel({
 								shown={FACET_LIMITS.tags.shown}
 								noun='tags'
 								isActive={pressed('tag')}
-								as='div'
-								className={chipListClass}
-								render={(item) => (
-									<ToggleChip
-										key={item.value}
-										label={item.label}
-										count={item.count}
-										active={pressed('tag')(item)}
-										onClick={() => toggle('tag', item.value)}
+								renderList={(id, visible) => (
+									<ToggleChips
+										id={id}
+										label='Tags'
+										items={visible.map(({ value, label, count }) => ({
+											value,
+											label,
+											count,
+										}))}
+										isActive={isOn('tag')}
+										onToggle={toggle('tag')}
 									/>
 								)}
 							/>
@@ -582,16 +609,18 @@ export function FacetPanel({
 								shown={FACET_LIMITS.colors.shown}
 								noun='colors'
 								isActive={pressed('color')}
-								as='div'
-								className={chipListClass}
-								render={(item) => (
-									<ToggleChip
-										key={item.value}
-										label={item.label}
-										count={item.count}
-										swatch={item.hex ?? ''}
-										active={pressed('color')(item)}
-										onClick={() => toggle('color', item.value)}
+								renderList={(id, visible) => (
+									<ToggleChips
+										id={id}
+										label='Colors'
+										items={visible.map(({ value, label, count, hex }) => ({
+											value,
+											label,
+											count,
+											swatch: hex ?? '',
+										}))}
+										isActive={isOn('color')}
+										onToggle={toggle('color')}
 									/>
 								)}
 							/>
@@ -605,10 +634,12 @@ export function FacetPanel({
 								shown={FACET_LIMITS.folders.shown}
 								noun='folders'
 								isActive={() => false}
-								as='ul'
-								className='space-y-0.5'
-								render={(item) => (
-									<FolderRow key={item.value} item={item} onSelect={onSelectFolder} />
+								renderList={(id, visible) => (
+									<ul id={id} className='space-y-0.5'>
+										{visible.map((item) => (
+											<FolderRow key={item.value} item={item} onSelect={onSelectFolder} />
+										))}
+									</ul>
 								)}
 							/>
 						</FacetSection>
@@ -623,16 +654,12 @@ export function FacetPanel({
 					title={group.title}
 					activeCount={countActive(activeValues, group.field)}
 					defaultOpen={group.defaultOpen}>
-					<div className={chipListClass}>
-						{group.values.map((value) => (
-							<ToggleChip
-								key={value}
-								label={group.label(value)}
-								active={isActivePair(activeValues, facetPair(group.field, value))}
-								onClick={() => toggle(group.field, value)}
-							/>
-						))}
-					</div>
+					<ToggleChips
+						label={group.title}
+						items={group.values.map((value) => ({ value, label: group.label(value) }))}
+						isActive={isOn(group.field)}
+						onToggle={toggle(group.field)}
+					/>
 				</FacetSection>
 			))}
 		</section>

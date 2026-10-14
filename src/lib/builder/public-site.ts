@@ -1,8 +1,10 @@
 import 'server-only'
 import { ObjectId } from 'mongodb'
 import { getDb } from '@/lib/mongo'
+import { appHost, appProtocol } from '@/lib/app-url'
 import { siteSchema } from '@/lib/builder/page-schema'
 import type { SiteDoc } from '@/lib/builder/site-doc'
+import { readSiteProfile, type SiteProfile } from '@/lib/builder/site-profile'
 
 export type PublicSite = {
 	id: string
@@ -10,6 +12,9 @@ export type PublicSite = {
 	site: ReturnType<typeof siteSchema.parse>
 	look: Record<string, unknown>
 	media: SiteDoc['media']
+	profile: SiteProfile
+	subdomain: string
+	customDomain: string | null
 }
 
 /** Strips everything a visitor has no business seeing: owner, token, revision. */
@@ -22,6 +27,9 @@ function toPublic(doc: SiteDoc): PublicSite | null {
 		site: parsed.data,
 		look: doc.look ?? {},
 		media: doc.media ?? [],
+		profile: readSiteProfile(doc.profile),
+		subdomain: doc.subdomain,
+		customDomain: doc.customDomainVerifiedAt ? (doc.customDomain ?? null) : null,
 	}
 }
 
@@ -82,4 +90,14 @@ export async function siteById(id: string) {
 		.collection<SiteDoc>('sites')
 		.findOne({ _id: new ObjectId(id) })
 	return doc ? toPublic(doc) : null
+}
+
+/**
+ * The address a live site is known by. A verified custom domain wins, so a site
+ * reachable on both addresses points search engines at one of them.
+ */
+export function siteOrigin(site: PublicSite) {
+	return site.customDomain
+		? `https://${site.customDomain}`
+		: `${appProtocol}://${site.subdomain}.${appHost}`
 }

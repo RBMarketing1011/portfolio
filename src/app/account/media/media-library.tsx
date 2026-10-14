@@ -51,7 +51,10 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -229,11 +232,11 @@ function Rail({ state, actions, can, onNavigate, onManageTags }: RailProps) {
 /* -------------------------------------------------------------------------- */
 
 const emptyShell =
-	'flex flex-col items-center gap-3 rounded-xl border border-dashed border-white/15 px-6 py-16 text-center'
+	'items-center gap-3 border-dashed border-white/15 bg-transparent px-6 py-16 text-center shadow-none'
 
 function EmptyLibrary({ canWrite, onUpload }: { canWrite: boolean; onUpload(): void }) {
 	return (
-		<div data-slot='empty-library' className={emptyShell}>
+		<Card data-slot='empty-library' className={emptyShell}>
 			<ImagePlus aria-hidden className='size-8 text-slate-500' />
 			<h2 className='text-base font-semibold text-white'>Your media library is empty</h2>
 			<p className='max-w-md text-sm leading-6 text-slate-400'>
@@ -256,7 +259,7 @@ function EmptyLibrary({ canWrite, onUpload }: { canWrite: boolean; onUpload(): v
 					Ask someone with permission to upload to add the first images.
 				</p>
 			)}
-		</div>
+		</Card>
 	)
 }
 
@@ -275,7 +278,7 @@ function EmptyFolder({
 	const subfolders = selectSubfolders(state).length
 	const hidden = subfolders > 0 && !effectiveDeep(state.params)
 	return (
-		<div data-slot='empty-folder' className={emptyShell}>
+		<Card data-slot='empty-folder' className={emptyShell}>
 			<Folder aria-hidden className='size-8 text-slate-500' />
 			<h2 className='text-base font-semibold text-white'>
 				{unfiled ? 'Nothing is unfiled' : 'This folder is empty'}
@@ -304,7 +307,7 @@ function EmptyFolder({
 					</Button>
 				) : null}
 			</div>
-		</div>
+		</Card>
 	)
 }
 
@@ -345,7 +348,7 @@ function EmptyResults({
 	const scope = scopeOf(state.params, state.folders.folders)
 	const canWiden = scope !== null && scope.label !== 'Unfiled' && !scope.deep
 	return (
-		<div data-slot='empty-results' className={emptyShell}>
+		<Card data-slot='empty-results' className={emptyShell}>
 			<SearchX aria-hidden className='size-8 text-slate-500' />
 			<h2 className='text-base font-semibold text-white'>No images found</h2>
 			<div className='max-w-md space-y-1 text-sm leading-6 text-slate-400'>
@@ -367,13 +370,13 @@ function EmptyResults({
 					</Button>
 				) : null}
 			</div>
-		</div>
+		</Card>
 	)
 }
 
 function EmptyMissingFolder({ onShowAll }: { onShowAll(): void }) {
 	return (
-		<div data-slot='empty-missing-folder' className={emptyShell}>
+		<Card data-slot='empty-missing-folder' className={emptyShell}>
 			<Folder aria-hidden className='size-8 text-slate-500' />
 			<h2 className='text-base font-semibold text-white'>That folder no longer exists</h2>
 			<p className='max-w-md text-sm leading-6 text-slate-400'>
@@ -383,7 +386,7 @@ function EmptyMissingFolder({ onShowAll }: { onShowAll(): void }) {
 			<Button type='button' variant='outline' onClick={onShowAll}>
 				Show all media
 			</Button>
-		</div>
+		</Card>
 	)
 }
 
@@ -411,12 +414,13 @@ function CrumbTrail({
 								<BreadcrumbPage className='text-white'>{step.label}</BreadcrumbPage>
 							) : (
 								<BreadcrumbLink asChild>
-									<button
+									<Button
 										type='button'
+										variant='link'
 										onClick={() => onGo(step.folder)}
-										className='cursor-pointer rounded text-slate-400 underline-offset-4 outline-none hover:text-white hover:underline focus-visible:ring-[3px] focus-visible:ring-white/40'>
+										className='h-auto p-0 font-normal text-slate-400 hover:text-white'>
 										{step.label}
-									</button>
+									</Button>
 								</BreadcrumbLink>
 							)}
 						</BreadcrumbItem>
@@ -439,14 +443,19 @@ function Subfolders({
 		<ul aria-label='Subfolders' className='flex flex-wrap gap-2'>
 			{folders.map((folder) => (
 				<li key={folder.id}>
-					<button
+					<Button
 						type='button'
+						variant='outline'
 						onClick={() => onGo(folder.id)}
-						className='inline-flex min-h-9 max-w-full cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/3 px-3 text-sm text-slate-200 outline-none hover:bg-white/8 hover:text-white focus-visible:ring-[3px] focus-visible:ring-white/40'>
-						<Folder aria-hidden className='size-4 shrink-0 text-slate-400' />
+						className='h-auto min-h-9 max-w-full rounded-lg border-white/10 bg-white/3 font-normal text-slate-200 hover:bg-white/8 hover:text-white dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/8'>
+						<Folder aria-hidden className='text-slate-400' />
 						<span className='max-w-48 truncate'>{folder.name}</span>
-						<span className='text-xs tabular-nums text-slate-500'>{formatCount(folder.total)}</span>
-					</button>
+						<Badge
+							variant='outline'
+							className='border-white/10 px-1.5 tabular-nums text-slate-400'>
+							{formatCount(folder.total)}
+						</Badge>
+					</Button>
 				</li>
 			))}
 		</ul>
@@ -466,19 +475,24 @@ function NoticeBar({
 	const warn = notice.tone !== 'info'
 	const Icon = warn ? TriangleAlert : Info
 	return (
-		<div
+		// Not role="alert": the page's live region already announces it, once.
+		<Alert
+			role={undefined}
+			variant={notice.tone === 'error' ? 'destructive' : 'default'}
 			data-slot='media-notice'
 			data-tone={notice.tone}
 			className={cn(
-				'flex items-start gap-2 rounded-lg border px-3 py-2 text-sm',
+				'flex items-start gap-2 rounded-lg px-3 py-2',
 				notice.tone === 'error'
 					? 'border-destructive/30 bg-destructive/10 text-red-200'
 					: notice.tone === 'warn'
 						? 'border-amber-400/25 bg-amber-400/8 text-amber-200'
 						: 'border-white/10 bg-white/3 text-slate-200',
 			)}>
-			<Icon aria-hidden className='mt-0.5 size-4 shrink-0' />
-			<p className='min-w-0 flex-1 wrap-break-word'>{notice.text}</p>
+			<Icon aria-hidden className='shrink-0' />
+			<AlertDescription className='min-w-0 flex-1 text-current wrap-break-word'>
+				<p>{notice.text}</p>
+			</AlertDescription>
 			{notice.retry ? (
 				<Button
 					type='button'
@@ -489,14 +503,16 @@ function NoticeBar({
 					Retry
 				</Button>
 			) : null}
-			<button
+			<Button
 				type='button'
+				variant='ghost'
+				size='icon-xs'
 				aria-label='Dismiss this message'
 				onClick={actions.dismissNotice}
-				className='grid size-6 shrink-0 cursor-pointer place-items-center rounded-md text-slate-400 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-[3px] focus-visible:ring-white/40'>
-				<X aria-hidden className='size-3.5' />
-			</button>
-		</div>
+				className='text-slate-400 hover:bg-white/10 hover:text-white dark:hover:bg-white/10'>
+				<X aria-hidden />
+			</Button>
+		</Alert>
 	)
 }
 
@@ -549,9 +565,9 @@ function ConfirmBody({
 				<AlertDialogDescription>{description}</AlertDialogDescription>
 			</AlertDialogHeader>
 			{error ? (
-				<p role='alert' className='text-sm text-destructive'>
-					{error}
-				</p>
+				<Alert variant='destructive'>
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			) : null}
 			<AlertDialogFooter>
 				<AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
@@ -687,9 +703,9 @@ function NewFolderForm({
 					}}
 				/>
 				{error ? (
-					<p id={`${id}-error`} role='alert' className='text-sm text-destructive'>
-						{error}
-					</p>
+					<Alert id={`${id}-error`} variant='destructive'>
+						<AlertDescription>{error}</AlertDescription>
+					</Alert>
 				) : null}
 			</div>
 			<DialogFooter>

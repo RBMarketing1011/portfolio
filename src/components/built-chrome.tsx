@@ -5,12 +5,58 @@ import { Mail } from 'lucide-react'
 import { Wordmark } from '@/components/brand'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { BuiltMenu } from '@/components/built-menu'
 import { cn } from '@/lib/utils'
 import { pageHref, type Chrome } from '@/lib/builder/page-schema'
 
 export type NavPage = { id: string; name: string; slug: string }
 
+/** Who the site belongs to. Without it (template thumbnails) the kit's own wordmark shows. */
+export type SiteBrand = {
+	name: string
+	logo?: string | null
+	logoAlt?: string
+	/** The line under the logo in the footer. */
+	tagline?: string
+	/** The bare host, for the footer's last line. */
+	host?: string
+}
+
+/** The site's logo, or its name set as a wordmark when there is no logo. */
+function BrandMark({
+	brand,
+	href,
+	size = 'md',
+}: {
+	brand?: SiteBrand
+	href: string
+	size?: 'sm' | 'md'
+}) {
+	if (!brand) return <Wordmark href={href} size={size === 'sm' ? 'sm' : undefined} />
+	return (
+		<Link href={href || '/'} className='flex shrink-0 items-center'>
+			{brand.logo ? (
+				// eslint-disable-next-line @next/next/no-img-element -- the site's own upload, any host
+				<img
+					src={brand.logo}
+					alt={brand.logoAlt || brand.name}
+					className={cn('w-auto object-contain', size === 'sm' ? 'h-7' : 'h-9')}
+				/>
+			) : (
+				<span
+					className={cn(
+						'font-display font-semibold tracking-tight text-white',
+						size === 'sm' ? 'text-base' : 'text-lg',
+					)}>
+					{brand.name}
+				</span>
+			)}
+		</Link>
+	)
+}
+
 type ChromeProps = {
+	brand?: SiteBrand
 	pages: NavPage[]
 	chrome: Chrome
 	current?: string
@@ -59,6 +105,28 @@ function NavLinks({
 	)
 }
 
+/**
+ * The header navigation: the menu the site built for itself, or, while it has none,
+ * the pages that are set to show in the header.
+ */
+function HeaderNav({
+	pages,
+	chrome,
+	current,
+	linkBase,
+}: {
+	pages: NavPage[]
+	chrome: Chrome
+	current?: string
+	linkBase: string
+}) {
+	if (chrome.menu.length > 0)
+		return (
+			<BuiltMenu items={chrome.menu} current={current} linkBase={linkBase} />
+		)
+	return <NavLinks pages={pages} current={current} linkBase={linkBase} />
+}
+
 function Cta({
 	chrome,
 	action,
@@ -91,6 +159,7 @@ export function BuiltHeader({
 	current,
 	linkBase = '/preview',
 	action,
+	brand,
 }: ChromeProps) {
 	if (chrome.header === 'none') return null
 
@@ -107,13 +176,21 @@ export function BuiltHeader({
 				<nav
 					aria-label='Main'
 					className={cn(
-						'mx-auto flex w-full max-w-[var(--content-max,72rem)] items-center justify-between gap-6 rounded-full border px-5 py-2.5 shadow-[0_8px_32px_-12px_rgb(0_0_0/0.6)]',
+						'mx-auto w-full max-w-[var(--content-max,72rem)] rounded-full border px-5 py-2.5 shadow-[0_8px_32px_-12px_rgb(0_0_0/0.6)]',
 						shell,
 						edge,
 					)}>
-					<Wordmark href={linkBase} size='sm' />
-					<NavLinks pages={pages} current={current} linkBase={linkBase} />
-					{cta}
+					{/* Relative, so a menu panel is exactly as wide as this row. */}
+					<div className='relative flex items-center justify-between gap-6'>
+						<BrandMark brand={brand} href={linkBase} size='sm' />
+						<HeaderNav
+							pages={pages}
+							chrome={chrome}
+							current={current}
+							linkBase={linkBase}
+						/>
+						{cta}
+					</div>
 				</nav>
 			</header>
 		)
@@ -128,15 +205,20 @@ export function BuiltHeader({
 				    rows start where the page content starts. */}
 				<div className='px-6 sm:px-10 lg:px-16'>
 					<div className='mx-auto flex w-full max-w-[var(--content-max,72rem)] items-center justify-between gap-6 py-3'>
-						<Wordmark href={linkBase} />
+						<BrandMark brand={brand} href={linkBase} />
 						{cta}
 					</div>
 				</div>
 				<nav
 					aria-label='Main'
 					className={cn('border-t px-6 sm:px-10 lg:px-16', edge)}>
-					<div className='mx-auto flex w-full max-w-[var(--content-max,72rem)] justify-center py-1'>
-						<NavLinks pages={pages} current={current} linkBase={linkBase} />
+					<div className='relative mx-auto flex w-full max-w-[var(--content-max,72rem)] justify-center py-1'>
+						<HeaderNav
+							pages={pages}
+							chrome={chrome}
+							current={current}
+							linkBase={linkBase}
+						/>
 					</div>
 				</nav>
 			</header>
@@ -153,9 +235,14 @@ export function BuiltHeader({
 			)}>
 			<nav
 				aria-label='Main'
-				className='mx-auto flex w-full max-w-[var(--content-max,72rem)] items-center justify-between gap-6 py-3'>
-				<Wordmark href={linkBase} />
-				<NavLinks pages={pages} current={current} linkBase={linkBase} />
+				className='relative mx-auto flex w-full max-w-[var(--content-max,72rem)] items-center justify-between gap-6 py-3'>
+				<BrandMark brand={brand} href={linkBase} />
+				<HeaderNav
+					pages={pages}
+					chrome={chrome}
+					current={current}
+					linkBase={linkBase}
+				/>
 				{cta}
 			</nav>
 		</header>
@@ -166,22 +253,25 @@ export function BuiltFooter({
 	pages,
 	chrome,
 	linkBase = '/preview',
+	brand,
 }: ChromeProps) {
 	if (chrome.footer === 'none') return null
 
 	const design = chrome.footer
 	const edge = 'border-white/10'
 
-	const brand = (
+	const brandBlock = (
 		<div>
-			<Wordmark href={linkBase} size='sm' />
-			<p
-				className={cn(
-					'mt-4 leading-7 text-slate-400',
-					design === 'centered' ? 'mx-auto max-w-md' : 'max-w-xs',
-				)}>
-				This footer belongs to the site you are building.
-			</p>
+			<BrandMark brand={brand} href={linkBase} size='sm' />
+			{(!brand || brand.tagline) && (
+				<p
+					className={cn(
+						'mt-4 leading-7 text-slate-400',
+						design === 'centered' ? 'mx-auto max-w-md' : 'max-w-xs',
+					)}>
+					{brand ? brand.tagline : 'This footer belongs to the site you are building.'}
+				</p>
+			)}
 			{chrome.ctaLabel && (
 				<Button
 					asChild
@@ -239,8 +329,10 @@ export function BuiltFooter({
 					? 'items-center'
 					: 'sm:flex-row sm:items-center sm:justify-between',
 			)}>
-			<p>© {new Date().getFullYear()} Your Company. All rights reserved.</p>
-			<p>yoursite.com</p>
+			<p>
+				© {new Date().getFullYear()} {brand?.name ?? 'Your Company'}. All rights reserved.
+			</p>
+			{(brand ? brand.host : 'yoursite.com') && <p>{brand ? brand.host : 'yoursite.com'}</p>}
 		</div>
 	)
 
@@ -250,7 +342,7 @@ export function BuiltFooter({
 		return (
 			<footer data-surface='footer' className={cn(surface, 'text-center')}>
 				<div className='mx-auto w-full max-w-[var(--content-max,72rem)]'>
-					<div className='flex flex-col items-center'>{brand}</div>
+					<div className='flex flex-col items-center'>{brandBlock}</div>
 					<div className='mt-12 grid gap-10 sm:grid-cols-3'>{linkColumns}</div>
 					<Separator className={cn('my-10', edge, 'bg-white/10')} />
 					{legal}
@@ -263,7 +355,7 @@ export function BuiltFooter({
 		return (
 			<footer data-surface='footer' className={surface}>
 				<div className='mx-auto grid w-full max-w-[var(--content-max,72rem)] gap-14 lg:grid-cols-[1fr_1.4fr]'>
-					{brand}
+					{brandBlock}
 					<div className='grid gap-8 sm:grid-cols-3'>{linkColumns}</div>
 				</div>
 				<div
@@ -281,7 +373,7 @@ export function BuiltFooter({
 		<footer data-surface='footer' className={surface}>
 			<div className='mx-auto w-full max-w-[var(--content-max,72rem)]'>
 				<div className='grid gap-12 md:grid-cols-[1.5fr_repeat(3,1fr)]'>
-					{brand}
+					{brandBlock}
 					{linkColumns}
 				</div>
 				<Separator className={cn('my-10', edge, 'bg-white/10')} />

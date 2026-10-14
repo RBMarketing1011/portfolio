@@ -38,8 +38,7 @@ export function OpenAccountButton({
 			size='sm'
 			variant='outline'
 			disabled={busy}
-			onClick={open}
-			className='border-white/15 bg-transparent'>
+			onClick={open}>
 			{busy ? <Loader2 className='animate-spin' /> : <LogIn />} {label}
 		</Button>
 	)

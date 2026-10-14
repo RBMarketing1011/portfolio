@@ -13,6 +13,7 @@ import {
 	cloneBlocks,
 	createBlock,
 	duplicateBlock,
+	findBlock,
 	insertBlock,
 	moveBlock,
 	newId,
@@ -26,6 +27,7 @@ import {
 	type SaveState,
 } from './drivers'
 import { isDataUrl, mediaRef, readMedia } from './media-store'
+import { brandFromProfile, type SiteProfile } from './site-profile'
 import type { MediaEntry } from './site-doc'
 import type { Block } from './types'
 
@@ -100,6 +102,7 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 	const [saveState, setSaveState] = useState<SaveState>('idle')
 	const [siteName, setSiteName] = useState('My site')
 	const [remoteMedia, setRemoteMedia] = useState<MediaEntry[]>([])
+	const [profile, setProfile] = useState<SiteProfile | null>(null)
 	const [remoteLook, setRemoteLook] = useState<Record<string, unknown> | null>(
 		null,
 	)
@@ -129,6 +132,7 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 				setLoadError(null)
 				setSiteName(loaded.name)
 				setRemoteMedia(loaded.media)
+				setProfile(loaded.profile)
 				setRemoteLook(loaded.look)
 				setSite(next)
 				setPageId(next.pages[0]?.id ?? null)
@@ -463,6 +467,8 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 		remote: driver.remote,
 		remoteMedia,
 		remoteLook,
+		/** The site's logo and name for its header and footer; none for a browser-only site. */
+		brand: profile ? brandFromProfile(profile, siteName) : undefined,
 		inspectorOpen,
 		setInspectorOpen,
 		site,
@@ -506,6 +512,23 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 				}),
 			),
 		replaceBlocks: (blocks: Block[]) => patchBlocks(() => blocks),
+		/**
+		 * Swaps one block for a rewritten copy, on whichever page holds it, so a slow
+		 * AI reply still lands if the person moved to another page meanwhile.
+		 */
+		replaceBlock: (id: string, block: Block) =>
+			mutate((current) => ({
+				...current,
+				pages: current.pages.map((p) =>
+					findBlock(p.blocks, id)
+						? {
+								...p,
+								blocks: updateBlock(p.blocks, id, () => block),
+								updatedAt: new Date().toISOString(),
+							}
+						: p,
+				),
+			})),
 		undo,
 		redo,
 		canUndo: past.current.length > 0,

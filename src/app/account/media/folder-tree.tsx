@@ -29,6 +29,9 @@ import {
 	X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -184,9 +187,12 @@ function TreeRow({
 }
 
 const Count = ({ n, busy }: { n: number; busy?: boolean }) => (
-	<span aria-hidden className='ml-auto shrink-0 pl-1 text-xs tabular-nums text-slate-500'>
-		{busy ? <Loader2 className='size-3.5 animate-spin' /> : formatCount(n)}
-	</span>
+	<Badge
+		aria-hidden
+		variant='outline'
+		className='ml-auto border-transparent px-0 py-0 pl-1 font-normal tabular-nums text-slate-500 [&>svg]:size-3.5'>
+		{busy ? <Loader2 className='animate-spin' /> : formatCount(n)}
+	</Badge>
 )
 
 /* -------------------------------------------------------------------------- */
@@ -526,11 +532,12 @@ export function FolderTree({
 				<span className='size-5 shrink-0' />
 				<Sparkles aria-hidden className='size-4 shrink-0 text-brand' />
 				<span className='min-w-0 truncate'>Needs review</span>
-				<span
+				<Badge
 					aria-hidden
-					className='ml-auto shrink-0 rounded-full bg-brand/15 px-1.5 text-xs font-medium tabular-nums text-brand'>
+					variant='secondary'
+					className='ml-auto rounded-full bg-brand/15 px-1.5 py-0 tabular-nums text-brand'>
 					{formatCount(reviewCount)}
-				</span>
+				</Badge>
 			</TreeRow>,
 		)
 
@@ -584,8 +591,10 @@ export function FolderTree({
 				dropState={dropState(key)}
 				drag={canWrite ? dragProps(key, node.id) : undefined}>
 				{hasKids ? (
-					<button
+					<Button
 						type='button'
+						variant='ghost'
+						size='icon-xs'
 						tabIndex={-1}
 						aria-label={`${isOpen ? 'Collapse' : 'Expand'} ${node.name}`}
 						onClick={(event) => {
@@ -594,12 +603,12 @@ export function FolderTree({
 							else open([node.id])
 							focusItem(key)
 						}}
-						className='grid size-5 shrink-0 place-items-center rounded text-slate-400 hover:bg-white/10 hover:text-white'>
+						className='size-5 rounded text-slate-400 hover:bg-white/10 hover:text-white dark:hover:bg-white/10'>
 						<ChevronRight
 							aria-hidden
 							className={cn('size-3.5 transition-transform motion-reduce:transition-none', isOpen && 'rotate-90')}
 						/>
-					</button>
+					</Button>
 				) : (
 					<span className='size-5 shrink-0' />
 				)}
@@ -628,14 +637,16 @@ export function FolderTree({
 								open={menuFor === node.id}
 								onOpenChange={(next) => setMenuFor(next ? node.id : null)}>
 								<DropdownMenuTrigger asChild>
-									<button
+									<Button
 										type='button'
+										variant='ghost'
+										size='icon-sm'
 										// Only the focused row's button is a tab stop, so a long tree is one stop, not hundreds.
 										tabIndex={tabStopOf(key) ? 0 : -1}
 										aria-label={`Actions for ${node.name}`}
-										className='grid size-7 shrink-0 place-items-center rounded-md text-slate-400 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand/70 data-[state=open]:bg-white/10 data-[state=open]:text-white'>
+										className='size-7 text-slate-400 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand/70 data-[state=open]:bg-white/10 data-[state=open]:text-white dark:hover:bg-white/10'>
 										<Ellipsis aria-hidden className='size-4' />
-									</button>
+									</Button>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent
 									align='end'
@@ -683,31 +694,37 @@ export function FolderTree({
 						Library
 					</h2>
 					{canWrite && (
-						<button
+						<Button
 							ref={addButtonRef}
 							type='button'
+							variant='ghost'
+							size='icon-sm'
 							aria-label='New folder'
 							title='New folder'
 							onClick={() => startCreate(null)}
-							className='grid size-7 place-items-center rounded-md text-slate-400 outline-none hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand/70'>
+							className='size-7 text-slate-400 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-brand/70 dark:hover:bg-white/10'>
 							<Plus aria-hidden className='size-4' />
-						</button>
+						</Button>
 					)}
 				</div>
 
 				{notice && (
-					<div
-						role='alert'
-						className='mb-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive'>
-						<span className='min-w-0 flex-1'>{notice}</span>
-						<button
+					<Alert
+						variant='destructive'
+						className='mb-2 flex items-start gap-2 rounded-md border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs'>
+						<AlertDescription className='min-w-0 flex-1 text-xs text-destructive'>
+							{notice}
+						</AlertDescription>
+						<Button
 							type='button'
+							variant='ghost'
+							size='icon-xs'
 							aria-label='Dismiss message'
 							onClick={() => setNotice(null)}
-							className='grid size-5 shrink-0 place-items-center rounded hover:bg-destructive/20'>
+							className='size-5 rounded text-destructive hover:bg-destructive/20 hover:text-destructive dark:hover:bg-destructive/20'>
 							<X aria-hidden className='size-3.5' />
-						</button>
-					</div>
+						</Button>
+					</Alert>
 				)}
 
 				<ul ref={treeRef} role='tree' aria-labelledby={headingId} className='space-y-0.5'>
@@ -817,33 +834,38 @@ function SavedSearches({
 					return (
 						<li key={item.id}>
 							<div className='group flex min-h-9 items-center gap-1 rounded-md pr-1 hover:bg-white/5'>
-								<button
+								<Button
 									type='button'
+									variant='ghost'
 									onClick={() => onApply(item)}
 									title={typeof item.query === 'string' ? item.query : undefined}
-									className='flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-slate-300 outline-none hover:text-white focus-visible:ring-2 focus-visible:ring-brand/70'>
+									className='h-auto min-w-0 flex-1 justify-start gap-2 px-2 py-1.5 text-left font-normal text-slate-300 hover:bg-transparent hover:text-white focus-visible:ring-2 focus-visible:ring-brand/70 has-[>svg]:px-2 dark:hover:bg-transparent'>
 									<Bookmark aria-hidden className='size-4 shrink-0 text-slate-400' />
 									<span className='min-w-0 truncate'>{name}</span>
-								</button>
+								</Button>
 								{canDelete && (
-									<button
+									<Button
 										type='button'
+										variant='ghost'
+										size='icon-sm'
 										disabled={busy}
 										aria-label={`Delete saved search ${name}`}
 										onClick={() => void remove(item)}
-										className='grid size-7 shrink-0 place-items-center rounded-md text-slate-400 outline-none hover:bg-white/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-brand/70 disabled:opacity-60'>
+										className='size-7 text-slate-400 hover:bg-white/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-brand/70 disabled:opacity-60 dark:hover:bg-white/10'>
 										{busy ? (
 											<Loader2 aria-hidden className='size-3.5 animate-spin' />
 										) : (
 											<X aria-hidden className='size-3.5' />
 										)}
-									</button>
+									</Button>
 								)}
 							</div>
 							{error && (
-								<p role='alert' className='px-2 pb-1 text-xs text-destructive'>
-									{error}
-								</p>
+								<Alert
+									variant='destructive'
+									className='border-0 bg-transparent px-2 pt-0 pb-1 text-xs'>
+									<AlertDescription className='text-xs text-destructive'>{error}</AlertDescription>
+								</Alert>
 							)}
 						</li>
 					)

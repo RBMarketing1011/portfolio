@@ -39,7 +39,9 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import {
 	Dialog,
 	DialogContent,
@@ -48,7 +50,16 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from '@/components/ui/table'
 import { slugify } from '@/lib/media/text'
 import { MEDIA_LIMITS, type MediaTagStat } from '@/lib/media/types'
 import { cn } from '@/lib/utils'
@@ -357,12 +368,10 @@ export function managerReducer(state: ManagerState, action: ManagerAction): Mana
 
 const inputClass =
 	'h-9 border-white/10 bg-white/3 text-white placeholder:text-slate-500 focus-visible:border-brand/60 focus-visible:ring-brand/20'
-const focusRing =
-	'outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none'
-const rowButton = cn(
-	focusRing,
-	'cursor-pointer text-slate-300 hover:bg-white/8 hover:text-white disabled:cursor-not-allowed',
-)
+const rowButton = 'text-slate-300 hover:bg-white/8 hover:text-white motion-reduce:transition-none'
+/** Inline errors and warnings in the rows: compact, so a row does not jump. */
+const errorAlert = 'border-destructive/30 bg-destructive/5 px-3 py-2 text-xs'
+const mergeAlert = 'border-amber-300/30 bg-amber-300/5 px-3 py-2 text-xs text-amber-300'
 
 const clip = (text: string, max = 40) => {
 	const chars = Array.from(text)
@@ -419,9 +428,9 @@ export function RenameEditor({
 				if (canSave) actions.onRenameSave()
 			}}
 			className='space-y-2'>
-			<label htmlFor={id} className='text-xs font-medium text-slate-300'>
+			<Label htmlFor={id} className='text-xs font-medium text-slate-300'>
 				{`New name for "${clip(tag.label)}"`}
-			</label>
+			</Label>
 			<div className='flex flex-wrap items-center gap-2'>
 				<Input
 					id={id}
@@ -461,21 +470,27 @@ export function RenameEditor({
 					Cancel
 				</Button>
 			</div>
-			<p
+			<div
 				id={`${id}-note`}
 				aria-live='polite'
 				data-impact={impact.kind}
 				className={cn(
 					'min-h-4 text-xs',
 					impact.kind === 'invalid' ? 'text-destructive' : 'text-slate-400',
-					impact.kind === 'merge' && 'text-amber-300',
 				)}>
-				{message}
-			</p>
+				{impact.kind === 'merge' ? (
+					// A warning, read out by the live region around it rather than as a second alert.
+					<Alert role={undefined} className={mergeAlert}>
+						<AlertDescription className='text-xs text-inherit'>{message}</AlertDescription>
+					</Alert>
+				) : (
+					message
+				)}
+			</div>
 			{row.error && (
-				<p role='alert' className='text-xs text-destructive'>
-					{row.error}
-				</p>
+				<Alert variant='destructive' className={errorAlert}>
+					<AlertDescription className='text-xs'>{row.error}</AlertDescription>
+				</Alert>
 			)}
 		</form>
 	)
@@ -539,9 +554,11 @@ export function MergePicker({
 							Change
 						</Button>
 					</p>
-					<p data-impact='merge' className='text-xs text-amber-300'>
-						{`The ${pluralize(tag.count, 'image')} tagged "${clip(tag.label)}" will be tagged "${clip(target.label)}" instead, and "${clip(tag.label)}" goes away.`}
-					</p>
+					<Alert role={undefined} data-impact='merge' className={mergeAlert}>
+						<AlertDescription className='text-xs text-inherit'>
+							{`The ${pluralize(tag.count, 'image')} tagged "${clip(tag.label)}" will be tagged "${clip(target.label)}" instead, and "${clip(tag.label)}" goes away.`}
+						</AlertDescription>
+					</Alert>
 				</div>
 			) : (
 				<div className='relative'>
@@ -642,9 +659,9 @@ export function MergePicker({
 				</Button>
 			</div>
 			{row.error && (
-				<p role='alert' className='text-xs text-destructive'>
-					{row.error}
-				</p>
+				<Alert variant='destructive' className={errorAlert}>
+					<AlertDescription className='text-xs'>{row.error}</AlertDescription>
+				</Alert>
 			)}
 		</form>
 	)
@@ -674,9 +691,9 @@ function DeleteTagDialog({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				{row?.error && (
-					<p role='alert' className='text-sm text-destructive'>
-						{row.error}
-					</p>
+					<Alert variant='destructive' className='border-destructive/30 bg-destructive/5 px-3 py-2'>
+						<AlertDescription>{row.error}</AlertDescription>
+					</Alert>
 				)}
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={row?.busy}>Cancel</AlertDialogCancel>
@@ -713,16 +730,17 @@ function SortHeader({
 	className?: string
 }) {
 	return (
-		<th
+		<TableHead
 			scope='col'
 			aria-sort={active ? direction : 'none'}
-			className={cn('py-2 pr-3 font-semibold', className)}>
-			<button
+			className={cn('h-auto px-0 py-2 pr-3 text-xs font-semibold text-slate-500', className)}>
+			<Button
 				type='button'
+				variant='ghost'
+				size='xs'
 				onClick={onClick}
 				className={cn(
-					focusRing,
-					'inline-flex cursor-pointer items-center gap-1 rounded uppercase tracking-widest hover:text-white',
+					'h-auto gap-1 rounded px-0 py-0.5 text-xs has-[>svg]:px-0 font-semibold uppercase tracking-widest text-slate-500 hover:bg-transparent hover:text-white motion-reduce:transition-none',
 					active && 'text-white',
 				)}>
 				{label}
@@ -732,8 +750,8 @@ function SortHeader({
 					) : (
 						<ArrowDown aria-hidden className='size-3' />
 					))}
-			</button>
-		</th>
+			</Button>
+		</TableHead>
 	)
 }
 
@@ -800,20 +818,22 @@ export function TagManagerView({ state, canEdit, canDelete, actions }: TagManage
 
 	if (load.status === 'error') {
 		return (
-			<div
-				role='alert'
+			<Alert
+				variant='destructive'
 				data-slot='tag-manager-error'
-				className='space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4'>
-				<p className='text-sm text-destructive'>{load.message}</p>
-				<Button
-					type='button'
-					size='sm'
-					variant='outline'
-					onClick={actions.onRetry}
-					className='border-white/15 bg-transparent text-white hover:bg-white/5'>
-					Try again
-				</Button>
-			</div>
+				className='border-destructive/30 bg-destructive/5 p-4'>
+				<AlertDescription className='gap-3'>
+					<p className='text-sm text-destructive'>{load.message}</p>
+					<Button
+						type='button'
+						size='sm'
+						variant='outline'
+						onClick={actions.onRetry}
+						className='border-white/15 bg-transparent text-white hover:bg-white/5'>
+						Try again
+					</Button>
+				</AlertDescription>
+			</Alert>
 		)
 	}
 
@@ -821,9 +841,9 @@ export function TagManagerView({ state, canEdit, canDelete, actions }: TagManage
 		<div data-slot='tag-manager' className='flex min-h-0 flex-1 flex-col gap-3'>
 			<div className='flex flex-wrap items-center gap-3'>
 				<div className='relative min-w-48 flex-1'>
-					<label htmlFor={searchId} className='sr-only'>
+					<Label htmlFor={searchId} className='sr-only'>
 						Search tags
-					</label>
+					</Label>
 					<Search
 						aria-hidden
 						className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500'
@@ -856,51 +876,53 @@ export function TagManagerView({ state, canEdit, canDelete, actions }: TagManage
 			</div>
 
 			{state.notice && (
-				<p
+				<Alert
 					role='status'
 					data-slot='tag-manager-notice'
-					className='flex items-start gap-2 rounded-lg border border-brand/30 bg-brand/10 px-3 py-2 text-sm text-white'>
-					<Check aria-hidden className='mt-0.5 size-4 shrink-0 text-brand' />
-					<span className='min-w-0 flex-1'>{state.notice}</span>
-					<button
-						type='button'
-						aria-label='Dismiss message'
-						onClick={actions.onDismissNotice}
-						className={cn(focusRing, 'shrink-0 cursor-pointer rounded text-slate-400 hover:text-white')}>
-						<X aria-hidden className='size-4' />
-					</button>
-				</p>
-			)}
-			{load.refreshError && (
-				<p
-					role='alert'
-					className='flex flex-wrap items-center gap-2 text-sm text-destructive'>
-					<span>{load.refreshError}</span>
+					className='border-brand/30 bg-brand/10 py-2 pr-10 pl-3 text-white [&>svg]:text-brand'>
+					<Check aria-hidden />
+					<AlertDescription className='text-white'>{state.notice}</AlertDescription>
 					<Button
 						type='button'
-						size='xs'
-						variant='outline'
-						onClick={actions.onRetry}
-						className='border-white/15 bg-transparent text-white hover:bg-white/5'>
-						Reload
+						variant='ghost'
+						size='icon-xs'
+						aria-label='Dismiss message'
+						onClick={actions.onDismissNotice}
+						className='absolute top-2 right-2 text-slate-400 hover:bg-white/5 hover:text-white'>
+						<X aria-hidden />
 					</Button>
-				</p>
+				</Alert>
+			)}
+			{load.refreshError && (
+				<Alert variant='destructive' className='border-destructive/30 bg-destructive/5 px-3 py-2'>
+					<AlertDescription className='flex flex-wrap items-center gap-2'>
+						<span>{load.refreshError}</span>
+						<Button
+							type='button'
+							size='xs'
+							variant='outline'
+							onClick={actions.onRetry}
+							className='border-white/15 bg-transparent text-white hover:bg-white/5'>
+							Reload
+						</Button>
+					</AlertDescription>
+				</Alert>
 			)}
 
 			{tags.length === 0 ? (
-				<div
+				<Card
 					data-slot='tag-manager-empty'
-					className='rounded-xl border border-dashed border-white/15 px-4 py-12 text-center'>
+					className='block border-dashed border-white/15 bg-transparent px-4 py-12 text-center shadow-none'>
 					<p className='font-medium text-white'>No tags yet</p>
 					<p className='mt-1 text-sm text-slate-400'>
 						Tags you add to an image, and the ones the auto-tagger suggests, will be listed
 						here.
 					</p>
-				</div>
+				</Card>
 			) : rows.length === 0 ? (
-				<div
+				<Card
 					data-slot='tag-manager-no-match'
-					className='rounded-xl border border-dashed border-white/15 px-4 py-10 text-center'>
+					className='block border-dashed border-white/15 bg-transparent px-4 py-10 text-center shadow-none'>
 					<p className='font-medium text-white'>{`No tags match "${clip(state.query.trim())}"`}</p>
 					<Button
 						type='button'
@@ -910,14 +932,15 @@ export function TagManagerView({ state, canEdit, canDelete, actions }: TagManage
 						className={cn(rowButton, 'mt-2')}>
 						Clear search
 					</Button>
-				</div>
+				</Card>
 			) : (
 				<div
 					ref={tableRef}
-					className='min-h-0 flex-1 overflow-auto rounded-lg border border-white/10'>
-					<table aria-label='Tags' className='w-full min-w-136 border-collapse text-sm'>
-						<thead className='sticky top-0 z-10 bg-popover'>
-							<tr className='border-b border-white/10 text-left text-xs text-slate-500'>
+					// This box scrolls (so the sticky header holds); the Table's own wrapper must not.
+					className='min-h-0 flex-1 overflow-auto rounded-lg border border-white/10 *:data-[slot=table-container]:overflow-visible'>
+					<Table aria-label='Tags' className='min-w-136 border-collapse'>
+						<TableHeader className='sticky top-0 z-10 bg-popover'>
+							<TableRow className='border-b border-white/10 text-left text-xs text-slate-500 hover:bg-transparent'>
 								<SortHeader
 									label='Tag'
 									active={state.sort === 'az'}
@@ -931,15 +954,17 @@ export function TagManagerView({ state, canEdit, canDelete, actions }: TagManage
 									direction='descending'
 									onClick={() => actions.onSort('count')}
 								/>
-								<th scope='col' className='py-2 pr-3 font-semibold uppercase tracking-widest'>
+								<TableHead
+									scope='col'
+									className='h-auto px-0 py-2 pr-3 text-xs font-semibold tracking-widest text-slate-500 uppercase'>
 									Manual / automatic
-								</th>
-								<th scope='col' className='py-2 pr-3'>
+								</TableHead>
+								<TableHead scope='col' className='h-auto px-0 py-2 pr-3'>
 									<span className='sr-only'>Actions</span>
-								</th>
-							</tr>
-						</thead>
-						<tbody>
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
 							{visible.map((tag) => {
 								const editing = row?.slug === tag.slug
 								const quoted = `"${clip(tag.label)}"`
@@ -957,8 +982,8 @@ export function TagManagerView({ state, canEdit, canDelete, actions }: TagManage
 									/>
 								)
 							})}
-						</tbody>
-					</table>
+						</TableBody>
+					</Table>
 					{rows.length > visible.length && (
 						<div className='border-t border-white/10 p-2 text-center'>
 							<Button
@@ -1004,20 +1029,22 @@ function TagRows({
 }) {
 	return (
 		<>
-			<tr
+			<TableRow
 				data-slot='tag-row'
 				data-slug={tag.slug}
-				className='border-b border-white/5 align-middle last:border-b-0'>
-				<th scope='row' className='max-w-[16rem] py-2 pr-3 pl-3 text-left font-medium'>
+				className='border-b border-white/5 align-middle last:border-b-0 hover:bg-white/2'>
+				<TableHead
+					scope='row'
+					className='h-auto max-w-[16rem] px-0 py-2 pr-3 pl-3 text-left font-medium whitespace-normal'>
 					<span dir='auto' title={tag.label} className='block truncate text-white'>
 						{tag.label}
 					</span>
-				</th>
-				<td className='py-2 pr-3 whitespace-nowrap text-slate-200 tabular-nums'>
+				</TableHead>
+				<TableCell className='px-0 py-2 pr-3 text-slate-200 tabular-nums'>
 					{formatCount(tag.count)}
-				</td>
-				<td className='py-2 pr-3 whitespace-nowrap text-xs text-slate-400'>{splitCaption(tag)}</td>
-				<td className='py-2 pr-3'>
+				</TableCell>
+				<TableCell className='px-0 py-2 pr-3 text-xs text-slate-400'>{splitCaption(tag)}</TableCell>
+				<TableCell className='px-0 py-2 pr-3 whitespace-normal'>
 					<div className='flex flex-wrap items-center justify-end gap-1'>
 						<Button
 							type='button'
@@ -1072,18 +1099,20 @@ function TagRows({
 							</Button>
 						)}
 					</div>
-				</td>
-			</tr>
+				</TableCell>
+			</TableRow>
 			{row && row.mode !== 'delete' && (
-				<tr data-slot='tag-row-detail' className='border-b border-white/5 bg-white/3'>
-					<td colSpan={4} className='px-3 py-3'>
+				<TableRow
+					data-slot='tag-row-detail'
+					className='border-b border-white/5 bg-white/3 hover:bg-white/3 has-aria-expanded:bg-white/3'>
+					<TableCell colSpan={4} className='px-3 py-3 whitespace-normal'>
 						{row.mode === 'rename' ? (
 							<RenameEditor tag={tag} tags={tags} row={row} actions={actions} />
 						) : (
 							<MergePicker tag={tag} tags={tags} row={row} actions={actions} />
 						)}
-					</td>
-				</tr>
+					</TableCell>
+				</TableRow>
 			)}
 		</>
 	)

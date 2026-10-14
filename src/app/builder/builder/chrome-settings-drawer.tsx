@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -9,6 +11,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select'
+import { MenuEditorDialog } from './menu-editor-dialog'
 import { BackgroundDrawer } from '@/app/builder/background-drawer'
 import type { BackgroundSettings } from '@/app/builder/background-settings'
 import type { ThemeSettings } from '@/app/builder/theme-settings'
@@ -48,6 +51,7 @@ export function ChromeSettingsDrawer({
 	onBackground: (next: BackgroundSettings) => void
 }) {
 	const isHeader = scope === 'header'
+	const [menuOpen, setMenuOpen] = useState(false)
 
 	const extra = (
 		<div className='mb-6 space-y-5 border-b border-white/10 pb-6'>
@@ -93,6 +97,21 @@ export function ChromeSettingsDrawer({
 			{isHeader && (
 				<>
 					<div className='space-y-2'>
+						<Label>Menu</Label>
+						<p className='text-xs leading-5 text-slate-500'>
+							{chrome.menu.length > 0
+								? `A custom menu with ${chrome.menu.length} ${chrome.menu.length === 1 ? 'item' : 'items'}. The pages set to show in the header are not used while it is on.`
+								: 'Showing your pages. Build a menu to add dropdowns and mega menus.'}
+						</p>
+						<Button
+							type='button'
+							variant='outline'
+							onClick={() => setMenuOpen(true)}
+							className='w-full border-white/15 bg-transparent'>
+							{chrome.menu.length > 0 ? 'Edit menu' : 'Build a menu'}
+						</Button>
+					</div>
+					<div className='space-y-2'>
 						<Label htmlFor='chrome-cta-label'>Button text</Label>
 						<Input
 							id='chrome-cta-label'
@@ -130,6 +149,7 @@ export function ChromeSettingsDrawer({
 	)
 
 	return (
+		<>
 		<BackgroundDrawer
 			slug={isHeader ? 'site-header' : 'site-footer'}
 			open={open}
@@ -139,5 +159,15 @@ export function ChromeSettingsDrawer({
 			onChange={onBackground}
 			extra={extra}
 		/>
+		{isHeader && (
+			<MenuEditorDialog
+				open={menuOpen}
+				onOpenChange={setMenuOpen}
+				menu={chrome.menu}
+				pages={pages}
+				onSave={(menu) => onChrome({ menu })}
+			/>
+		)}
+		</>
 	)
 }

@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { isPlatformAdmin } from '@/lib/admin'
-import { listMemberships } from '@/lib/workspace'
 import { currentMembership } from '@/lib/workspace/current'
 import { AccountShell } from './account-shell'
 import type { NavItem } from './account-nav'
@@ -29,7 +28,6 @@ export default async function AccountLayout({
 				: '/sign-in?next=/account',
 		)
 
-	const accounts = await listMemberships(session.user.id)
 	const email = session.user.email ?? 'Account'
 
 	// The sidebar must not advertise a page the role cannot open.
@@ -58,8 +56,6 @@ export default async function AccountLayout({
 		<AccountShell
 			items={items}
 			accountName={membership.workspace.name}
-			accounts={accounts}
-			currentAccountId={membership.workspace._id.toString()}
 			email={email}
 			userName={session.user.name?.trim() || email.replace(/@.*$/, '')}
 			userImage={session.user.image ?? null}

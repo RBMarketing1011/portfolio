@@ -267,6 +267,12 @@ export function backgroundCss(
 			: `[data-menu-feature]{border-color:${flatBorder};box-shadow:none;}`,
 	]
 
+	// The menu panel is the header's, and its settings live in the header drawer. A
+	// layered header (globals off, as on a built site) must still write them, or the
+	// panel keeps the page's defaults whatever is chosen. It is emitted after the page
+	// surface, so these rules win over the page's own defaults.
+	const withMenu = globals || target === 'header'
+
 	if (target === 'page' && !scope) {
 		return [
 			`html{background-color:${surfaceColor(page)};background-image:${wash(page, defaultBackground.page.gradientAngle)};background-attachment:fixed;}`,
@@ -298,7 +304,7 @@ export function backgroundCss(
 			]
 		: []
 	if (page.fill === 'global')
-		return [...pageReset, ...(globals ? menuRules : [])].join('')
+		return [...pageReset, ...(withMenu ? menuRules : [])].join('')
 
 	// The header's surface is already its own clipped layer; the footer is the element itself.
 	const box =
@@ -315,6 +321,6 @@ export function backgroundCss(
 			'absolute',
 			defaultBackground.page.patternAngle,
 		),
-		...(globals ? menuRules : []),
+		...(withMenu ? menuRules : []),
 	].join('')
 }

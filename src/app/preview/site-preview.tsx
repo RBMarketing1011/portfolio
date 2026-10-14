@@ -5,7 +5,12 @@ import { notFound, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { googleFontHref } from '@/app/builder/google-fonts'
 import { backgroundCss, themeCss } from '@/app/section-preview/theme'
-import { BuiltFooter, BuiltHeader } from '@/components/built-chrome'
+import {
+	BuiltFooter,
+	BuiltHeader,
+	type SiteBrand,
+} from '@/components/built-chrome'
+import { brandFromProfile, readSiteProfile } from '@/lib/builder/site-profile'
 import { Button } from '@/components/ui/button'
 import {
 	readLook,
@@ -47,6 +52,7 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 	const params = useParams<{ slug?: string[] }>()
 	const [site, setSite] = useState<Site | null>(null)
 	const [look, setLook] = useState<BuilderLook | null>(null)
+	const [brand, setBrand] = useState<SiteBrand | undefined>(undefined)
 	const [ready, setReady] = useState(false)
 
 	useEffect(() => {
@@ -67,6 +73,8 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 				setMediaIndex(body?.site?.media ?? [])
 				setSite(parsed?.success ? parsed.data : null)
 				setLook(mergeLook(body?.site?.look ?? {}))
+				if (body?.site)
+					setBrand(brandFromProfile(readSiteProfile(body.site.profile), body.site.name))
 				setReady(true)
 			})
 			.catch(() => {
@@ -118,6 +126,7 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 				pages={site.pages.filter((p) => p.inHeader)}
 				current={page.slug}
 				linkBase={`/preview/${siteId}`}
+				brand={brand}
 			/>
 			<main>
 				<RenderBlocks blocks={page.blocks} />
@@ -126,6 +135,7 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 				chrome={site.chrome}
 				pages={site.pages}
 				linkBase={`/preview/${siteId}`}
+				brand={brand}
 			/>
 		</>
 	)

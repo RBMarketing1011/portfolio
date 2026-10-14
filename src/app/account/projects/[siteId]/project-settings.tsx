@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
+	ArrowLeft,
 	Check,
-	ChevronRight,
 	Copy,
 	ExternalLink,
 	Globe,
@@ -16,12 +16,24 @@ import {
 	Trash2,
 } from 'lucide-react'
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
+import { FormAlert } from '@/components/form-alert'
 import { Button } from '@/components/ui/button'
+import {
+	Card,
+	CardAction,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { StatusPill } from '../projects-table'
-
-export type DnsRecord = { type: string; name: string; value: string }
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { SiteProfile } from '@/lib/builder/site-profile'
+import { ProjectProfile } from './project-profile'
+import { PublishDialog, type DnsRecord } from './publish-dialog'
+import type { ProjectImage } from './site-image-field'
 
 export type Project = {
 	id: string
@@ -46,11 +58,15 @@ export function ProjectSettings({
 	appHost,
 	appProtocol,
 	can,
+	profile,
+	images,
 }: {
 	project: Project
 	appHost: string
 	appProtocol: string
 	can: { edit: boolean; publish: boolean; delete: boolean }
+	profile: SiteProfile
+	images: ProjectImage[]
 }) {
 	const router = useRouter()
 	const [name, setName] = useState(project.name)
@@ -64,13 +80,13 @@ export function ProjectSettings({
 		project.customDomainMisconfigured,
 	)
 	const [checkedAt, setCheckedAt] = useState(project.customDomainCheckedAt)
-	const [pending, setPending] = useState<string | null>(null)
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [saved, setSaved] = useState<string | null>(null)
 	const [dialog, setDialog] = useState<
-		'regenerate' | 'domain' | 'delete' | null
+		'regenerate' | 'unpublish' | 'delete' | null
 	>(null)
+	const [publishing, setPublishing] = useState(false)
 
 	const [origin, setOrigin] = useState('')
 
@@ -80,9 +96,6 @@ export function ProjectSettings({
 
 	const previewPath = `/p/${token}`
 	const previewUrl = `${origin}${previewPath}`
-	// A verified domain on a live project is the address people actually use, so
-	// the subdomain stops being editable rather than quietly diverging from it.
-	const domainTakesOver = Boolean(domain) && verified && status === 'live'
 	const liveUrl =
 		domain && verified
 			? `https://${domain}`
@@ -120,38 +133,19 @@ export function ProjectSettings({
 		setStatus(site.status)
 	}
 
-	const checkDomain = async () => {
-		setBusy('check')
-		setError(null)
-		const response = await fetch(`/api/sites/${project.id}/domain`, {
-			method: 'POST',
-		})
-		setBusy(null)
-		if (!response.ok) {
-			const payload = await response.json().catch(() => ({}))
-			setError(payload.error ?? 'Could not check that domain.')
-			return
-		}
-		const payload = await response.json()
-		absorb(payload.site)
-		setPending(payload.pending)
-		router.refresh()
-	}
-
 	/** Each dialog action returns an error to show in the dialog, or null once done. */
-	const removeDomain = async (): Promise<string | null> => {
+	const unpublish = async (): Promise<string | null> => {
 		const response = await fetch(`/api/sites/${project.id}/settings`, {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ customDomain: null }),
+			body: JSON.stringify({ status: 'draft' }),
 		})
 		if (!response.ok) {
 			const payload = await response.json().catch(() => ({}))
-			return payload.error ?? 'Could not remove that domain.'
+			return payload.error ?? 'Could not unpublish that project.'
 		}
 		const { site } = await response.json()
 		absorb(site)
-		setPending(null)
 		setDialog(null)
 		router.refresh()
 		return null
@@ -186,17 +180,17 @@ export function ProjectSettings({
 		<div className='space-y-10'>
 			<div className='flex flex-wrap items-start justify-between gap-4'>
 				<div className='min-w-0'>
-					<Link
-						href='/account/projects'
-						className='text-sm text-slate-500 hover:text-white'>
-						← Projects
-					</Link>
+					<Button asChild variant='link' className='h-auto p-0 text-muted-foreground'>
+						<Link href='/account/projects'>
+							<ArrowLeft /> Projects
+						</Link>
+					</Button>
 					<h1 className='mt-2 truncate font-display text-3xl font-semibold text-white'>
 						{project.name}
 					</h1>
 					<div className='mt-3 flex items-center gap-3'>
 						<StatusPill status={status} />
-						<span className='text-xs text-slate-500'>
+						<span className='text-xs text-muted-foreground'>
 							{project.pages} {project.pages === 1 ? 'page' : 'pages'} ·{' '}
 							{project.images} {project.images === 1 ? 'image' : 'images'}
 						</span>
@@ -204,9 +198,7 @@ export function ProjectSettings({
 				</div>
 
 				{can.edit && (
-					<Button
-						asChild
-						className='shrink-0 bg-brand font-bold text-ink hover:bg-brand-strong'>
+					<Button asChild className='shrink-0'>
 						<Link href={`/builder/sites/${project.id}/pages`}>
 							<PencilRuler /> Edit site
 						</Link>
@@ -214,275 +206,134 @@ export function ProjectSettings({
 				)}
 			</div>
 
-			<div className='grid items-start gap-6 lg:grid-cols-2'>
-				<section className='rounded-xl border border-white/10 bg-white/3 p-6'>
-					<h2 className='font-display text-lg font-semibold text-white'>
-						Project name
-					</h2>
-					<p className='mt-1 text-sm leading-6 text-slate-400'>
-						How this project is named on your account and in the builder. It does
-						not change the site's address.
-					</p>
-					<div className='mt-4 flex items-center gap-2'>
-						<Input
-							aria-label='Project name'
-							value={name}
-							disabled={!can.edit}
-							onChange={(event) => setName(event.target.value)}
-						/>
-						{can.edit && (
-							<Button
-								onClick={() => patch({ name }, 'name')}
-								disabled={busy !== null || name === project.name}
-								className='shrink-0 bg-brand font-bold text-ink hover:bg-brand-strong'>
-								{busy === 'name' && <Loader2 className='animate-spin' />}
-								Save name
-							</Button>
-						)}
-					</div>
-					{saved === 'name' && (
-						<p className='mt-2 text-sm text-slate-500'>Saved</p>
-					)}
-				</section>
-				<section className='rounded-xl border border-white/10 bg-white/3 p-6'>
-					<h2 className='flex items-center gap-2 font-display text-lg font-semibold text-white'>
-						<Link2 className='size-4 text-slate-500' /> Share a preview
-					</h2>
-					<p className='mt-1 text-sm leading-6 text-slate-400'>
-						Works whether or not the project is live, and needs no account. Send
-						it to anyone you want an opinion from.
-					</p>
-					<CopyField
-						value={previewUrl}
-						href={previewPath}
-						onRegenerate={can.edit ? () => setDialog('regenerate') : undefined}
-						disabled={busy !== null}
-					/>
-				</section>
-			</div>
+			<Tabs defaultValue='general'>
+				<TabsList>
+					<TabsTrigger value='general'>General</TabsTrigger>
+					<TabsTrigger value='brand'>Brand</TabsTrigger>
+					<TabsTrigger value='business'>Business</TabsTrigger>
+					<TabsTrigger value='seo'>SEO &amp; Sharing</TabsTrigger>
+				</TabsList>
 
-			{error && <p className='text-sm text-destructive'>{error}</p>}
+				<TabsContent value='general' className='space-y-6 pt-6'>
+					<div className='grid items-start gap-6 lg:grid-cols-2'>
+						<Card>
+							<CardHeader>
+								<CardTitle>Project name</CardTitle>
+								<CardDescription>
+									How this project is named on your account and in the builder. It
+									does not change the site's address.
+								</CardDescription>
+							</CardHeader>
+							<CardContent className='space-y-3'>
+								<div className='flex items-center gap-2'>
+									<Input
+										aria-label='Project name'
+										value={name}
+										disabled={!can.edit}
+										onChange={(event) => setName(event.target.value)}
+									/>
+									{can.edit && (
+										<Button
+											onClick={() => patch({ name }, 'name')}
+											disabled={busy !== null || name === project.name}
+											className='shrink-0'>
+											{busy === 'name' && <Loader2 className='animate-spin' />}
+											Save name
+										</Button>
+									)}
+								</div>
+								{saved === 'name' && <FormAlert tone='success'>Saved.</FormAlert>}
+							</CardContent>
+						</Card>
 
-			{can.publish && (
-				<section className='space-y-6 rounded-xl border border-white/10 bg-white/3 p-6'>
-					<div className='flex flex-wrap items-center justify-between gap-4'>
-						<div>
-							<h2 className='flex items-center gap-2 font-display text-lg font-semibold text-white'>
-								<Globe className='size-4 text-slate-500' />
-								{status === 'live' ? 'Live' : 'Not live yet'}
-							</h2>
-							<p className='mt-1 text-sm leading-6 text-slate-400'>
-								{status === 'live' ? (
-									<>
-										Reachable at{' '}
-										<a
-											href={liveUrl}
-											target='_blank'
-											rel='noreferrer'
-											className='text-brand hover:text-brand-strong'>
-											{liveUrl.replace(/^https?:\/\//, '')}
-											<ExternalLink className='ml-1 inline size-3' />
-										</a>
-									</>
-								) : (
-									'Only people on this account can see it while it is a draft.'
-								)}
-							</p>
-						</div>
-						<Button
-							onClick={() =>
-								patch(
-									{ status: status === 'live' ? 'draft' : 'live' },
-									'status',
-								)
-							}
-							disabled={busy !== null}
-							className={
-								status === 'live'
-									? 'border border-white/15 bg-transparent text-white hover:bg-white/5'
-									: 'bg-brand font-bold text-ink hover:bg-brand-strong'
-							}>
-							{busy === 'status' && <Loader2 className='animate-spin' />}
-							{status === 'live' ? 'Take offline' : 'Set live'}
-						</Button>
-					</div>
-
-					<div className='space-y-2 border-t border-white/10 pt-5'>
-						<Label htmlFor='project-subdomain'>Address</Label>
-						<div
-							className={
-								domainTakesOver
-									? 'flex items-stretch opacity-50'
-									: 'flex items-stretch'
-							}>
-							<Input
-								id='project-subdomain'
-								value={subdomain}
-								disabled={domainTakesOver}
-								onChange={(event) => setSubdomain(event.target.value)}
-								className='rounded-r-none'
-							/>
-							<span className='flex items-center rounded-r-md border border-l-0 border-white/12 bg-white/5 px-3 text-sm text-slate-400'>
-								.{appHost}
-							</span>
-						</div>
-						{domainTakesOver ? (
-							<p className='text-xs text-slate-500'>
-								{domain} is serving this project, so this address is locked.
-								Remove the domain below to use it again.
-							</p>
-						) : (
-							<p className='text-xs text-slate-500'>
-								Every project gets one. Taken names get a number.
-							</p>
-						)}
-						{!domainTakesOver && (
-							<div className='flex items-center gap-3 pt-1'>
-								<Button
-									onClick={() => patch({ subdomain }, 'subdomain')}
-									disabled={busy !== null || subdomain === project.subdomain}
-									className='bg-brand font-bold text-ink hover:bg-brand-strong'>
-									{busy === 'subdomain' && <Loader2 className='animate-spin' />}
-									Save address
-								</Button>
-								{saved === 'subdomain' && (
-									<span className='text-sm text-slate-500'>Saved</span>
-								)}
-							</div>
-						)}
-					</div>
-
-					<div className='space-y-2 border-t border-white/10 pt-5'>
-						<Label htmlFor='project-domain'>Your own domain</Label>
-						<Input
-							id='project-domain'
-							value={domain}
-							placeholder='example.com'
-							onChange={(event) => setDomain(event.target.value)}
-						/>
-
-						{!domain && (
-							<p className='text-xs text-slate-500'>
-								Optional. Leave blank to stay on the {appHost} address.
-							</p>
-						)}
-
-						{domain && verified && (
-							<div className='space-y-3 rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
-								<p className='flex items-center gap-1.5 text-brand'>
-									<Check className='size-3' /> Verified. This project answers on{' '}
-									{domain}.
-								</p>
-								{/* Still reachable once verified: people need it to audit or
-								    rebuild their DNS later. */}
-								<details className='group'>
-									<summary className='cursor-pointer list-none text-slate-400 transition-colors hover:text-white'>
-										<ChevronRight className='mr-1 inline size-3 transition-transform group-open:rotate-90' />
-										DNS records
-									</summary>
-									<div className='mt-3 space-y-3'>
-										<RecordsTable records={records} />
-										<CheckRow
-											busy={busy}
-											onCheck={checkDomain}
-											disabled={
-												busy !== null || domain !== (project.customDomain ?? '')
-											}
-											checkedAt={checkedAt}
-											misconfigured={misconfigured}
-										/>
-									</div>
-								</details>
-							</div>
-						)}
-
-						{domain && !verified && (
-							<div className='space-y-3 rounded-lg border border-white/10 bg-ink/40 p-3 text-xs leading-6 text-slate-400'>
-								<p className='text-white'>
-									{domain !== (project.customDomain ?? '')
-										? 'Save the domain to get its DNS records.'
-										: pending === 'ownership'
-											? 'Waiting on the ownership record below.'
-											: 'Add these at your registrar, then check again.'}
-								</p>
-
-								<RecordsTable records={records} />
-
-								{records.some((record) => record.type === 'A') && (
-									<p>
-										GoDaddy and most registrars will not accept a CNAME on a
-										root domain. That is why this is an A record.
-									</p>
-								)}
-
-								<CheckRow
-									busy={busy}
-									onCheck={checkDomain}
-									disabled={
-										busy !== null || domain !== (project.customDomain ?? '')
-									}
-									checkedAt={checkedAt}
-									misconfigured={misconfigured}
-								/>
-
-								<p>
-									Until it verifies, the project keeps answering on its{' '}
-									{appHost} address.
-								</p>
-							</div>
-						)}
-
-						<div className='flex flex-wrap items-center gap-3 pt-1'>
-							<Button
-								onClick={() =>
-									patch({ customDomain: domain.trim() || null }, 'domain')
-								}
-								disabled={
-									busy !== null ||
-									domain.trim() === (project.customDomain ?? '')
-								}
-								className='bg-brand font-bold text-ink hover:bg-brand-strong'>
-								{busy === 'domain' && <Loader2 className='animate-spin' />}
-								Save domain
-							</Button>
-
-							{project.customDomain && (
-								<Button
-									variant='outline'
-									onClick={() => setDialog('domain')}
+						<Card>
+							<CardHeader>
+								<CardTitle className='flex items-center gap-2'>
+									<Link2 className='size-4 text-muted-foreground' /> Share a preview
+								</CardTitle>
+								<CardDescription>
+									Works whether or not the project is live, and needs no account. Send
+									it to anyone you want an opinion from.
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<CopyField
+									value={previewUrl}
+									href={previewPath}
+									onRegenerate={can.edit ? () => setDialog('regenerate') : undefined}
 									disabled={busy !== null}
-									className='border-white/15 bg-transparent text-slate-300 hover:bg-white/5'>
-									<Trash2 />
-									Remove
-								</Button>
-							)}
-
-							{saved === 'domain' && (
-								<span className='text-sm text-slate-500'>Saved</span>
-							)}
-						</div>
+								/>
+							</CardContent>
+						</Card>
 					</div>
-				</section>
-			)}
 
-			{can.delete && (
-				<section className='max-w-xl rounded-xl border border-destructive/30 p-6'>
-					<h2 className='font-display text-lg font-semibold text-white'>
-						Delete this project
-					</h2>
-					<p className='mt-1 text-sm leading-6 text-slate-400'>
-						Its pages and images go with it. This cannot be undone.
-					</p>
-					<Button
-						variant='outline'
-						onClick={() => setDialog('delete')}
-						disabled={busy !== null}
-						className='mt-4 border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10'>
-						<Trash2 />
-						Delete project
-					</Button>
-				</section>
-			)}
+					{error && <FormAlert>{error}</FormAlert>}
+
+					{can.publish && (
+						<Card>
+							<CardHeader>
+								<CardTitle className='flex items-center gap-2'>
+									<Globe className='size-4 text-muted-foreground' />
+									{status === 'live' ? 'Live' : 'Not live yet'}
+								</CardTitle>
+								{status === 'live' && (
+									<CardDescription>
+										Reachable at{' '}
+										<Button asChild variant='link' className='h-auto p-0'>
+											<a href={liveUrl} target='_blank' rel='noreferrer'>
+												{new URL(liveUrl).host}
+												<ExternalLink />
+											</a>
+										</Button>
+									</CardDescription>
+								)}
+								<CardAction className='flex flex-wrap gap-2'>
+									{status === 'live' ? (
+										<>
+											<Button variant='outline' onClick={() => setPublishing(true)}>
+												Change domain
+											</Button>
+											<Button variant='outline' onClick={() => setDialog('unpublish')}>
+												Unpublish
+											</Button>
+										</>
+									) : (
+										<Button onClick={() => setPublishing(true)}>Set live</Button>
+									)}
+								</CardAction>
+							</CardHeader>
+						</Card>
+					)}
+
+					{can.delete && (
+						<Card className='max-w-xl border-destructive/40'>
+							<CardHeader>
+								<CardTitle>Delete this project</CardTitle>
+								<CardDescription>
+									Its pages and images go with it. This cannot be undone.
+								</CardDescription>
+							</CardHeader>
+							<CardContent>
+								<Button
+									variant='destructive'
+									onClick={() => setDialog('delete')}
+									disabled={busy !== null}>
+									<Trash2 /> Delete project
+								</Button>
+							</CardContent>
+						</Card>
+					)}
+				</TabsContent>
+
+				<ProjectProfile
+					siteId={project.id}
+					projectName={project.name}
+					address={new URL(liveUrl).host}
+					initial={profile}
+					initialImages={images}
+					canEdit={can.edit}
+				/>
+			</Tabs>
 
 			<ConfirmDeleteDialog
 				open={dialog === 'regenerate'}
@@ -494,13 +345,34 @@ export function ProjectSettings({
 				onConfirm={regenerate}
 			/>
 
+			<PublishDialog
+				open={publishing}
+				onOpenChange={setPublishing}
+				appHost={appHost}
+				state={{
+					id: project.id,
+					status,
+					subdomain,
+					domain,
+					verified,
+					records,
+					misconfigured,
+					checkedAt,
+				}}
+				onSite={(site) => {
+					absorb(site as Project)
+					router.refresh()
+				}}
+			/>
+
 			<ConfirmDeleteDialog
-				open={dialog === 'domain'}
+				open={dialog === 'unpublish'}
 				onOpenChange={(open) => !open && setDialog(null)}
-				title='Remove this domain?'
-				description={`Stop serving this project on ${project.customDomain}. It will answer on its ${appHost} address instead.`}
-				actionLabel='Remove domain'
-				onConfirm={removeDomain}
+				title='Unpublish this project?'
+				description='It goes offline for everyone. Your pages are kept, and the project can be set live again at any time.'
+				actionLabel='Unpublish'
+				icon={<Globe />}
+				onConfirm={unpublish}
 			/>
 
 			<ConfirmDeleteDialog
@@ -512,74 +384,6 @@ export function ProjectSettings({
 				actionLabel='Delete project'
 				onConfirm={remove}
 			/>
-		</div>
-	)
-}
-
-function RecordsTable({ records }: { records: DnsRecord[] }) {
-	if (records.length === 0) return null
-
-	return (
-		<div className='overflow-x-auto'>
-			<table className='w-full min-w-88 border-collapse font-mono'>
-				<thead>
-					<tr className='text-[10px] uppercase tracking-widest text-slate-500'>
-						<th className='py-1 pr-3 text-left font-semibold'>Type</th>
-						<th className='py-1 pr-3 text-left font-semibold'>Name</th>
-						<th className='py-1 text-left font-semibold'>Value</th>
-					</tr>
-				</thead>
-				<tbody>
-					{records.map((record, index) => (
-						<tr
-							key={`${record.type}-${index}`}
-							className='border-t border-white/5 text-slate-300'>
-							<td className='py-1.5 pr-3'>{record.type}</td>
-							<td className='py-1.5 pr-3 break-all'>{record.name}</td>
-							<td className='py-1.5 break-all'>{record.value}</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-		</div>
-	)
-}
-
-function CheckRow({
-	busy,
-	onCheck,
-	disabled,
-	checkedAt,
-	misconfigured,
-}: {
-	busy: string | null
-	onCheck: () => void
-	disabled: boolean
-	checkedAt: string | null
-	misconfigured: boolean
-}) {
-	return (
-		<div className='flex flex-wrap items-center gap-3'>
-			<Button
-				type='button'
-				variant='outline'
-				onClick={onCheck}
-				disabled={disabled}
-				className='h-8 border-white/15 bg-transparent text-white hover:bg-white/5'>
-				{busy === 'check' ? (
-					<Loader2 className='animate-spin' />
-				) : (
-					<RefreshCw />
-				)}
-				Check status
-			</Button>
-			{checkedAt && (
-				<span>
-					{misconfigured ? 'Not resolving here yet' : 'DNS looks right'}
-					{' · checked '}
-					{new Date(checkedAt).toLocaleTimeString()}
-				</span>
-			)}
 		</div>
 	)
 }
@@ -599,46 +403,45 @@ function CopyField({
 	const [copied, setCopied] = useState(false)
 
 	return (
-		<div className='mt-4 flex items-stretch gap-2'>
-			<input
+		<div className='flex items-center gap-2'>
+			<Input
 				readOnly
+				aria-label='Preview link'
 				value={value}
 				onFocus={(event) => event.currentTarget.select()}
-				className='min-w-0 flex-1 rounded-md border border-white/12 bg-ink/40 px-3 py-2 font-mono text-xs text-slate-300'
+				className='font-mono text-xs'
 			/>
-			<button
+			<Button
 				type='button'
+				variant='secondary'
 				onClick={async () => {
 					await navigator.clipboard.writeText(value)
 					setCopied(true)
 					setTimeout(() => setCopied(false), 2000)
-				}}
-				className='flex shrink-0 items-center gap-1.5 rounded-md bg-white/5 px-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10'>
-				{copied ? (
-					<Check className='size-3.5' />
-				) : (
-					<Copy className='size-3.5' />
-				)}
+				}}>
+				{copied ? <Check /> : <Copy />}
 				{copied ? 'Copied' : 'Copy'}
-			</button>
-			<a
-				href={href}
-				target='_blank'
-				rel='noreferrer'
-				aria-label='Open the preview'
-				className='flex shrink-0 items-center rounded-md bg-white/5 px-3 text-slate-200 transition-colors hover:bg-white/10'>
-				<ExternalLink className='size-3.5' />
-			</a>
+			</Button>
+			<Button asChild variant='secondary' size='icon' aria-label='Open the preview'>
+				<a href={href} target='_blank' rel='noreferrer'>
+					<ExternalLink />
+				</a>
+			</Button>
 			{onRegenerate && (
-				<button
-					type='button'
-					title='Make a new link and kill the old one'
-					aria-label='Make a new link and kill the old one'
-					onClick={onRegenerate}
-					disabled={disabled}
-					className='flex shrink-0 items-center rounded-md bg-white/5 px-3 text-slate-200 transition-colors hover:bg-white/10 disabled:opacity-50'>
-					<RefreshCw className='size-3.5' />
-				</button>
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<Button
+							type='button'
+							variant='secondary'
+							size='icon'
+							aria-label='Make a new link and kill the old one'
+							onClick={onRegenerate}
+							disabled={disabled}>
+							<RefreshCw />
+						</Button>
+					</TooltipTrigger>
+					<TooltipContent>Make a new link and kill the old one</TooltipContent>
+				</Tooltip>
 			)}
 		</div>
 	)

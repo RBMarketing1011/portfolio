@@ -10,9 +10,13 @@ import {
 	type FormEvent,
 	type MutableRefObject,
 } from 'react'
-import { Check, Folder, Library, Loader2 } from 'lucide-react'
+import { Folder, Library, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
 	Dialog,
 	DialogContent,
@@ -63,17 +67,25 @@ export type FolderPickerProps = {
 }
 
 const rowClass = cn(
-	'relative flex min-h-9 cursor-pointer items-center gap-2 rounded-md py-1.5 pr-2 text-sm text-slate-200 hover:bg-white/5',
-	'has-[:checked]:bg-brand/10 has-[:checked]:font-medium has-[:checked]:text-white',
+	'relative flex min-h-9 cursor-pointer items-center gap-2 rounded-md py-1.5 pr-2 text-sm leading-normal font-normal text-slate-200 hover:bg-white/5',
+	'has-[[aria-checked=true]]:bg-brand/10 has-[[aria-checked=true]]:font-medium has-[[aria-checked=true]]:text-white',
 	'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/70',
 	'has-[:disabled]:cursor-not-allowed has-[:disabled]:text-slate-500 has-[:disabled]:hover:bg-transparent',
 )
 
+/** The visible radio, quiet until chosen; the row carries the focus ring. */
+const radioClass =
+	'border-white/25 text-brand focus-visible:ring-0 data-[state=checked]:border-brand [&_svg]:fill-brand'
+
+/** The root's radio value. Folder ids are never empty, so it cannot collide with one. */
+const ROOT_VALUE = ''
+
 /**
- * The indented folder list as a radio group. Native radios, so arrow keys move
- * between choices, a disabled folder cannot be reached or chosen, and a screen
- * reader hears "radio, 3 of 12". The chosen row carries a check mark and the
- * current location says "Current", so colour is never the only signal.
+ * The indented folder list as a radio group (Radix): arrow keys move between
+ * choices and choose, a disabled folder cannot be reached or chosen, the group is
+ * one tab stop that lands on the chosen row, and a screen reader hears "radio, 3
+ * of 12". Each whole row is the radio's label. The chosen row shows the radio's
+ * dot and the current location says "Current", so colour is never the only signal.
  */
 export function FolderPicker({
 	model,
@@ -90,53 +102,51 @@ export function FolderPicker({
 		chosenRef.current?.scrollIntoView?.({ block: 'nearest' })
 	}, [])
 
+	// `null` keeps the group controlled with nothing chosen (undefined would make it uncontrolled).
+	const value = selected === undefined ? null : selected === null ? ROOT_VALUE : selected
+
 	return (
-		<div
-			role='radiogroup'
+		<RadioGroup
+			name={name}
+			value={value}
+			onValueChange={(next) => onSelect(next === ROOT_VALUE ? null : next)}
 			aria-label='Destination folder'
-			className='max-h-72 overflow-y-auto rounded-lg border border-white/10 bg-white/3 p-1'>
-			<label
+			className='gap-0 max-h-72 overflow-y-auto rounded-lg border border-white/10 bg-white/3 p-1'>
+			<Label
 				ref={selected === null ? chosenRef : undefined}
+				htmlFor={`${name}-root`}
 				className={rowClass}
 				style={{ paddingLeft: '0.5rem' }}>
-				<input
-					type='radio'
-					name={name}
-					value=''
-					className='peer sr-only'
-					checked={selected === null}
-					onChange={() => onSelect(null)}
-				/>
+				<RadioGroupItem id={`${name}-root`} value={ROOT_VALUE} className={radioClass} />
 				<Library aria-hidden className='size-4 shrink-0 text-slate-400' />
 				<span className='truncate'>All media (no folder)</span>
 				{currentId === null && (
-					<span className='ml-auto text-xs text-slate-400'>Current</span>
+					<Badge
+						variant='outline'
+						className='ml-auto border-white/15 font-normal text-slate-400'>
+						Current
+					</Badge>
 				)}
-				<Check
-					aria-hidden
-					className={cn('hidden size-4 shrink-0 text-brand peer-checked:block', currentId !== null && 'ml-auto')}
-				/>
-			</label>
+			</Label>
 
 			{model.ordered.map((node) => {
 				const disabled = disabledIds?.has(node.id) ?? false
 				const checked = selected === node.id
+				const id = `${name}-${node.id}`
 				return (
-					<label
+					<Label
 						key={node.id}
 						ref={checked ? chosenRef : undefined}
+						htmlFor={id}
 						title={node.folder.path || node.name}
 						className={rowClass}
 						// Real depth is at most 5; the clamp only protects the layout from hostile data.
 						style={{ paddingLeft: `${0.5 + Math.min(node.depth + 1, 8)}rem` }}>
-						<input
-							type='radio'
-							name={name}
+						<RadioGroupItem
+							id={id}
 							value={node.id}
-							className='peer sr-only'
-							checked={checked}
 							disabled={disabled}
-							onChange={() => onSelect(node.id)}
+							className={radioClass}
 						/>
 						<Folder aria-hidden className='size-4 shrink-0 text-slate-400' />
 						<span className='truncate'>{node.name}</span>
@@ -144,28 +154,26 @@ export function FolderPicker({
 							<span className='sr-only'>, inside {node.parent.folder.path || node.parent.name}</span>
 						)}
 						{currentId === node.id && (
-							<span className='ml-auto shrink-0 text-xs text-slate-400'>Current</span>
+							<Badge
+								variant='outline'
+								className='ml-auto border-white/15 font-normal text-slate-400'>
+								Current
+							</Badge>
 						)}
 						{disabled && (
-							<span
+							<Badge
+								variant='outline'
 								className={cn(
-									'shrink-0 text-xs text-slate-500',
+									'border-white/10 font-normal text-slate-500',
 									currentId !== node.id && 'ml-auto',
 								)}>
 								Not available
-							</span>
+							</Badge>
 						)}
-						<Check
-							aria-hidden
-							className={cn(
-								'hidden size-4 shrink-0 text-brand peer-checked:block',
-								currentId !== node.id && !disabled && 'ml-auto',
-							)}
-						/>
-					</label>
+					</Label>
 				)
 			})}
-		</div>
+		</RadioGroup>
 	)
 }
 
@@ -227,9 +235,9 @@ export function MoveDialogBody({
 				}}
 			/>
 			{error && (
-				<p role='alert' className='text-sm text-destructive'>
-					{error}
-				</p>
+				<Alert variant='destructive'>
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			)}
 			<DialogFooter>
 				<Button type='button' variant='outline' disabled={pending} onClick={onClose}>

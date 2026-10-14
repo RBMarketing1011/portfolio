@@ -4,7 +4,16 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Trash2 } from 'lucide-react'
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
+import Link from 'next/link'
+import { FormAlert } from '@/components/form-alert'
 import { Button } from '@/components/ui/button'
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -70,101 +79,87 @@ export function AccountSettings({
 	}
 
 	return (
-		<div className='max-w-xl space-y-10'>
+		<div className='max-w-xl space-y-6'>
 			<div>
-				<h1 className='font-display text-3xl font-semibold text-white'>
-					Account settings
-				</h1>
-				<p className='mt-2 leading-7 text-slate-400'>
-					Settings for this account and everything in it. Your own name, email
-					and password live on your{' '}
-					<a
-						href='/account/profile'
-						className='text-brand hover:text-brand-strong'>
+				<h1 className='font-display text-3xl font-semibold'>Account settings</h1>
+				<p className='mt-2 text-muted-foreground'>
+					Settings for this account and everything in it. Your own name, email and
+					password live on your{' '}
+					<Link href='/account/profile' className='text-primary underline-offset-4 hover:underline'>
 						profile
-					</a>
+					</Link>
 					.
 				</p>
 			</div>
 
-			{error && <p className='text-sm text-destructive'>{error}</p>}
+			{error && <FormAlert>{error}</FormAlert>}
 
-			<section className='rounded-xl border border-white/10 bg-white/3 p-6'>
-				<dl className='grid grid-cols-2 gap-4 text-sm sm:grid-cols-4'>
+			<Card>
+				<CardContent>
+					<dl className='grid grid-cols-2 gap-4 text-sm sm:grid-cols-4'>
 					<div>
-						<dt className='text-xs uppercase tracking-widest text-slate-500'>
-							Projects
-						</dt>
-						<dd className='mt-1 text-white'>{projects}</dd>
+						<dt className='text-xs uppercase tracking-widest text-muted-foreground'>Projects</dt>
+						<dd className='mt-1 font-medium'>{projects}</dd>
 					</div>
 					<div>
-						<dt className='text-xs uppercase tracking-widest text-slate-500'>
-							People
-						</dt>
-						<dd className='mt-1 text-white'>{people}</dd>
+						<dt className='text-xs uppercase tracking-widest text-muted-foreground'>People</dt>
+						<dd className='mt-1 font-medium'>{people}</dd>
 					</div>
 					<div>
-						<dt className='text-xs uppercase tracking-widest text-slate-500'>
-							Your role
-						</dt>
-						<dd className='mt-1 text-white'>{roleName}</dd>
+						<dt className='text-xs uppercase tracking-widest text-muted-foreground'>Your role</dt>
+						<dd className='mt-1 font-medium'>{roleName}</dd>
 					</div>
 					<div>
-						<dt className='text-xs uppercase tracking-widest text-slate-500'>
-							Created
-						</dt>
-						<dd className='mt-1 text-white'>
-							{new Date(createdAt).toLocaleDateString()}
-						</dd>
+						<dt className='text-xs uppercase tracking-widest text-muted-foreground'>Created</dt>
+						<dd className='mt-1 font-medium'>{new Date(createdAt).toLocaleDateString()}</dd>
 					</div>
-				</dl>
-			</section>
+					</dl>
+				</CardContent>
+			</Card>
 
-			<section>
-				<h2 className='font-display text-lg font-semibold text-white'>Name</h2>
-				<p className='mt-1 text-sm leading-6 text-slate-400'>
-					What this account is called in the switcher and on invitations.
-				</p>
-				{canManage ? (
-					<form onSubmit={rename} className='mt-4 space-y-3'>
-						<div className='space-y-2'>
-							<Label htmlFor='account-name'>Account name</Label>
-							<Input
-								id='account-name'
-								value={value}
-								onChange={(event) => setValue(event.target.value)}
-							/>
-						</div>
-						<div className='flex items-center gap-3'>
-							<Button
-								type='submit'
-								disabled={busy !== null}
-								className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+			<Card>
+				<CardHeader>
+					<CardTitle>Name</CardTitle>
+					<CardDescription>
+						What this account is called in the switcher and on invitations.
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{canManage ? (
+						<form onSubmit={rename} className='space-y-3'>
+							<div className='space-y-2'>
+								<Label htmlFor='account-name'>Account name</Label>
+								<Input
+									id='account-name'
+									value={value}
+									onChange={(event) => setValue(event.target.value)}
+								/>
+							</div>
+							<Button type='submit' disabled={busy !== null}>
 								{busy === 'name' && <Loader2 className='animate-spin' />} Save
 							</Button>
-							{saved && <span className='text-sm text-slate-500'>Saved</span>}
-						</div>
-					</form>
-				) : (
-					<p className='mt-4 text-sm text-white'>{name}</p>
-				)}
-			</section>
+							{saved && <FormAlert tone='success'>Saved.</FormAlert>}
+						</form>
+					) : (
+						<p className='text-sm'>{name}</p>
+					)}
+				</CardContent>
+			</Card>
 
 			{isOwner && (
-				<section className='rounded-xl border border-destructive/30 p-6'>
-					<h2 className='font-display text-lg font-semibold text-white'>
-						Delete this account
-					</h2>
-					<p className='mt-1 text-sm leading-6 text-slate-400'>
-						Every project, page, image and invitation goes with it, for everyone
-						on it. This cannot be undone.
-					</p>
-					<Button
-						variant='destructive'
-						onClick={() => setDeleting(true)}
-						className='mt-4'>
-						<Trash2 /> Delete account
-					</Button>
+				<Card className='border-destructive/40'>
+					<CardHeader>
+						<CardTitle>Delete this account</CardTitle>
+						<CardDescription>
+							Every project, page, image and invitation goes with it, for everyone on
+							it. This cannot be undone.
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<Button variant='destructive' onClick={() => setDeleting(true)}>
+							<Trash2 /> Delete account
+						</Button>
+					</CardContent>
 					<ConfirmDeleteDialog
 						open={deleting}
 						onOpenChange={setDeleting}
@@ -174,7 +169,7 @@ export function AccountSettings({
 						actionLabel='Delete account'
 						onConfirm={remove}
 					/>
-				</section>
+				</Card>
 			)}
 		</div>
 	)

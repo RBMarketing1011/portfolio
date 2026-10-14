@@ -3,7 +3,11 @@
 import { notFound } from 'next/navigation'
 import { googleFontHref } from '@/app/builder/google-fonts'
 import { backgroundCss, themeCss } from '@/app/section-preview/theme'
-import { BuiltFooter, BuiltHeader } from '@/components/built-chrome'
+import {
+	BuiltFooter,
+	BuiltHeader,
+	type SiteBrand,
+} from '@/components/built-chrome'
 import { mergeLook, type BuilderLook } from '@/lib/builder/builder-context'
 import { setMediaIndex } from '@/lib/builder/media-store'
 import { RenderBlocks } from '@/lib/builder/render'
@@ -34,12 +38,15 @@ export function RenderedSite({
 	media,
 	slug,
 	linkBase = '',
+	brand,
 }: {
 	site: Site
 	look: Record<string, unknown>
 	media: MediaEntry[]
 	slug?: string[]
 	linkBase?: string
+	/** Whose site this is: logo or name in the header and footer. */
+	brand?: SiteBrand
 }) {
 	// Refs resolve to CDN URLs rather than the browser's local library.
 	setMediaIndex(media)
@@ -65,6 +72,7 @@ export function RenderedSite({
 				pages={site.pages.filter((item) => item.inHeader)}
 				current={page.slug}
 				linkBase={linkBase}
+				brand={brand}
 			/>
 			<main>
 				<RenderBlocks blocks={page.blocks} />
@@ -73,6 +81,7 @@ export function RenderedSite({
 				chrome={site.chrome}
 				pages={site.pages}
 				linkBase={linkBase}
+				brand={brand}
 			/>
 		</>
 	)

@@ -1,9 +1,19 @@
 'use client'
 
 import { useId } from 'react'
-import { Check, Grid2x2, Grid3x3, Minus, Square, SquareCheck } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { Grid2x2, Grid3x3, Square, SquareCheck } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { Toggle } from '@/components/ui/toggle'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Density, GridToolbarProps } from '@/app/account/media/contracts'
 import { formatCount } from '@/app/account/media/format'
 import { MEDIA_SORTS, type MediaSort } from '@/lib/media/types'
@@ -38,6 +48,9 @@ const DENSITIES: { value: Density; label: string; Icon: typeof Square }[] = [
 	{ value: 'large', label: 'Large', Icon: Square },
 ]
 
+const isDensity = (value: string): value is Density =>
+	DENSITIES.some((density) => density.value === value)
+
 export function GridToolbar({
 	total,
 	truncated,
@@ -56,6 +69,7 @@ export function GridToolbar({
 	onToggleDeep,
 }: GridToolbarProps) {
 	const sortId = useId()
+	const deepId = useId()
 	// A text-less query cannot be sorted by relevance; show what is really in effect.
 	const options = sortOptions(hasText)
 	const shown = options.includes(sort) ? sort : 'newest'
@@ -64,41 +78,26 @@ export function GridToolbar({
 		<div
 			data-slot='grid-toolbar'
 			className='flex flex-wrap items-center gap-x-3 gap-y-2'>
-			<Button
-				type='button'
+			<Toggle
 				variant='outline'
 				size='sm'
-				aria-pressed={selecting}
-				onClick={onToggleSelecting}
-				className={cn(
-					'border-white/10 bg-white/3 text-slate-200 hover:bg-white/8 hover:text-white',
-					selecting && 'border-brand/40 bg-brand/10 text-brand hover:bg-brand/15',
-				)}>
+				pressed={selecting}
+				onPressedChange={() => onToggleSelecting()}
+				className='gap-1.5 border-white/10 bg-white/3 px-2.5 text-slate-200 hover:bg-white/8 hover:text-white data-[state=on]:border-brand/40 data-[state=on]:bg-brand/10 data-[state=on]:text-brand data-[state=on]:hover:bg-brand/15'>
 				<SquareCheck />
 				Select
-			</Button>
+			</Toggle>
 
-			<button
-				type='button'
-				role='checkbox'
-				aria-checked={allSelected ? true : someSelected ? 'mixed' : false}
-				aria-label='Select all loaded images'
-				onClick={onToggleAll}
-				className='grid size-8 cursor-pointer place-items-center rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-white/40'>
-				<span
-					className={cn(
-						'grid size-5 place-items-center rounded border-2 transition-colors',
-						allSelected || someSelected
-							? 'border-brand bg-brand text-white'
-							: 'border-white/40 text-transparent',
-					)}>
-					{allSelected ? (
-						<Check strokeWidth={3} className='size-3.5' />
-					) : someSelected ? (
-						<Minus strokeWidth={3} className='size-3.5' />
-					) : null}
-				</span>
-			</button>
+			{/* The size-8 wrapper keeps the old hit area around the 20px box. */}
+			<span className='grid size-8 place-items-center'>
+				<Checkbox
+					checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+					aria-label='Select all loaded images'
+					onCheckedChange={() => onToggleAll()}
+					// Some but not all: a dash instead of the check the indicator always draws.
+					className="grid size-5 cursor-pointer place-items-center rounded border-2 border-white/40 bg-transparent text-white shadow-none transition-colors focus-visible:ring-white/40 data-[state=checked]:border-brand data-[state=checked]:bg-brand data-[state=indeterminate]:border-brand data-[state=indeterminate]:bg-brand data-[state=indeterminate]:after:block data-[state=indeterminate]:after:h-0.5 data-[state=indeterminate]:after:w-2.5 data-[state=indeterminate]:after:rounded-full data-[state=indeterminate]:after:bg-current data-[state=indeterminate]:after:content-[''] data-[state=indeterminate]:[&>span]:hidden dark:bg-transparent dark:data-[state=checked]:bg-brand"
+				/>
+			</span>
 
 			<p
 				aria-live='polite'
@@ -110,69 +109,67 @@ export function GridToolbar({
 
 			<div className='ml-auto flex flex-wrap items-center gap-x-3 gap-y-2'>
 				{showDeep ? (
-					<button
-						type='button'
-						role='switch'
-						aria-checked={deep}
-						onClick={onToggleDeep}
-						className='inline-flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-sm text-slate-300 outline-none focus-visible:ring-[3px] focus-visible:ring-white/40'>
-						<span
-							aria-hidden='true'
-							className={cn(
-								'relative inline-block h-5 w-9 rounded-full transition-colors',
-								deep ? 'bg-brand' : 'bg-white/15',
-							)}>
-							<span
-								className={cn(
-									'absolute top-0.5 left-0.5 size-4 rounded-full bg-white transition-transform motion-reduce:transition-none',
-									deep && 'translate-x-4',
-								)}
-							/>
-						</span>
-						Include subfolders
-					</button>
+					<div className='flex items-center gap-2 px-1 py-1'>
+						<Switch
+							id={deepId}
+							checked={deep}
+							onCheckedChange={() => onToggleDeep()}
+							className='cursor-pointer data-[state=checked]:bg-brand data-[state=unchecked]:bg-white/15 dark:data-[state=unchecked]:bg-white/15 [&>span]:motion-reduce:transition-none'
+						/>
+						<Label
+							htmlFor={deepId}
+							className='cursor-pointer font-normal text-slate-300'>
+							Include subfolders
+						</Label>
+					</div>
 				) : null}
 
 				<div className='flex items-center gap-2'>
-					<label htmlFor={sortId} className='sr-only'>
+					<Label htmlFor={sortId} className='sr-only'>
 						Sort images
-					</label>
-					<select
-						id={sortId}
+					</Label>
+					<Select
 						value={shown}
-						onChange={(event) => {
-							const next = event.target.value
+						onValueChange={(next) => {
 							if (isSort(next)) onSort(next)
-						}}
-						className='h-8 rounded-md border border-white/10 bg-white/3 px-2 text-sm text-white outline-none scheme-dark focus-visible:ring-[3px] focus-visible:ring-white/40'>
-						{options.map((value) => (
-							<option key={value} value={value}>
-								{SORT_LABELS[value]}
-							</option>
-						))}
-					</select>
+						}}>
+						<SelectTrigger
+							id={sortId}
+							size='sm'
+							className='border-white/10 bg-white/3 px-2 text-white dark:bg-white/3'>
+							{/* Children, so the server render shows the sort before hydration. */}
+							<SelectValue>{SORT_LABELS[shown]}</SelectValue>
+						</SelectTrigger>
+						<SelectContent>
+							{options.map((value) => (
+								<SelectItem key={value} value={value}>
+									{SORT_LABELS[value]}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
 
-				<div
-					role='group'
+				<ToggleGroup
+					type='single'
 					aria-label='Thumbnail size'
-					className='inline-flex rounded-md border border-white/10 bg-white/3 p-0.5'>
+					value={density}
+					onValueChange={(next) => {
+						// Radix lets the active item be pressed off (''); there is always one size.
+						if (isDensity(next)) onDensity(next)
+					}}
+					className='rounded-md border border-white/10 bg-white/3 p-0.5'>
 					{DENSITIES.map(({ value, label, Icon }) => (
-						<button
+						<ToggleGroupItem
 							key={value}
-							type='button'
-							aria-pressed={density === value}
+							value={value}
 							title={label}
-							onClick={() => onDensity(value)}
-							className={cn(
-								'grid size-7 cursor-pointer place-items-center rounded text-slate-400 outline-none hover:text-white focus-visible:ring-[3px] focus-visible:ring-white/40',
-								density === value && 'bg-white/10 text-white',
-							)}>
+							className='size-7 min-w-0 cursor-pointer rounded px-0 text-slate-400 hover:bg-transparent hover:text-white data-[spacing=0]:rounded data-[state=on]:bg-white/10 data-[state=on]:text-white data-[spacing=0]:first:rounded data-[spacing=0]:last:rounded'>
 							<Icon className='size-4' />
 							<span className='sr-only'>{label}</span>
-						</button>
+						</ToggleGroupItem>
 					))}
-				</div>
+				</ToggleGroup>
 			</div>
 		</div>
 	)

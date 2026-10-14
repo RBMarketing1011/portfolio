@@ -1,7 +1,16 @@
 import Link from 'next/link'
 import { ArrowRight, FolderKanban, Globe, Images, Users } from 'lucide-react'
 import { auth } from '@/lib/auth'
+import { Button } from '@/components/ui/button'
+import {
+	Card,
+	CardAction,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
 import { currentMembership } from '@/lib/workspace/current'
+import { StatusPill } from './projects/projects-table'
 import { MEMBERS, type MemberDoc } from '@/lib/workspace/types'
 import type { SiteDoc } from '@/lib/builder/site-doc'
 
@@ -43,72 +52,67 @@ export default async function AccountOverviewPage() {
 	]
 
 	return (
-		<div className='space-y-10'>
+		<div className='space-y-8'>
 			<div>
-				<h1 className='font-display text-3xl font-semibold text-white'>
-					{workspace.name}
-				</h1>
-				<p className='mt-2 leading-7 text-slate-400'>
-					Signed in as{' '}
-					<span className='text-white'>{session?.user?.email}</span> ·{' '}
+				<h1 className='font-display text-3xl font-semibold'>{workspace.name}</h1>
+				<p className='mt-2 text-muted-foreground'>
+					Signed in as <span className='text-foreground'>{session?.user?.email}</span> ·{' '}
 					{membership.isOwner ? 'Account owner' : membership.role.name}
 				</p>
 			</div>
 
-			<dl className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
+			<div className='grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'>
 				{stats.map((stat) => (
-					<div
-						key={stat.label}
-						className='rounded-xl border border-white/10 bg-white/3 p-4'>
-						<dt className='flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-slate-500'>
-							<stat.icon className='size-3.5' />
-							{stat.label}
-						</dt>
-						<dd className='mt-2 font-display text-3xl font-semibold text-white'>
-							{stat.value}
-						</dd>
-					</div>
+					<Card key={stat.label} className='gap-2 py-4'>
+						<CardHeader className='px-4'>
+							<CardDescription className='flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest'>
+								<stat.icon className='size-3.5' />
+								{stat.label}
+							</CardDescription>
+							<CardTitle className='font-display text-3xl'>{stat.value}</CardTitle>
+						</CardHeader>
+					</Card>
 				))}
-			</dl>
+			</div>
 
-			<section>
+			<section className='space-y-4'>
 				<div className='flex items-end justify-between gap-4'>
-					<h2 className='font-display text-xl font-semibold text-white'>
-						Recent projects
-					</h2>
-					<Link
-						href='/account/projects'
-						className='text-sm text-brand hover:text-brand-strong'>
-						All projects
-					</Link>
+					<h2 className='font-display text-xl font-semibold'>Recent projects</h2>
+					<Button asChild variant='link' className='h-auto p-0'>
+						<Link href='/account/projects'>All projects</Link>
+					</Button>
 				</div>
 
 				{sites.length === 0 ? (
-					<p className='mt-6 rounded-xl border border-dashed border-white/15 py-12 text-center text-sm text-slate-500'>
-						No projects yet.{' '}
-						<Link href='/account/projects' className='text-brand'>
-							Create the first one
-						</Link>
-						.
-					</p>
+					<Card className='border-dashed text-center'>
+						<CardHeader>
+							<CardTitle>No projects yet</CardTitle>
+							<CardDescription>
+								<Button asChild variant='link' className='h-auto p-0'>
+									<Link href='/account/projects'>Create the first one</Link>
+								</Button>
+							</CardDescription>
+						</CardHeader>
+					</Card>
 				) : (
-					<ul className='mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
+					<div className='grid gap-3 sm:grid-cols-2 lg:grid-cols-3'>
 						{sites.slice(0, 6).map((item) => (
-							<li key={item._id.toString()}>
-								<Link
-									href={`/account/projects/${item._id.toString()}`}
-									className='block rounded-xl border border-white/10 bg-white/3 p-4 transition-colors hover:border-brand/40'>
-									<p className='truncate font-display text-lg font-semibold text-white'>
-										{item.name}
-									</p>
-									<p className='mt-1 text-xs text-slate-500'>
-										{item.site?.pages?.length ?? 0} pages ·{' '}
-										{item.status === 'live' ? 'Live' : 'Draft'}
-									</p>
-								</Link>
-							</li>
+							<Link
+								key={item._id.toString()}
+								href={`/account/projects/${item._id.toString()}`}
+								className='rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'>
+								<Card className='h-full gap-2 py-4 transition-colors hover:border-primary/40'>
+									<CardHeader className='px-4'>
+										<CardTitle className='truncate font-display text-lg'>{item.name}</CardTitle>
+										<CardDescription>{item.site?.pages?.length ?? 0} pages</CardDescription>
+										<CardAction>
+											<StatusPill status={item.status === 'live' ? 'live' : 'draft'} />
+										</CardAction>
+									</CardHeader>
+								</Card>
+							</Link>
 						))}
-					</ul>
+					</div>
 				)}
 			</section>
 		</div>

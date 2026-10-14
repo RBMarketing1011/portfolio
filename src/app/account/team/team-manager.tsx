@@ -2,7 +2,25 @@
 
 import { useEffect, useState } from 'react'
 import { Loader2, Mail, Plus, Shield, Trash2, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { FormAlert } from '@/components/form-alert'
+import { Badge } from '@/components/ui/badge'
+import { Button, buttonVariants } from '@/components/ui/button'
+import {
+	Card,
+	CardAction,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -105,12 +123,12 @@ export function TeamManager({
 				<h1 className='font-display text-3xl font-semibold text-white'>
 					Team
 				</h1>
-				<p className='mt-2 leading-7 text-slate-400'>
+				<p className='mt-2 text-muted-foreground'>
 					The users on this account, and the roles that decide what they can do.
 				</p>
 			</div>
-			{error && <p className='text-sm text-destructive'>{error}</p>}
-			{notice && <p className='text-sm text-brand'>{notice}</p>}
+			{error && <FormAlert>{error}</FormAlert>}
+			{notice && <FormAlert tone='success'>{notice}</FormAlert>}
 
 			<Tabs defaultValue='users'>
 				<TabsList>
@@ -118,9 +136,9 @@ export function TeamManager({
 					<TabsTrigger value='roles'>Roles ({roles.length})</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value='users' className='space-y-8 pt-4'>
-					<div className='flex justify-end'>
-						{can.invite && (
+				<TabsContent value='users' className='space-y-6 pt-4'>
+					{can.invite && (
+						<div className='flex justify-end'>
 							<InviteDialog
 								roles={roles}
 								onInvited={(email) => {
@@ -129,135 +147,131 @@ export function TeamManager({
 								}}
 								onError={setError}
 							/>
-						)}
-					</div>
-					<section>
-						<div className='-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0'>
-							<table className='w-full min-w-[34rem] border-collapse text-sm'>
-								<thead>
-									<tr className='border-b border-white/10 text-left text-xs font-semibold uppercase tracking-widest text-slate-500'>
-										<th className='py-3 pr-4 font-semibold'>Person</th>
-										<th className='py-3 pr-4 font-semibold'>Role</th>
-										<th className='py-3 font-semibold'>
-											<span className='sr-only'>Actions</span>
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									{members.map((member) => (
-										<tr key={member.id} className='border-b border-white/5'>
-											<td className='py-3 pr-4'>
-												<span className='text-white'>{member.email}</span>
-												{member.userId === you && (
-													<span className='ml-2 text-xs text-slate-500'>you</span>
-												)}
-											</td>
-											<td className='py-3 pr-4'>
-												{member.isOwner || !can.manage ? (
-													<span className='text-slate-400'>
-														{member.isOwner ? 'Account owner' : member.roleName}
-													</span>
-												) : (
-													<Select
-														value={member.roleId}
-														onValueChange={async (roleId) => {
-															const response = await fetch(
-																`/api/account/team/${member.id}`,
-																{
-																	method: 'PATCH',
-																	headers: {
-																		'Content-Type': 'application/json',
-																	},
-																	body: JSON.stringify({ roleId }),
-																},
-															)
-															if (!response.ok) {
-																const body = await response.json().catch(() => ({}))
-																setError(
-																	body.error ?? 'Could not change that role.',
-																)
-															}
-															void refresh()
-														}}>
-														<SelectTrigger className='h-8 w-44'>
-															<SelectValue />
-														</SelectTrigger>
-														<SelectContent>
-															{roles.map((role) => (
-																<SelectItem key={role.id} value={role.id}>
-																	{role.name}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-												)}
-											</td>
-											<td className='py-3 text-right'>
-												{can.manage && !member.isOwner && (
-													<ConfirmButton
-														label={`Remove ${member.email}`}
-														title={`Remove ${member.email}?`}
-														description='They lose access to this account immediately. Anything they built stays.'
-														action='Remove'
-														onConfirm={async () => {
-															const response = await fetch(
-																`/api/account/team/${member.id}`,
-																{ method: 'DELETE' },
-															)
-															if (!response.ok) {
-																const body = await response.json().catch(() => ({}))
-																setError(body.error ?? 'Could not remove them.')
-															}
-															await refresh()
-														}}
-													/>
-												)}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
 						</div>
-					</section>
+					)}
+
+					<Card className='py-0'>
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Person</TableHead>
+									<TableHead>Role</TableHead>
+									<TableHead className='w-12'>
+										<span className='sr-only'>Actions</span>
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{members.map((member) => (
+									<TableRow key={member.id}>
+										<TableCell>
+											<span className='font-medium'>{member.email}</span>
+											{member.userId === you && (
+												<Badge variant='outline' className='ml-2'>
+													You
+												</Badge>
+											)}
+										</TableCell>
+										<TableCell>
+											{member.isOwner || !can.manage ? (
+												<span className='text-muted-foreground'>
+													{member.isOwner ? 'Account owner' : member.roleName}
+												</span>
+											) : (
+												<Select
+													value={member.roleId}
+													onValueChange={async (roleId) => {
+														const response = await fetch(`/api/account/team/${member.id}`, {
+															method: 'PATCH',
+															headers: { 'Content-Type': 'application/json' },
+															body: JSON.stringify({ roleId }),
+														})
+														if (!response.ok) {
+															const body = await response.json().catch(() => ({}))
+															setError(body.error ?? 'Could not change that role.')
+														}
+														void refresh()
+													}}>
+													<SelectTrigger size='sm' className='w-44'>
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														{roles.map((role) => (
+															<SelectItem key={role.id} value={role.id}>
+																{role.name}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+											)}
+										</TableCell>
+										<TableCell className='text-right'>
+											{can.manage && !member.isOwner && (
+												<ConfirmButton
+													label={`Remove ${member.email}`}
+													title={`Remove ${member.email}?`}
+													description='They lose access to this account immediately. Anything they built stays.'
+													action='Remove'
+													onConfirm={async () => {
+														const response = await fetch(`/api/account/team/${member.id}`, {
+															method: 'DELETE',
+														})
+														if (!response.ok) {
+															const body = await response.json().catch(() => ({}))
+															setError(body.error ?? 'Could not remove them.')
+														}
+														await refresh()
+													}}
+												/>
+											)}
+										</TableCell>
+									</TableRow>
+								))}
+							</TableBody>
+						</Table>
+					</Card>
 
 					{invites.length > 0 && (
-						<section>
-							<h2 className='font-display text-lg font-semibold text-white'>
-								Pending invitations
-							</h2>
-							<ul className='mt-4 space-y-2'>
-								{invites.map((invite) => (
-									<li
-										key={invite.id}
-										className='flex items-center gap-3 rounded-lg border border-white/10 bg-white/3 px-4 py-3 text-sm'>
-										<Mail className='size-4 shrink-0 text-slate-500' />
-										<span className='min-w-0 flex-1 truncate text-white'>
-											{invite.email}
-										</span>
-										<span className='shrink-0 text-xs text-slate-500'>
-											{invite.roleName} · expires{' '}
-											{new Date(invite.expiresAt).toLocaleDateString()}
-										</span>
-										{can.invite && (
-											<button
-												type='button'
-												aria-label={`Revoke the invitation for ${invite.email}`}
-												onClick={async () => {
-													await fetch(`/api/account/invites?id=${invite.id}`, {
-														method: 'DELETE',
-													})
-													void refresh()
-												}}
-												className='shrink-0 text-slate-600 transition-colors hover:text-destructive'>
-												<X className='size-4' />
-											</button>
-										)}
-									</li>
-								))}
-							</ul>
-						</section>
-			)}
-
+						<Card className='gap-0 pb-0'>
+							<CardHeader className='pb-4'>
+								<CardTitle>Pending invitations</CardTitle>
+							</CardHeader>
+							<Table>
+								<TableBody>
+									{invites.map((invite) => (
+										<TableRow key={invite.id}>
+											<TableCell>
+												<span className='flex items-center gap-2 font-medium'>
+													<Mail className='size-4 text-muted-foreground' />
+													{invite.email}
+												</span>
+											</TableCell>
+											<TableCell className='text-muted-foreground'>
+												{invite.roleName} · expires{' '}
+												{new Date(invite.expiresAt).toLocaleDateString()}
+											</TableCell>
+											<TableCell className='w-12 text-right'>
+												{can.invite && (
+													<Button
+														variant='ghost'
+														size='icon'
+														aria-label={`Revoke the invitation for ${invite.email}`}
+														onClick={async () => {
+															await fetch(`/api/account/invites?id=${invite.id}`, {
+																method: 'DELETE',
+															})
+															void refresh()
+														}}>
+														<X />
+													</Button>
+												)}
+											</TableCell>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
+						</Card>
+					)}
 				</TabsContent>
 
 				<TabsContent value='roles' className='pt-4'>
@@ -308,9 +322,7 @@ function InviteDialog({
 
 	return (
 		<>
-			<Button
-				onClick={() => setOpen(true)}
-				className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+			<Button onClick={() => setOpen(true)}>
 				<Plus /> Invite someone
 			</Button>
 
@@ -339,7 +351,7 @@ function InviteDialog({
 						<div className='space-y-2'>
 							<Label htmlFor='invite-role'>Role</Label>
 							<Select value={roleId || roles[0]?.id} onValueChange={setRoleId}>
-								<SelectTrigger id='invite-role'>
+								<SelectTrigger id='invite-role' className='w-full'>
 									<SelectValue placeholder='Pick a role' />
 								</SelectTrigger>
 								<SelectContent>
@@ -361,8 +373,7 @@ function InviteDialog({
 							</Button>
 							<Button
 								type='submit'
-								disabled={busy || roles.length === 0}
-								className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+								disabled={busy || roles.length === 0}>
 								{busy && <Loader2 className='animate-spin' />} Send invitation
 							</Button>
 						</DialogFooter>
@@ -389,50 +400,33 @@ function RolesSection({
 	return (
 		<section>
 			<div className='flex flex-wrap items-end justify-between gap-4'>
-				<div>
-					<h2 className='font-display text-lg font-semibold text-white'>
-						Roles
-					</h2>
-					<p className='mt-1 text-sm leading-6 text-slate-400'>
-						A role is a set of permissions. Build as many as you need.
-					</p>
-				</div>
+				<p className='text-sm text-muted-foreground'>
+					A role is a set of permissions. Build as many as you need.
+				</p>
 				{canManage && (
-					<Button
-						variant='outline'
-						onClick={() => setEditing('new')}
-						className='border-white/15 bg-transparent text-white hover:bg-white/5'>
+					<Button variant='outline' onClick={() => setEditing('new')}>
 						<Plus /> New role
 					</Button>
 				)}
 			</div>
 
-			<ul className='mt-4 grid gap-3 sm:grid-cols-2'>
+			<div className='mt-4 grid gap-3 sm:grid-cols-2'>
 				{roles.map((role) => (
-					<li
-						key={role.id}
-						className='rounded-xl border border-white/10 bg-white/3 p-4'>
-						<div className='flex items-start justify-between gap-3'>
-							<div className='min-w-0'>
-								<p className='flex items-center gap-1.5 font-medium text-white'>
-									{role.system && <Shield className='size-3.5 text-brand' />}
-									{role.name}
-								</p>
-								<p className='mt-1 text-xs text-slate-500'>
-									{role.system
-										? 'Every permission'
-										: `${role.permissions.length} permissions`}{' '}
-									· {role.members} {role.members === 1 ? 'person' : 'people'}
-								</p>
-							</div>
+					<Card key={role.id} className='gap-0 py-4'>
+						<CardHeader className='px-4'>
+							<CardTitle className='flex items-center gap-1.5'>
+								{role.system && <Shield className='size-3.5 text-primary' />}
+								{role.name}
+							</CardTitle>
+							<CardDescription>
+								{role.system ? 'Every permission' : `${role.permissions.length} permissions`} ·{' '}
+								{role.members} {role.members === 1 ? 'person' : 'people'}
+							</CardDescription>
 							{canManage && !role.system && (
-								<div className='flex shrink-0 items-center gap-1'>
-									<button
-										type='button'
-										onClick={() => setEditing(role)}
-										className='rounded-md px-2 py-1 text-xs text-slate-400 hover:bg-white/5 hover:text-white'>
+								<CardAction className='flex items-center gap-1'>
+									<Button variant='ghost' size='sm' onClick={() => setEditing(role)}>
 										Edit
-									</button>
+									</Button>
 									<ConfirmButton
 										label={`Delete ${role.name}`}
 										title={`Delete the ${role.name} role?`}
@@ -442,12 +436,10 @@ function RolesSection({
 												: 'This cannot be undone.'
 										}
 										action='Delete role'
-										size='sm'
 										onConfirm={async () => {
-											const response = await fetch(
-												`/api/account/roles/${role.id}`,
-												{ method: 'DELETE' },
-											)
+											const response = await fetch(`/api/account/roles/${role.id}`, {
+												method: 'DELETE',
+											})
 											if (!response.ok) {
 												const body = await response.json().catch(() => ({}))
 												onError(body.error ?? 'Could not delete that role.')
@@ -455,12 +447,12 @@ function RolesSection({
 											await onChanged()
 										}}
 									/>
-								</div>
+								</CardAction>
 							)}
-						</div>
-					</li>
+						</CardHeader>
+					</Card>
 				))}
-			</ul>
+			</div>
 
 			{editing && (
 				<RoleDialog
@@ -554,21 +546,21 @@ function RoleDialog({
 									<div key={index} className='min-w-0 space-y-5'>
 										{column.map((group) => (
 											<fieldset key={group.id}>
-												<legend className='text-xs font-semibold uppercase tracking-widest text-slate-500'>
+												<legend className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>
 													{group.label}
 												</legend>
-												<ul className='mt-2.5 space-y-1.5'>
+												<ul className='mt-2.5 space-y-2.5'>
 													{group.permissions.map((permission) => (
-														<li key={permission.key}>
-															<label className='flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-white/3 px-3 py-2 text-sm leading-6 text-slate-300 transition-colors hover:border-white/20 hover:bg-white/6 has-checked:border-brand/40 has-checked:bg-brand/10 has-checked:text-white'>
-																<input
-																	type='checkbox'
-																	checked={selected.has(permission.key)}
-																	onChange={() => toggle(permission.key)}
-																	className='mt-1 size-4 shrink-0 accent-brand'
-																/>
+														<li key={permission.key} className='flex items-start gap-3'>
+															<Checkbox
+																id={`perm-${permission.key}`}
+																checked={selected.has(permission.key)}
+																onCheckedChange={() => toggle(permission.key)}
+																className='mt-0.5'
+															/>
+															<Label htmlFor={`perm-${permission.key}`} className='font-normal leading-5'>
 																{permission.label}
-															</label>
+															</Label>
 														</li>
 													))}
 												</ul>
@@ -580,8 +572,8 @@ function RoleDialog({
 						</div>
 					</div>
 
-					<DialogFooter className='shrink-0 border-t border-white/10 pt-4'>
-						<span className='mr-auto self-center text-xs text-slate-500'>
+					<DialogFooter className='shrink-0 border-t pt-4'>
+						<span className='mr-auto self-center text-xs text-muted-foreground'>
 							{selected.size} of {ALL_PERMISSIONS.length} permissions
 						</span>
 						<Button type='button' variant='outline' onClick={onClose}>
@@ -589,8 +581,7 @@ function RoleDialog({
 						</Button>
 						<Button
 							type='submit'
-							disabled={busy}
-							className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+							disabled={busy}>
 							{busy && <Loader2 className='animate-spin' />} Save role
 						</Button>
 					</DialogFooter>
@@ -605,24 +596,22 @@ function ConfirmButton({
 	title,
 	description,
 	action,
-	size = 'default',
 	onConfirm,
 }: {
 	label: string
 	title: string
 	description: string
 	action: string
-	size?: 'default' | 'sm'
 	onConfirm: () => Promise<void>
 }) {
 	const [busy, setBusy] = useState(false)
 
 	return (
 		<AlertDialog>
-			<AlertDialogTrigger
-				aria-label={label}
-				className='text-slate-600 transition-colors hover:text-destructive'>
-				<Trash2 className={size === 'sm' ? 'size-3.5' : 'size-4'} />
+			<AlertDialogTrigger asChild>
+				<Button variant='ghost' size='icon' aria-label={label}>
+					<Trash2 />
+				</Button>
 			</AlertDialogTrigger>
 			<AlertDialogContent>
 				<AlertDialogHeader>
@@ -639,7 +628,7 @@ function ConfirmButton({
 							await onConfirm()
 							setBusy(false)
 						}}
-						className='bg-destructive text-white hover:bg-destructive/90'>
+						className={buttonVariants({ variant: 'destructive' })}>
 						{busy && <Loader2 className='animate-spin' />} {action}
 					</AlertDialogAction>
 				</AlertDialogFooter>
@@ -661,13 +650,13 @@ function TeamSkeleton() {
 
 			<section className='space-y-4'>
 				<Skeleton className='h-6 w-24 rounded-md' />
-				<div className='border-b border-white/10 pb-3'>
+				<div className='border-b pb-3'>
 					<Skeleton className='h-3 w-full max-w-md rounded' />
 				</div>
 				{Array.from({ length: 3 }, (_, index) => (
 					<div
 						key={index}
-						className='flex items-center gap-4 border-b border-white/5 pb-4'>
+						className='flex items-center gap-4 border-b pb-4'>
 						<Skeleton className='h-4 flex-1 rounded' />
 						<Skeleton className='h-8 w-44 shrink-0 rounded-md' />
 						<Skeleton className='size-4 shrink-0 rounded' />

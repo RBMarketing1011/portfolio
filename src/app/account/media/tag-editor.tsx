@@ -31,6 +31,9 @@ import {
 	type Ref,
 } from 'react'
 import { Check, Loader2, Plus, Sparkles, X } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { clampText, slugify, stem } from '@/lib/media/text'
@@ -1178,7 +1181,11 @@ export function TagSuggestionList({
 									{row.present && (
 										<>
 											{' '}
-											<span className='ml-auto shrink-0 text-xs text-slate-400'>Added</span>
+											<Badge
+												variant='outline'
+												className='ml-auto border-white/10 px-1.5 font-normal text-slate-400'>
+												Added
+											</Badge>
 										</>
 									)}
 								</>
@@ -1192,7 +1199,7 @@ export function TagSuggestionList({
 
 export type TagInputProps = Omit<UseTagInputOptions, 'disabled'> & {
 	id?: string
-	/** The accessible name. Null when a visible <label> names it instead. */
+	/** The accessible name. Null when a visible Label names it instead. */
 	label?: string | null
 	placeholder?: string
 	disabled?: boolean
@@ -1272,15 +1279,18 @@ export function TagInput({
 				{announcement}
 			</div>
 			{notice && (
-				<p
+				<Alert
 					id={noticeId}
 					role={notice.tone === 'error' ? 'alert' : 'status'}
+					variant={notice.tone === 'error' ? 'destructive' : 'default'}
 					className={cn(
-						'mt-1.5 text-xs',
-						notice.tone === 'error' ? 'text-destructive' : 'text-slate-400',
+						'mt-1.5 px-3 py-2 text-xs',
+						notice.tone === 'error'
+							? 'border-destructive/30 bg-destructive/5'
+							: 'border-white/10 bg-white/3 text-slate-400',
 					)}>
-					{notice.text}
-				</p>
+					<AlertDescription className='text-xs text-inherit'>{notice.text}</AlertDescription>
+				</Alert>
 			)}
 		</div>
 	)
@@ -1300,8 +1310,8 @@ export type TagChipProps = {
 	onKeep(slug: string): void
 }
 
-const chipButton =
-	'cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none'
+/** The small round buttons inside a chip (Keep, Remove). */
+const chipAction = 'rounded-full hover:bg-white/15 hover:text-current motion-reduce:transition-none'
 
 export function TagChip({ tag, canEdit, canKeep, onClick, onRemove, onKeep }: TagChipProps) {
 	const auto = tag.source === 'auto'
@@ -1330,71 +1340,72 @@ export function TagChip({ tag, canEdit, canKeep, onClick, onRemove, onKeep }: Ta
 		</>
 	)
 	return (
-		<li
+		<Badge
+			asChild
+			variant='outline'
 			data-slot='tag-chip'
 			data-slug={tag.slug}
 			data-source={tag.source}
 			data-pending={tag.pending}
 			className={cn(
-				'inline-flex min-h-7 max-w-full min-w-0 items-center rounded-full border text-xs',
+				'min-h-7 max-w-full min-w-0 justify-start gap-0 overflow-visible rounded-full p-0 font-normal',
 				auto
 					? 'border-white/10 bg-white/5 text-slate-300'
 					: 'border-brand/30 bg-brand/10 text-brand',
 				pending && 'border-dashed opacity-70',
 			)}>
-			{onClick ? (
-				<button
-					type='button'
-					title={chipTitle(tag)}
-					onClick={() => onClick(tag.slug)}
-					onKeyDown={(event) => {
-						if (!canEdit) return
-						if (event.key !== 'Backspace' && event.key !== 'Delete') return
-						event.preventDefault()
-						// Delete is also the page's "delete the selected images" shortcut: this one is ours.
-						event.stopPropagation()
-						onRemove(tag.slug, true)
-					}}
-					className={cn(
-						chipButton,
-						'inline-flex min-w-0 items-center gap-1 rounded-full py-1 pr-1.5 pl-2.5 hover:bg-white/5',
-					)}>
-					{body}
-				</button>
-			) : (
-				<span
-					title={chipTitle(tag)}
-					className='inline-flex min-w-0 items-center gap-1 py-1 pr-1.5 pl-2.5'>
-					{body}
-				</span>
-			)}
-			{canEdit && canKeep && auto && (
-				<button
-					type='button'
-					aria-label={`Keep tag ${tag.label}`}
-					title='Keep this tag'
-					onClick={() => onKeep(tag.slug)}
-					className={cn(
-						chipButton,
-						'grid size-6 shrink-0 place-items-center rounded-full hover:bg-white/15',
-					)}>
-					<Check aria-hidden className='size-3' />
-				</button>
-			)}
-			{canEdit && (
-				<button
-					type='button'
-					aria-label={`Remove tag ${tag.label}`}
-					title={auto ? 'Remove. The auto-tagger will not add it back.' : 'Remove'}
-					onClick={(event) => onRemove(tag.slug, event.detail === 0)}
-					className={cn(
-						chipButton,
-						'mr-0.5 grid size-6 shrink-0 place-items-center rounded-full hover:bg-white/15',
-					)}>
-					<X aria-hidden className='size-3' />
-				</button>
-			)}
-		</li>
+			<li>
+				{onClick ? (
+					<Button
+						type='button'
+						variant='ghost'
+						size='xs'
+						title={chipTitle(tag)}
+						onClick={() => onClick(tag.slug)}
+						onKeyDown={(event) => {
+							if (!canEdit) return
+							if (event.key !== 'Backspace' && event.key !== 'Delete') return
+							event.preventDefault()
+							// Delete is also the page's "delete the selected images" shortcut: this one is ours.
+							event.stopPropagation()
+							onRemove(tag.slug, true)
+						}}
+						className='h-auto min-h-7 min-w-0 shrink justify-start rounded-full py-1 pr-1.5 pl-2.5 font-normal has-[>svg]:pr-1.5 has-[>svg]:pl-2.5 hover:bg-white/5 hover:text-current motion-reduce:transition-none'>
+						{body}
+					</Button>
+				) : (
+					<span
+						title={chipTitle(tag)}
+						className='inline-flex min-w-0 items-center gap-1 py-1 pr-1.5 pl-2.5'>
+						{body}
+					</span>
+				)}
+				{canEdit && canKeep && auto && (
+					<Button
+						type='button'
+						variant='ghost'
+						size='icon-xs'
+						aria-label={`Keep tag ${tag.label}`}
+						title='Keep this tag'
+						onClick={() => onKeep(tag.slug)}
+						className={chipAction}>
+						<Check aria-hidden />
+					</Button>
+				)}
+				{canEdit && (
+					<Button
+						type='button'
+						variant='ghost'
+						size='icon-xs'
+						aria-label={`Remove tag ${tag.label}`}
+						title={auto ? 'Remove. The auto-tagger will not add it back.' : 'Remove'}
+						onClick={(event) => onRemove(tag.slug, event.detail === 0)}
+						className={cn(chipAction, 'mr-0.5')}>
+						<X aria-hidden />
+					</Button>
+				)}
+			</li>
+		</Badge>
 	)
 }
 
@@ -1521,17 +1532,16 @@ export function TagEditor({
 					))}
 					{collapsible && (
 						<li>
-							<button
+							<Button
 								type='button'
+								variant='link'
+								size='xs'
 								aria-expanded={expanded}
 								aria-controls={listId}
 								onClick={() => setExpanded((current) => !current)}
-								className={cn(
-									chipButton,
-									'rounded-full px-2 py-1 text-xs text-brand underline-offset-2 hover:underline',
-								)}>
+								className='rounded-full px-2 text-brand underline-offset-2 motion-reduce:transition-none'>
 								{expanded ? 'Show fewer' : `Show all ${display.length}`}
-							</button>
+							</Button>
 						</li>
 					)}
 				</ul>
@@ -1568,15 +1578,21 @@ export function TagEditor({
 				</p>
 			)}
 			{state.error && (
-				<p role='alert' className='flex items-start gap-2 text-xs text-destructive'>
-					<span className='min-w-0 flex-1'>{state.error}</span>
-					<button
-						type='button'
-						onClick={() => dispatch({ type: 'dismiss' })}
-						className={cn(chipButton, 'shrink-0 rounded text-slate-400 hover:text-white')}>
-						Dismiss
-					</button>
-				</p>
+				<Alert
+					variant='destructive'
+					className='border-destructive/30 bg-destructive/5 px-3 py-2 text-xs'>
+					<AlertDescription className='flex w-full items-start gap-2 text-xs'>
+						<span className='min-w-0 flex-1'>{state.error}</span>
+						<Button
+							type='button'
+							variant='ghost'
+							size='xs'
+							onClick={() => dispatch({ type: 'dismiss' })}
+							className='-my-0.5 shrink-0 text-slate-400 hover:bg-white/5 hover:text-white'>
+							Dismiss
+						</Button>
+					</AlertDescription>
+				</Alert>
 			)}
 		</div>
 	)

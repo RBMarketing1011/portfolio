@@ -15,8 +15,11 @@
  * second visit never shows the first one's leftovers.
  */
 import { useId, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Check, Loader2, X } from 'lucide-react'
+import { Loader2, X } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
 	Dialog,
 	DialogContent,
@@ -226,9 +229,6 @@ export function describeBulk(summary: Pick<BulkSummary, 'add' | 'remove'>, count
 /* Parts                                                                      */
 /* -------------------------------------------------------------------------- */
 
-const chipButton =
-	'cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none'
-
 export type BulkTagFormProps = Pick<
 	BulkTagDialogProps,
 	'count' | 'existing' | 'fetchSuggestions' | 'onSubmit'
@@ -329,29 +329,32 @@ export function BulkTagForm({
 				{staged.length > 0 && (
 					<ul aria-label='Tags to add' className='flex flex-wrap gap-1.5'>
 						{staged.map((label) => (
-							<li
+							<Badge
 								key={slugify(label)}
+								asChild
+								variant='outline'
 								data-slot='staged-tag'
-								className='inline-flex min-h-7 max-w-full items-center rounded-full border border-brand/30 bg-brand/10 text-xs text-brand'>
-								<span dir='auto' className='min-w-0 truncate py-1 pr-1 pl-2.5'>
-									{label}
-								</span>
-								<button
-									type='button'
-									disabled={pending}
-									aria-label={`Do not add ${label}`}
-									onClick={() =>
-										setStaged((current) =>
-											current.filter((item) => slugify(item) !== slugify(label)),
-										)
-									}
-									className={cn(
-										chipButton,
-										'mr-0.5 grid size-6 shrink-0 place-items-center rounded-full hover:bg-white/15',
-									)}>
-									<X aria-hidden className='size-3' />
-								</button>
-							</li>
+								className='min-h-7 max-w-full justify-start gap-0 overflow-visible rounded-full border-brand/30 bg-brand/10 p-0 font-normal text-brand'>
+								<li>
+									<span dir='auto' className='min-w-0 truncate py-1 pr-1 pl-2.5'>
+										{label}
+									</span>
+									<Button
+										type='button'
+										variant='ghost'
+										size='icon-xs'
+										disabled={pending}
+										aria-label={`Do not add ${label}`}
+										onClick={() =>
+											setStaged((current) =>
+												current.filter((item) => slugify(item) !== slugify(label)),
+											)
+										}
+										className='mr-0.5 rounded-full hover:bg-white/15 hover:text-current motion-reduce:transition-none'>
+										<X aria-hidden />
+									</Button>
+								</li>
+							</Badge>
 						))}
 					</ul>
 				)}
@@ -365,27 +368,27 @@ export function BulkTagForm({
 					<ul
 						aria-label='Tags on these images'
 						className='flex max-h-40 flex-wrap gap-1.5 overflow-y-auto pr-1'>
-						{tags.map((tag) => {
+						{tags.map((tag, index) => {
 							const on = checked.includes(tag.slug)
+							const id = `${baseId}-tag-${index}`
 							return (
 								<li key={tag.slug}>
-									<label
+									<Label
+										htmlFor={id}
 										className={cn(
-											'inline-flex min-h-8 max-w-full cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors motion-reduce:transition-none',
-											'has-focus-visible:ring-[3px] has-focus-visible:ring-ring/50',
+											'inline-flex min-h-8 max-w-full cursor-pointer gap-1.5 rounded-full border px-2.5 py-1 text-xs font-normal transition-colors motion-reduce:transition-none',
 											'has-disabled:cursor-not-allowed has-disabled:opacity-60',
 											on
 												? 'border-destructive/50 bg-destructive/10 text-white'
 												: 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/8',
 										)}>
-										<input
-											type='checkbox'
-											className='peer sr-only'
+										<Checkbox
+											id={id}
 											checked={on}
 											disabled={pending}
-											onChange={() => toggle(tag.slug)}
+											onCheckedChange={() => toggle(tag.slug)}
+											className='size-3.5 border-white/25 data-[state=checked]:border-destructive data-[state=checked]:bg-destructive data-[state=checked]:text-white dark:data-[state=checked]:bg-destructive [&_svg]:size-3'
 										/>
-										{on && <Check aria-hidden className='size-3 shrink-0 text-destructive' />}
 										<span dir='auto' className='min-w-0 truncate'>
 											{tag.label}
 										</span>
@@ -393,7 +396,7 @@ export function BulkTagForm({
 										<span className='shrink-0 text-slate-400 tabular-nums'>
 											{existingCaption(tag, count)}
 										</span>
-									</label>
+									</Label>
 								</li>
 							)
 						})}
@@ -431,12 +434,20 @@ export function BulkTagForm({
 
 			<div aria-live='polite' className='min-h-5 space-y-1 text-sm'>
 				{line && summary.problem === null && <p className='text-slate-300'>{line}</p>}
-				{summary.problem && <p className='text-destructive'>{summary.problem}</p>}
+				{summary.problem && (
+					// The box around it is the live region; this is not a second, assertive one.
+					<Alert
+						variant='destructive'
+						role={undefined}
+						className='border-destructive/30 bg-destructive/5 px-3 py-2'>
+						<AlertDescription>{summary.problem}</AlertDescription>
+					</Alert>
+				)}
 			</div>
 			{error && (
-				<p role='alert' className='text-sm text-destructive'>
-					{error}
-				</p>
+				<Alert variant='destructive' className='border-destructive/30 bg-destructive/5 px-3 py-2'>
+					<AlertDescription>{error}</AlertDescription>
+				</Alert>
 			)}
 
 			<DialogFooter>

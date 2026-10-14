@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { currentMembership } from '@/lib/workspace/current'
 import { appHost, appProtocol } from '@/lib/builder/hosting'
 import type { SiteDoc } from '@/lib/builder/site-doc'
+import { readSiteProfile } from '@/lib/builder/site-profile'
 import { ProjectSettings, type Project } from './project-settings'
 
 export const dynamic = 'force-dynamic'
@@ -72,6 +73,12 @@ export default async function ProjectPage({
 				publish: membership.permissions.has('projects.publish'),
 				delete: membership.permissions.has('projects.delete'),
 			}}
+			profile={readSiteProfile(doc.profile)}
+			images={(doc.media ?? []).map((item) => ({
+				id: item.id,
+				name: item.name,
+				url: item.url,
+			}))}
 		/>
 	)
 }

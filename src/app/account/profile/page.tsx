@@ -1,4 +1,11 @@
 import { redirect } from 'next/navigation'
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@/components/ui/card'
 import { auth } from '@/lib/auth'
 import { PasswordForm } from '../password-form'
 import { ProfileNameForm } from './profile-name-form'
@@ -11,40 +18,42 @@ export default async function ProfilePage() {
 	if (!session?.user?.id) redirect('/sign-in?next=/account/profile')
 
 	return (
-		<div className='max-w-xl space-y-10'>
+		<div className='max-w-xl space-y-6'>
 			<div>
-				<h1 className='font-display text-3xl font-semibold text-white'>
-					Your profile
-				</h1>
-				<p className='mt-2 leading-7 text-slate-400'>
-					You, not the account. These follow you into every account you belong
-					to.
+				<h1 className='font-display text-3xl font-semibold'>Your profile</h1>
+				<p className='mt-2 text-muted-foreground'>
+					You, not the account. These follow you into every account you belong to.
 				</p>
 			</div>
 
-			<section className='rounded-xl border border-white/10 bg-white/3 p-6'>
-				<h2 className='font-display text-lg font-semibold text-white'>
-					Sign-in email
-				</h2>
-				<p className='mt-2 text-sm text-white'>{session.user.email}</p>
-				<p className='mt-1 text-xs text-slate-500'>
-					Invitations are matched against this address.
-				</p>
-			</section>
+			<Card>
+				<CardHeader>
+					<CardTitle>Sign-in email</CardTitle>
+					<CardDescription>Invitations are matched against this address.</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<p className='text-sm font-medium'>{session.user.email}</p>
+				</CardContent>
+			</Card>
 
-			<section>
-				<h2 className='font-display text-lg font-semibold text-white'>
-					Display name
-				</h2>
-				<ProfileNameForm name={session.user.name ?? ''} />
-			</section>
+			<Card>
+				<CardHeader>
+					<CardTitle>Display name</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<ProfileNameForm name={session.user.name ?? ''} />
+				</CardContent>
+			</Card>
 
-			<section>
-				<h2 className='font-display text-lg font-semibold text-white'>
-					Password
-				</h2>
-				<PasswordForm />
-			</section>
+			<Card>
+				<CardHeader>
+					<CardTitle>Password</CardTitle>
+					<CardDescription>Set a new password for signing in.</CardDescription>
+				</CardHeader>
+				<CardContent>
+					<PasswordForm />
+				</CardContent>
+			</Card>
 		</div>
 	)
 }

@@ -53,8 +53,11 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
 	Select,
 	SelectContent,
@@ -692,8 +695,9 @@ export function useAction(action: () => Promise<void>) {
 const labelClass = 'text-xs font-medium text-slate-300'
 const fieldClass =
 	'border-white/10 bg-white/3 text-white placeholder:text-slate-500 focus-visible:border-brand/60 focus-visible:ring-brand/20'
-const linkButton =
-	'cursor-pointer rounded text-brand underline-offset-2 outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50'
+const linkButton = 'h-auto rounded p-0 text-sm font-normal text-brand underline-offset-2'
+/** An inline error under a field or an action: compact, so the form does not jump. */
+const errorAlert = 'border-destructive/30 bg-destructive/5 px-3 py-2 text-xs'
 const sectionTitle = 'text-xs font-semibold uppercase tracking-widest text-slate-500'
 
 const clip = (text: string, max = 80) => {
@@ -741,16 +745,16 @@ function FieldShell({
 	return (
 		<div data-slot='detail-field' className='space-y-1.5'>
 			<div className='flex items-center justify-between gap-2'>
-				<label htmlFor={id} className={labelClass}>
+				<Label htmlFor={id} className={labelClass}>
 					{label}
-				</label>
+				</Label>
 				<FieldStatusText status={status} />
 			</div>
 			{children}
 			{error && (
-				<p id={`${id}-error`} role='alert' className='text-xs text-destructive'>
-					{error}
-				</p>
+				<Alert id={`${id}-error`} variant='destructive' className={errorAlert}>
+					<AlertDescription className='text-xs'>{error}</AlertDescription>
+				</Alert>
 			)}
 			{footer}
 		</div>
@@ -1026,11 +1030,13 @@ export function Palette({
 							: null
 					return (
 						<li key={`${color.name}:${color.hex}:${index}`}>
-							<button
+							<Button
 								type='button'
+								variant='outline'
+								size='sm'
 								title={`Show images with ${color.name}`}
 								onClick={() => onFilter(clauseFor('color', color.name))}
-								className='inline-flex min-h-8 cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/3 py-1 pr-3 pl-1.5 text-xs text-slate-200 outline-none transition-colors hover:bg-white/8 focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none'>
+								className='h-auto min-h-8 gap-2 rounded-full border-white/10 bg-white/3 py-1 pr-3 pl-1.5 text-xs font-normal text-slate-200 shadow-none hover:bg-white/8 hover:text-slate-200 motion-reduce:transition-none dark:border-white/10 dark:bg-white/3 dark:hover:bg-white/8'>
 								<span
 									aria-hidden
 									className='size-4 shrink-0 rounded-full ring-1 ring-white/25'
@@ -1044,7 +1050,7 @@ export function Palette({
 									</>
 								)}
 								<span className='sr-only'>, search for this color</span>
-							</button>
+							</Button>
 						</li>
 					)
 				})}
@@ -1064,13 +1070,15 @@ function FilterValue({
 }) {
 	if (!clause) return <>{text}</>
 	return (
-		<button
+		<Button
 			type='button'
+			variant='link'
+			size='xs'
 			title={`Show images where ${clause.replace(':', ' is ')}`}
 			onClick={() => onFilter(clause)}
 			className={linkButton}>
 			{text}
-		</button>
+		</Button>
 	)
 }
 
@@ -1142,14 +1150,18 @@ function Meta({
 				<dt className='text-slate-400'>Tagging</dt>
 				<dd className='min-w-0 space-y-1.5 text-slate-200'>
 					<p className='flex flex-wrap items-center gap-2'>
-						<span
+						<Badge
+							variant='outline'
 							data-tone={tagging.tone}
 							className={cn(
-								tagging.tone === 'warn' && 'text-destructive',
-								tagging.tone === 'muted' && 'text-slate-400',
+								'rounded-full font-normal',
+								tagging.tone === 'ok' && 'border-brand/30 bg-brand/10 text-brand',
+								tagging.tone === 'busy' && 'border-white/15 bg-white/5 text-slate-200',
+								tagging.tone === 'warn' && 'border-destructive/40 bg-destructive/10 text-destructive',
+								tagging.tone === 'muted' && 'border-white/10 text-slate-400',
 							)}>
 							{tagging.label}
-						</span>
+						</Badge>
 						{canRetag && (
 							<Button
 								type='button'
@@ -1170,14 +1182,16 @@ function Meta({
 					</p>
 					{tagging.detail && <p className='text-xs text-slate-400'>{tagging.detail}</p>}
 					{retag.done && !retag.error && (
-						<p role='status' className='text-xs text-slate-400'>
-							Queued. New tags will appear here shortly.
-						</p>
+						<Alert role='status' className='border-white/10 bg-white/3 px-3 py-2 text-xs'>
+							<AlertDescription className='text-xs text-slate-400'>
+								Queued. New tags will appear here shortly.
+							</AlertDescription>
+						</Alert>
 					)}
 					{retag.error && (
-						<p role='alert' className='text-xs text-destructive'>
-							{retag.error}
-						</p>
+						<Alert variant='destructive' className={errorAlert}>
+							<AlertDescription className='text-xs'>{retag.error}</AlertDescription>
+						</Alert>
 					)}
 				</dd>
 			</dl>
@@ -1221,9 +1235,9 @@ function DeleteAction({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				{action.error && (
-					<p role='alert' className='text-sm text-destructive'>
-						{action.error}
-					</p>
+					<Alert variant='destructive' className='border-destructive/30 bg-destructive/5 px-3 py-2'>
+						<AlertDescription>{action.error}</AlertDescription>
+					</Alert>
 				)}
 				<AlertDialogFooter>
 					<AlertDialogCancel disabled={action.pending}>Cancel</AlertDialogCancel>
@@ -1327,9 +1341,9 @@ function Actions({
 			</p>
 			{copy === 'manual' && (
 				<div className='space-y-1'>
-					<label htmlFor={urlId} className='text-xs text-slate-400'>
+					<Label htmlFor={urlId} className='text-xs font-normal text-slate-400'>
 						Copying was blocked. Press Ctrl+C (or Cmd+C) to copy the link.
-					</label>
+					</Label>
 					<Input
 						ref={urlRef}
 						id={urlId}

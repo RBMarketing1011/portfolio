@@ -6,10 +6,9 @@ import {
 	Check,
 	ChevronsUpDown,
 	Copy,
-	Eye,
-	EyeOff,
 	GripVertical,
 	MoreVertical,
+	Pencil,
 	Plus,
 	Settings2,
 	SlidersHorizontal,
@@ -61,7 +60,9 @@ import type { Block } from '@/lib/builder/types'
 import { globalBackground } from './background-settings'
 import { SaveButton } from './save-button'
 import { SiteSwitcher } from './site-switcher'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { AddPageDialog } from './builder/add-page-dialog'
+import { EditPageDialog } from './builder/edit-page-dialog'
 import { SectionPicker } from './builder/section-picker'
 import { ChromeSettingsDrawer } from './builder/chrome-settings-drawer'
 
@@ -76,6 +77,8 @@ export function PagesNav({
 	const store = useBuilder()
 	const [addOpen, setAddOpen] = useState(false)
 	const [pickerOpen, setPickerOpen] = useState(false)
+	const [editOpen, setEditOpen] = useState(false)
+	const [deleteOpen, setDeleteOpen] = useState(false)
 	const [pageOpen, setPageOpen] = useState(false)
 	const [settings, setSettings] = useState<'header' | 'footer' | null>(null)
 	const [blockSettings, setBlockSettings] = useState<string | null>(null)
@@ -219,37 +222,35 @@ export function PagesNav({
 						<p className='min-w-0 flex-1 text-xs font-semibold uppercase tracking-widest text-slate-500'>
 							Layers
 						</p>
-						<IconButton
-							label={
-								page.inHeader
-									? `Remove ${page.name} from the header`
-									: `Add ${page.name} to the header`
-							}
-							onClick={() =>
-								store.renamePage(page.id, { inHeader: !page.inHeader })
-							}
-							className={page.inHeader ? 'text-brand' : 'text-slate-500'}>
-							{page.inHeader ? (
-								<Eye className='size-3.5' />
-							) : (
-								<EyeOff className='size-3.5' />
-							)}
-						</IconButton>
-						<IconButton
-							label={`Delete ${page.name}`}
-							onClick={() => {
-								store.removePage(page.id)
-								router.push(pagesBase)
-							}}
-							className='text-slate-500 hover:text-destructive'>
-							<Trash2 className='size-3.5' />
-						</IconButton>
 						<button
 							type='button'
+							aria-label='Add a section'
+							title='Add a section'
 							onClick={() => setPickerOpen(true)}
 							className='ml-1 flex shrink-0 items-center gap-1 rounded-md bg-brand/15 px-2 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand/25'>
-							<Plus className='size-3.5' /> Add
+							<Plus className='size-3.5' />
 						</button>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<button
+									type='button'
+									aria-label={`${page.name} page actions`}
+									className='flex size-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-white/5 hover:text-white data-[state=open]:bg-white/5 data-[state=open]:text-white'>
+									<MoreVertical className='size-3.5' />
+								</button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align='end' className='w-44'>
+								<DropdownMenuItem onSelect={() => setEditOpen(true)}>
+									<Pencil className='size-3.5' /> Edit page
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									onSelect={() => setDeleteOpen(true)}
+									className='text-destructive focus:text-destructive'>
+									<Trash2 className='size-3.5' /> Delete page
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
 
 					<ScrollArea className='min-h-0 flex-1'>
@@ -304,16 +305,42 @@ export function PagesNav({
 			</div>
 
 			<AddPageDialog
+				usesCustomMenu={store.chrome.menu.length > 0}
 				open={addOpen}
 				onOpenChange={setAddOpen}
 				templates={templates}
 				isHome={store.pages.length === 0}
-				onCreate={({ name, slug, templateSlug, inHeader }) => {
-					const template = templates.find((t) => t.slug === templateSlug)
-					const id = store.addPage(name, slug, template?.blocks ?? [], inHeader)
+				onCreate={({ name, slug, blocks, inHeader }) => {
+					const id = store.addPage(name, slug, blocks, inHeader)
 					router.push(`${pagesBase}/${id}`)
 				}}
 			/>
+
+			{page && (
+				<EditPageDialog
+					open={editOpen}
+					onOpenChange={setEditOpen}
+					page={page}
+					usesCustomMenu={store.chrome.menu.length > 0}
+					onSave={(patch) => store.renamePage(page.id, patch)}
+				/>
+			)}
+
+			{page && (
+				<ConfirmDeleteDialog
+					open={deleteOpen}
+					onOpenChange={setDeleteOpen}
+					title={`Delete "${page.name}"?`}
+					description='The page and every section on it are removed. Saving afterwards makes it permanent.'
+					actionLabel='Delete page'
+					onConfirm={async () => {
+						store.removePage(page.id)
+						setDeleteOpen(false)
+						router.push(pagesBase)
+						return null
+					}}
+				/>
+			)}
 
 			<SectionPicker
 				open={pickerOpen}
@@ -389,31 +416,6 @@ function Field({
 			</span>
 			<div className='mt-1.5'>{children}</div>
 		</div>
-	)
-}
-
-function IconButton({
-	label,
-	onClick,
-	className,
-	children,
-}: {
-	label: string
-	onClick: () => void
-	className?: string
-	children: React.ReactNode
-}) {
-	return (
-		<button
-			type='button'
-			onClick={onClick}
-			aria-label={label}
-			className={cn(
-				'flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-white/5',
-				className,
-			)}>
-			{children}
-		</button>
 	)
 }
 

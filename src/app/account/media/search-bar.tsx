@@ -44,6 +44,8 @@ import {
 	X,
 	type LucideIcon,
 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
 	DropdownMenu,
@@ -919,9 +921,6 @@ const KIND_ICONS: Record<SearchOptionKind, LucideIcon> = {
 	recent: History,
 }
 
-const focusRing =
-	'focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none'
-
 function OptionRow({ option, active }: { option: SearchOption; active: boolean }) {
 	const Icon = option.icon ? ICONS[option.icon] : KIND_ICONS[option.kind]
 	const swatch = safeSwatch(option.swatch)
@@ -1081,41 +1080,44 @@ export function ChipPill({
 }) {
 	const label = chipLabel(chip)
 	return (
-		<li
-			data-slot='search-chip'
-			data-kind={chip.kind}
-			data-negated={chip.negated || undefined}
+		<Badge
+			asChild
+			variant='outline'
 			className={cn(
-				'inline-flex max-w-full items-center gap-1 rounded-full border py-0.5 pl-2.5 pr-0.5 text-xs',
+				'max-w-full justify-start gap-1 overflow-visible rounded-full py-0.5 pl-2.5 pr-0.5 text-xs font-normal',
 				chip.negated
 					? 'border-dashed border-rose-400/40 bg-rose-400/10 text-rose-200'
 					: chip.kind === 'filter'
 						? 'border-brand/30 bg-brand/10 text-brand'
 						: 'border-white/10 bg-white/5 text-slate-200',
 			)}>
-			{chip.negated && (
-				<>
-					<span className='text-[10px] font-semibold uppercase tracking-wider opacity-80'>
-						not
-					</span>
-					{/* Flex items draw no space between them; assistive tech and copy-paste need one. */}
-					{' '}
-				</>
-			)}
-			<span title={label} className='min-w-0 max-w-[16rem] truncate'>
-				{label}
-			</span>
-			<button
-				type='button'
-				aria-label={`Remove ${chip.negated ? 'not ' : ''}${label}`}
-				onClick={(event) => onRemove(chip, event)}
-				className={cn(
-					'grid size-6 shrink-0 cursor-pointer place-items-center rounded-full transition-colors hover:bg-white/15 motion-reduce:transition-none',
-					focusRing,
-				)}>
-				<X aria-hidden className='size-3' />
-			</button>
-		</li>
+			<li
+				data-slot='search-chip'
+				data-kind={chip.kind}
+				data-negated={chip.negated || undefined}>
+				{chip.negated && (
+					<>
+						<span className='text-[10px] font-semibold uppercase tracking-wider opacity-80'>
+							not
+						</span>
+						{/* Flex items draw no space between them; assistive tech and copy-paste need one. */}
+						{' '}
+					</>
+				)}
+				<span title={label} className='min-w-0 max-w-[16rem] truncate'>
+					{label}
+				</span>
+				<Button
+					type='button'
+					variant='ghost'
+					size='icon-xs'
+					aria-label={`Remove ${chip.negated ? 'not ' : ''}${label}`}
+					onClick={(event) => onRemove(chip, event)}
+					className='cursor-pointer rounded-full text-current transition-colors hover:bg-white/15 hover:text-current motion-reduce:transition-none'>
+					<X aria-hidden className='size-3' />
+				</Button>
+			</li>
+		</Badge>
 	)
 }
 
@@ -1129,54 +1131,56 @@ export function ScopePill({
 	onClear(event: MouseEvent<HTMLButtonElement>): void
 }) {
 	return (
-		<li
-			data-slot='search-scope'
-			className='inline-flex max-w-full items-center rounded-full border border-white/10 bg-white/5 text-xs text-slate-200'>
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					aria-label={`Search scope: ${scopeText(scope)}`}
-					className={cn(
-						'inline-flex min-h-6 min-w-0 cursor-pointer items-center gap-1 rounded-l-full py-1 pl-2.5 pr-1.5 transition-colors hover:bg-white/5 motion-reduce:transition-none',
-						focusRing,
-					)}>
-					<span className='min-w-0 max-w-[18rem] truncate'>
-						{scopeText(scope)}
-					</span>
-					<ChevronDown aria-hidden className='size-3 shrink-0 text-slate-500' />
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align='start' className='w-60'>
-					<DropdownMenuRadioGroup
-						value={scope.deep ? 'deep' : 'only'}
-						onValueChange={(next) => {
-							if ((next === 'deep') !== scope.deep) onToggleDeep()
-						}}>
-						<DropdownMenuRadioItem value='deep'>
-							This folder and its subfolders
-						</DropdownMenuRadioItem>
-						<DropdownMenuRadioItem value='only'>
-							This folder only
-						</DropdownMenuRadioItem>
-					</DropdownMenuRadioGroup>
-				</DropdownMenuContent>
-			</DropdownMenu>
-			<button
-				type='button'
-				aria-label='Search everywhere'
-				onClick={onClear}
-				className={cn(
-					'mr-0.5 grid size-6 shrink-0 cursor-pointer place-items-center rounded-full transition-colors hover:bg-white/15 motion-reduce:transition-none',
-					focusRing,
-				)}>
-				<X aria-hidden className='size-3' />
-			</button>
-		</li>
+		<Badge
+			asChild
+			variant='outline'
+			className='max-w-full justify-start gap-0 overflow-visible rounded-full border-white/10 bg-white/5 p-0 text-xs font-normal text-slate-200'>
+			<li data-slot='search-scope'>
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							type='button'
+							variant='ghost'
+							size='xs'
+							aria-label={`Search scope: ${scopeText(scope)}`}
+							className='min-h-6 min-w-0 shrink cursor-pointer gap-1 rounded-l-full rounded-r-none py-1 pl-2.5 pr-1.5 font-normal text-slate-200 transition-colors hover:bg-white/5 hover:text-slate-200 motion-reduce:transition-none'>
+							<span className='min-w-0 max-w-[18rem] truncate'>
+								{scopeText(scope)}
+							</span>
+							<ChevronDown aria-hidden className='size-3 shrink-0 text-slate-500' />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align='start' className='w-60'>
+						<DropdownMenuRadioGroup
+							value={scope.deep ? 'deep' : 'only'}
+							onValueChange={(next) => {
+								if ((next === 'deep') !== scope.deep) onToggleDeep()
+							}}>
+							<DropdownMenuRadioItem value='deep'>
+								This folder and its subfolders
+							</DropdownMenuRadioItem>
+							<DropdownMenuRadioItem value='only'>
+								This folder only
+							</DropdownMenuRadioItem>
+						</DropdownMenuRadioGroup>
+					</DropdownMenuContent>
+				</DropdownMenu>
+				<Button
+					type='button'
+					variant='ghost'
+					size='icon-xs'
+					aria-label='Search everywhere'
+					onClick={onClear}
+					className='mr-0.5 cursor-pointer rounded-full text-current transition-colors hover:bg-white/15 hover:text-current motion-reduce:transition-none'>
+					<X aria-hidden className='size-3' />
+				</Button>
+			</li>
+		</Badge>
 	)
 }
 
-const noteLink = cn(
-	'cursor-pointer rounded text-brand underline-offset-2 hover:underline',
-	focusRing,
-)
+const noteLink =
+	'h-auto cursor-pointer p-0 align-baseline text-xs font-normal whitespace-normal text-brand underline-offset-2'
 
 const Em = ({ children }: { children: ReactNode }) => (
 	<span className='font-medium text-slate-200'>{children}</span>
@@ -1199,19 +1203,23 @@ export function SearchNotes({
 	return (
 		<div id={id} data-slot='search-notes'>
 			{shown.length > 0 && (
-				<div
+				// Not a live region: the box is described by these notes, so they are heard with it.
+				<Alert
+					role={undefined}
 					data-slot='search-warnings'
-					className='mt-2 flex items-start gap-2 rounded-lg border border-amber-400/25 bg-amber-400/8 px-3 py-2 text-xs leading-5 text-amber-200'>
-					<TriangleAlert aria-hidden className='mt-0.5 size-3.5 shrink-0' />
-					<ul className='min-w-0 space-y-0.5 wrap-break-word'>
-						{shown.map((warning, index) => (
-							<li key={`${index}:${warning}`}>{warning}</li>
-						))}
-						{warnings.length > shown.length && (
-							<li>{`and ${warnings.length - shown.length} more`}</li>
-						)}
-					</ul>
-				</div>
+					className='mt-2 border-amber-400/25 bg-amber-400/8 px-3 py-2 text-xs leading-5 text-amber-200'>
+					<TriangleAlert aria-hidden />
+					<AlertDescription className='text-xs leading-5 text-amber-200'>
+						<ul className='min-w-0 space-y-0.5 wrap-break-word'>
+							{shown.map((warning, index) => (
+								<li key={`${index}:${warning}`}>{warning}</li>
+							))}
+							{warnings.length > shown.length && (
+								<li>{`and ${warnings.length - shown.length} more`}</li>
+							)}
+						</ul>
+					</AlertDescription>
+				</Alert>
 			)}
 			{correction && (
 				<p
@@ -1223,12 +1231,13 @@ export function SearchNotes({
 					{correction.escape !== null && (
 						<>
 							{' '}
-							<button
+							<Button
 								type='button'
+								variant='link'
 								onClick={() => onRun(correction.escape as string)}
 								className={noteLink}>
 								{`Search instead for ${naturalList(correction.originals, 'and')}`}
-							</button>
+							</Button>
 						</>
 					)}
 				</p>
@@ -1245,27 +1254,29 @@ export function SearchNotes({
 					{dropped.require !== null && (
 						<>
 							{' '}
-							<button
+							<Button
 								type='button'
+								variant='link'
 								onClick={() => onRun(dropped.require as string)}
 								className={noteLink}>
 								{dropped.missing.length === 1
 									? `Must include ${dropped.missing[0]}`
 									: 'Must include these words'}
-							</button>
+							</Button>
 						</>
 					)}
 					{dropped.remove !== null && (
 						<>
 							{' '}
-							<button
+							<Button
 								type='button'
+								variant='link'
 								onClick={() => onRun(dropped.remove as string)}
 								className={noteLink}>
 								{dropped.missing.length === 1
 									? `Remove ${dropped.missing[0]}`
 									: 'Remove these words'}
-							</button>
+							</Button>
 						</>
 					)}
 				</p>
@@ -1347,12 +1358,12 @@ export function SaveSearch({ onSave }: { onSave(name: string): Promise<void> }) 
 							Saves what you are searching for and the folder you are in.
 						</p>
 						{error && (
-							<p
+							<Alert
 								id={`${fieldId}-error`}
-								role='alert'
-								className='text-xs text-destructive'>
-								{error}
-							</p>
+								variant='destructive'
+								className='border-destructive/40 bg-transparent px-3 py-2'>
+								<AlertDescription className='text-xs'>{error}</AlertDescription>
+							</Alert>
 						)}
 					</div>
 					<div className='flex justify-end gap-2'>
@@ -1728,18 +1739,17 @@ export function SearchBar(props: SearchBarProps) {
 						/>
 					)}
 					{value !== '' && (
-						<button
+						<Button
 							type='button'
+							variant='ghost'
+							size='icon-sm'
 							aria-label='Clear search'
 							// Keep focus (and the on-screen keyboard) in the box.
 							onMouseDown={(event) => event.preventDefault()}
 							onClick={clearText}
-							className={cn(
-								'grid size-7 cursor-pointer place-items-center rounded-md text-slate-500 transition-colors hover:bg-white/10 hover:text-white motion-reduce:transition-none',
-								focusRing,
-							)}>
+							className='size-7 cursor-pointer text-slate-500 transition-colors hover:bg-white/10 hover:text-white motion-reduce:transition-none'>
 							<X aria-hidden className='size-4' />
-						</button>
+						</Button>
 					)}
 					{value === '' && !focused && (
 						<kbd

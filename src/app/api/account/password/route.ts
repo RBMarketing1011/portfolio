@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
-import { hash, verify } from '@node-rs/argon2'
+import { hash } from '@node-rs/argon2'
 import { z } from 'zod'
 import { errorResponse, requireUserId } from '@/lib/auth/guards'
 import { getDb } from '@/lib/mongo'
@@ -8,7 +8,6 @@ import { getDb } from '@/lib/mongo'
 export const runtime = 'nodejs'
 
 const schema = z.object({
-	current: z.string().max(200).optional().default(''),
 	next: z.string().min(10).max(200),
 })
 
@@ -28,16 +27,8 @@ export async function POST(request: Request) {
 		if (!user)
 			return NextResponse.json({ error: 'Not found.' }, { status: 404 })
 
-		// Someone who signed up by magic link has no password yet, so there is
-		// nothing to prove. Anyone who does have one must prove it.
-		if (user.passwordHash) {
-			if (!(await verify(user.passwordHash, parsed.data.current)))
-				return NextResponse.json(
-					{ error: 'That current password is not right.' },
-					{ status: 403 },
-				)
-		}
-
+		// Being signed in is the proof: whoever has a session for this account may
+		// set its password, whether or not it had one before.
 		await users.updateOne(
 			{ _id: user._id },
 			{

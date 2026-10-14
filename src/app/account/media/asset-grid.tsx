@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Loader2, TriangleAlert } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -134,14 +135,21 @@ export function AssetGrid(props: AssetGridProps) {
 	if (!hasAssets) {
 		if (hasError) {
 			return (
-				<div
+				<Alert
+					variant='destructive'
 					data-slot='grid-error'
-					className='flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-14 text-center'>
-					<TriangleAlert className='size-6 text-destructive' />
-					<p className='text-sm font-medium text-white'>
+					// Not a live region: the panel stands in for the grid, it does not interrupt.
+					role={undefined}
+					className='flex flex-col items-center gap-3 rounded-xl border-destructive/30 bg-destructive/5 px-6 py-14 text-center [&>svg]:size-6 [&>svg]:translate-y-0'>
+					<TriangleAlert />
+					<AlertTitle className='line-clamp-none text-sm font-medium text-white'>
 						Could not load your images.
-					</p>
-					{error ? <p className='text-sm text-slate-400'>{error}</p> : null}
+					</AlertTitle>
+					{error ? (
+						<AlertDescription className='block text-sm text-slate-400'>
+							{error}
+						</AlertDescription>
+					) : null}
 					<Button
 						type='button'
 						variant='outline'
@@ -150,7 +158,7 @@ export function AssetGrid(props: AssetGridProps) {
 						className='border-white/10 bg-white/3 text-white hover:bg-white/8'>
 						Retry
 					</Button>
-				</div>
+				</Alert>
 			)
 		}
 		return <>{empty}</>
@@ -186,9 +194,11 @@ export function AssetGrid(props: AssetGridProps) {
 			) : null}
 
 			{hasError ? (
-				<div
+				<Alert
+					variant='destructive'
 					data-slot='grid-load-error'
-					className='mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-slate-400'>
+					role={undefined}
+					className='mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-none border-0 bg-transparent p-0 text-sm text-slate-400'>
 					<span>Could not load more.</span>
 					<Button
 						type='button'
@@ -203,7 +213,7 @@ export function AssetGrid(props: AssetGridProps) {
 							{error}
 						</span>
 					) : null}
-				</div>
+				</Alert>
 			) : hasMore ? (
 				<div className='mt-6 flex justify-center'>
 					<Button
