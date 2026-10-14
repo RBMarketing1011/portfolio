@@ -106,6 +106,7 @@ export function StatFigure({
 	label,
 	icon: Icon,
 	iconPosition = 'above',
+	align = 'start',
 	valueClassName,
 	labelClassName,
 	className,
@@ -114,6 +115,8 @@ export function StatFigure({
 	label?: string
 	icon?: LucideIcon
 	iconPosition?: IconPlacement
+	/** `center` puts the icon in the middle too, for centred text. */
+	align?: 'start' | 'center'
 	valueClassName?: string
 	labelClassName?: string
 	className?: string
@@ -135,6 +138,7 @@ export function StatFigure({
 				className={cn(
 					'flex items-start gap-3',
 					iconPosition === 'after' && 'flex-row-reverse text-right',
+					align === 'center' && 'justify-center',
 					className,
 				)}>
 				{glyph}
@@ -148,6 +152,7 @@ export function StatFigure({
 			className={cn(
 				'flex flex-col gap-3',
 				iconPosition === 'below' && 'flex-col-reverse',
+				align === 'center' && 'items-center',
 				className,
 			)}>
 			{glyph}
@@ -264,6 +269,12 @@ export function SectionHeading({
 	)
 }
 
+const STAT_ROW = {
+	1: 'max-w-xs',
+	2: 'max-w-xl sm:grid-cols-2',
+	3: 'max-w-3xl sm:grid-cols-3',
+} as const
+
 export function PageHero({
 	eyebrow = 'Eyebrow Badge',
 	title = 'This is the page hero heading, and it runs about this long',
@@ -330,10 +341,18 @@ export function PageHero({
 				/>
 
 				{figures.length > 0 && (
-					<dl className='mx-auto mt-16 grid max-w-3xl gap-8 border-t border-white/10 pt-10 sm:mx-0 sm:grid-cols-3'>
+					// One column per stat, and only as wide as they need, so one, two or
+					// three stats all sit centred under centred copy.
+					<dl
+						className={cn(
+							'mx-auto mt-16 grid gap-8 border-t border-white/10 pt-10',
+							STAT_ROW[figures.length as 1 | 2 | 3],
+							!centered && 'sm:mx-0',
+						)}>
 						{figures.map((figure, index) => (
 							<StatFigure
 								key={`${figure.label}-${index}`}
+								align={centered ? 'center' : 'start'}
 								value={figure.value}
 								label={figure.label}
 								icon={figure.icon}
