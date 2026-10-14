@@ -34,6 +34,9 @@
  *    remains); only a value made entirely of stopwords is matched as consecutive text.
  *  - A tag prefix (`tag:k*`) is as short as it was written and is not redirected: a prefix
  *    is not a tag's identity.
+ *  - A redirect chain that comes back to a slug it already passed (a cycle, or a self
+ *    redirect) is corrupt: the typed slug is kept and nothing is reported. A chain longer
+ *    than 5 hops stops at the fifth. Both agree with `resolveTag` in tags.ts.
  *  - An automatic tag whose confidence is missing or corrupt reads as the stored minimum
  *    (0.6), so a bad row can never outrank a good one by lying about itself.
  *  - A phrase also needs each of its non-stopword words among the field's index tokens.
@@ -615,14 +618,19 @@ const tagList = (doc: EvaluableDoc): readonly unknown[] => (Array.isArray(doc.ta
 const slugsOf = (doc: EvaluableDoc): string[] =>
 	tagList(doc).map((tag) => (tag && typeof tag === 'object' ? asText((tag as { slug?: unknown }).slug) : ''))
 
-/** `old -> new`, rewritten to the end of the chain: at most MAX_HOPS hops, never around a circle. */
+/**
+ * `old -> new`, rewritten to the end of the chain: at most MAX_HOPS hops. A chain that runs
+ * round in a circle is corrupt data, so it is ignored and the slug stays as typed, which is
+ * what `resolveTag` in tags.ts does: a search never swaps two tags for each other.
+ */
 function followRedirects(slug: string, rules: ReadonlyMap<string, string> | undefined | null): string {
 	if (!rules || typeof rules.get !== 'function') return slug
 	let current = slug
 	const seen = new Set([slug])
 	for (let hop = 0; hop < MAX_HOPS; hop++) {
 		const next = rules.get(current)
-		if (typeof next !== 'string' || next === '' || seen.has(next)) break
+		if (typeof next !== 'string' || next === '') break
+		if (seen.has(next)) return slug
 		seen.add(next)
 		current = next
 	}

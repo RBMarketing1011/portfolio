@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Trash2 } from 'lucide-react'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,10 +27,10 @@ export function AccountSettings({
 }) {
 	const router = useRouter()
 	const [value, setValue] = useState(name)
-	const [busy, setBusy] = useState<'name' | 'delete' | null>(null)
+	const [busy, setBusy] = useState<'name' | null>(null)
+	const [deleting, setDeleting] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [saved, setSaved] = useState(false)
-	const [confirmation, setConfirmation] = useState('')
 
 	const rename = async (event: React.FormEvent) => {
 		event.preventDefault()
@@ -51,22 +52,21 @@ export function AccountSettings({
 		router.refresh()
 	}
 
-	const remove = async () => {
-		setBusy('delete')
-		setError(null)
+	/** Returns an error to show in the dialog, or null once the account is gone. */
+	const remove = async (): Promise<string | null> => {
 		const response = await fetch('/api/account/settings', {
 			method: 'DELETE',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ confirm: confirmation }),
+			body: JSON.stringify({ confirm: name }),
 		})
-		setBusy(null)
 		if (!response.ok) {
 			const body = await response.json().catch(() => ({}))
-			setError(body.error ?? 'That account could not be deleted.')
-			return
+			return body.error ?? 'That account could not be deleted.'
 		}
+		setDeleting(false)
 		router.push('/account')
 		router.refresh()
+		return null
 	}
 
 	return (
@@ -159,30 +159,21 @@ export function AccountSettings({
 						Every project, page, image and invitation goes with it, for everyone
 						on it. This cannot be undone.
 					</p>
-					<div className='mt-4 space-y-3'>
-						<div className='space-y-2'>
-							<Label htmlFor='confirm-delete'>
-								Type <span className='text-white'>{name}</span> to confirm
-							</Label>
-							<Input
-								id='confirm-delete'
-								value={confirmation}
-								onChange={(event) => setConfirmation(event.target.value)}
-							/>
-						</div>
-						<Button
-							variant='outline'
-							onClick={remove}
-							disabled={busy !== null || confirmation !== name}
-							className='border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10'>
-							{busy === 'delete' ? (
-								<Loader2 className='animate-spin' />
-							) : (
-								<Trash2 />
-							)}
-							Delete account
-						</Button>
-					</div>
+					<Button
+						variant='destructive'
+						onClick={() => setDeleting(true)}
+						className='mt-4'>
+						<Trash2 /> Delete account
+					</Button>
+					<ConfirmDeleteDialog
+						open={deleting}
+						onOpenChange={setDeleting}
+						title='Delete this account?'
+						description='Every project, page, image and invitation goes with it, for everyone on it. This cannot be undone.'
+						confirmText={name}
+						actionLabel='Delete account'
+						onConfirm={remove}
+					/>
 				</section>
 			)}
 		</div>

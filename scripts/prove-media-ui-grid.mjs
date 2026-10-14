@@ -835,10 +835,10 @@ await check('grid: animated and transparent icons appear only when true, with a 
 	assert(label.includes('animated') && label.includes('transparent'), label)
 })
 
-await check('grid: folder path line only when showFolderPath, Unfiled at the root', () => {
+await check('grid: folder path line only when showFolderPath, No folder at the root', () => {
 	const on = parseHtml(renderGrid({ assets: [asset(1), asset(2, { folderPath: '' })], showFolderPath: true }))
 	const lines = findAllNodes(on, (n) => n.attrs['data-slot'] === 'folder-path').map(textOf)
-	eq(lines, ['Clients/Acme', 'Unfiled'])
+	eq(lines, ['Clients/Acme', 'No folder'])
 	const off = renderGrid({ assets: [asset(1)], showFolderPath: false })
 	assert(!off.includes('folder-path') && !off.includes('Clients/Acme'))
 })

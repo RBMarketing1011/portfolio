@@ -302,9 +302,9 @@ export const AssetCard = memo(function AssetCard({
 						{showFolderPath ? (
 							<span
 								data-slot='folder-path'
-								title={asset.folderPath || 'Unfiled'}
+								title={asset.folderPath || 'No folder'}
 								className='block truncate text-xs text-slate-500'>
-								{asset.folderPath || 'Unfiled'}
+								{asset.folderPath || 'No folder'}
 							</span>
 						) : null}
 						{matchFields.length > 0 ? (

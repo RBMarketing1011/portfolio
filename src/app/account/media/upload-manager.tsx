@@ -348,7 +348,7 @@ export const assetLabel = (asset: Pick<MediaAssetDTO, 'name'>) =>
 export function duplicateLocation(asset: Pick<MediaAssetDTO, 'name' | 'folderPath'>) {
 	const name = assetLabel(asset)
 	const path = cleanText(asset.folderPath).replace(/^\/+|\/+$/g, '')
-	return path ? `${path}/${name}` : `${name} in Unfiled`
+	return path ? `${path}/${name}` : `${name} in All media`
 }
 
 function readRegistered(status: number, body: unknown): MediaRegisterResponse | null {

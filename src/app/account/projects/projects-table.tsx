@@ -3,8 +3,25 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Loader2, Plus } from 'lucide-react'
+import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { Button } from '@/components/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { SITE_KEY } from '@/lib/builder/site-ids'
 import { ClaimLocalSite } from './claim-local-site'
 
@@ -20,36 +37,65 @@ export type ProjectRow = {
 export function ProjectsTable({
 	initial,
 	canCreate,
+	canDelete = false,
 }: {
 	initial: ProjectRow[]
 	canCreate: boolean
+	canDelete?: boolean
 }) {
 	const router = useRouter()
 	const [rows, setRows] = useState(initial)
+	const [creating, setCreating] = useState(false)
+	const [name, setName] = useState('')
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState<string | null>(null)
+	const [deleting, setDeleting] = useState<ProjectRow | null>(null)
 
 	useEffect(() => setRows(initial), [initial])
 
-	const create = async () => {
+	const openCreate = () => {
+		setName('')
+		setError(null)
+		setCreating(true)
+	}
+
+	// Nothing is built until this is submitted, so cancelling costs nothing.
+	const create = async (event: React.FormEvent) => {
+		event.preventDefault()
 		setBusy(true)
 		setError(null)
 		const response = await fetch('/api/sites', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				name: 'Untitled project',
+				name: name.trim(),
 				site: { version: 1, pages: [] },
 			}),
 		})
-		setBusy(false)
 		if (!response.ok) {
+			setBusy(false)
 			const body = await response.json().catch(() => ({}))
 			setError(body.error ?? 'Could not create that project.')
 			return
 		}
 		const { site } = await response.json()
 		router.push(`/account/projects/${site.id}`)
+	}
+
+	/** Returns an error to show in the dialog, or null once the project is gone. */
+	const remove = async (): Promise<string | null> => {
+		if (!deleting) return null
+		const response = await fetch(`/api/sites/${deleting.id}`, {
+			method: 'DELETE',
+		})
+		if (!response.ok) {
+			const body = await response.json().catch(() => ({}))
+			return body.error ?? 'Could not delete that project.'
+		}
+		setRows((current) => current.filter((row) => row.id !== deleting.id))
+		setDeleting(null)
+		router.refresh()
+		return null
 	}
 
 	return (
@@ -65,15 +111,12 @@ export function ProjectsTable({
 				</div>
 				{canCreate && (
 					<Button
-						onClick={create}
-						disabled={busy}
+						onClick={openCreate}
 						className='bg-brand font-bold text-ink hover:bg-brand-strong'>
-						{busy ? <Loader2 className='animate-spin' /> : <Plus />} New project
+						<Plus /> New project
 					</Button>
 				)}
 			</div>
-
-			{error && <p className='text-sm text-destructive'>{error}</p>}
 
 			{canCreate && (
 				<ClaimLocalSite
@@ -126,11 +169,30 @@ export function ProjectsTable({
 										{new Date(row.updatedAt).toLocaleDateString()}
 									</td>
 									<td className='py-3 text-right'>
-										<Link
-											href={`/builder/sites/${row.id}/pages`}
-											className='rounded-md bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10'>
-											Edit site
-										</Link>
+										<DropdownMenu>
+											<DropdownMenuTrigger asChild>
+												<Button
+													variant='ghost'
+													size='icon'
+													aria-label={`Actions for ${row.name}`}>
+													<MoreHorizontal />
+												</Button>
+											</DropdownMenuTrigger>
+											<DropdownMenuContent align='end'>
+												<DropdownMenuItem asChild>
+													<Link href={`/builder/sites/${row.id}/pages`}>
+														<Pencil /> Edit site
+													</Link>
+												</DropdownMenuItem>
+												{canDelete && (
+													<DropdownMenuItem
+														variant='destructive'
+														onSelect={() => setDeleting(row)}>
+														<Trash2 /> Delete site
+													</DropdownMenuItem>
+												)}
+											</DropdownMenuContent>
+										</DropdownMenu>
 									</td>
 								</tr>
 							))}
@@ -138,6 +200,55 @@ export function ProjectsTable({
 					</table>
 				</div>
 			)}
+
+			<Dialog open={creating} onOpenChange={(open) => !busy && setCreating(open)}>
+				<DialogContent>
+					<form onSubmit={create} className='space-y-4'>
+						<DialogHeader>
+							<DialogTitle>New project</DialogTitle>
+							<DialogDescription>
+								A project holds one website: its pages, images, and settings.
+							</DialogDescription>
+						</DialogHeader>
+						<div className='space-y-2'>
+							<Label htmlFor='project-name'>Project name</Label>
+							<Input
+								id='project-name'
+								autoFocus
+								required
+								maxLength={120}
+								value={name}
+								onChange={(event) => setName(event.target.value)}
+							/>
+						</div>
+						{error && <p className='text-sm text-destructive'>{error}</p>}
+						<DialogFooter>
+							<Button
+								type='button'
+								variant='outline'
+								disabled={busy}
+								onClick={() => setCreating(false)}>
+								Cancel
+							</Button>
+							<Button
+								type='submit'
+								disabled={busy || !name.trim()}
+								className='bg-brand font-bold text-ink hover:bg-brand-strong'>
+								{busy && <Loader2 className='animate-spin' />} Create project
+							</Button>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+
+			<ConfirmDeleteDialog
+				open={deleting !== null}
+				onOpenChange={(open) => !open && setDeleting(null)}
+				title={`Delete "${deleting?.name ?? ''}"?`}
+				description='Its pages, images and settings are deleted for everyone on this account. This cannot be undone.'
+				actionLabel='Delete site'
+				onConfirm={remove}
+			/>
 		</div>
 	)
 }

@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { loadTemplates } from '@/lib/builder/load-templates'
 import { SidebarProvider } from '@/components/ui/sidebar'
@@ -16,6 +17,10 @@ export default async function SectionsLayout({
 }: {
 	children: React.ReactNode
 }) {
+	// The builder is not public: it is for invited people, who always have a login.
+	const session = await auth()
+	if (!session?.user?.id) redirect('/sign-in?next=/builder')
+
 	const navGroups = library.map((group) => ({
 		id: group.id,
 		label: group.label,
@@ -31,7 +36,6 @@ export default async function SectionsLayout({
 	const templates = await loadTemplates()
 	// Resolved here rather than with useSession: the nav renders during SSR, where
 	// a client provider higher up the tree is not something it can rely on.
-	const session = await auth()
 	const signedIn = Boolean(session?.user?.id)
 	const email = session?.user?.email ?? null
 

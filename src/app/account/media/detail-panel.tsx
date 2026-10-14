@@ -249,7 +249,7 @@ export function folderChoices(
 	folders: readonly MediaFolderDTO[] | null | undefined,
 	current?: { folderId: string | null; folderPath: string },
 ): FolderChoice[] {
-	const out: FolderChoice[] = [{ value: UNFILED, label: 'Unfiled', path: '', depth: 0 }]
+	const out: FolderChoice[] = [{ value: UNFILED, label: 'No folder', path: '', depth: 0 }]
 	const seen = new Set<string>([UNFILED])
 	for (const folder of Array.isArray(folders) ? folders : []) {
 		if (!folder || typeof folder.id !== 'string' || !folder.id || seen.has(folder.id))
@@ -1507,8 +1507,8 @@ export function DetailPanelBody({
 						<ReadOnlyBlock label='Name' value={str(asset.name)} empty='Untitled' />
 						<ReadOnlyBlock
 							label='Folder'
-							value={folderPath || 'Unfiled'}
-							empty='Unfiled'
+							value={folderPath || 'No folder'}
+							empty='No folder'
 							action={
 								folderPath
 									? {

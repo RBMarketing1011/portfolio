@@ -654,7 +654,8 @@ export async function updateAsset(
 /* -------------------------------------------------------------------------- */
 
 /**
- * Moves many. The target folder must exist in the workspace (400) or be null. Folder is
+ * Moves many. The target folder must exist in the workspace (400) or be an explicit null,
+ * the root (a missing target is a 400, not the root). Folder is
  * not derived or user-edited text, so this is a plain `updateMany` (in slices of
  * MEDIA_LIMITS.bulkIdsCap) scoped by `{ workspaceId, _id: { $in } }`. Returns how many changed:
  * an image already in the folder is not one of them.
@@ -666,12 +667,15 @@ export async function moveAssets(
 	folderId: ObjectId | null,
 ): Promise<number> {
 	if (!isId(workspaceId)) return 0
-	const target = readFolderId(folderId)
+	// `null` is the root and has to be said. A missing target is a caller's mistake, and
+	// must not quietly unfile everything it was given.
+	const target = folderId === undefined ? undefined : readFolderId(folderId)
 	if (target === undefined) throw new AssetError(NO_FOLDER, 400)
-	const unique = uniqueIds(ids)
-	if (unique.length === 0) return 0
+	// Whatever is being moved, the folder it goes to must be real.
 	if (target && !(await folderExists(db, workspaceId, target)))
 		throw new AssetError(NO_FOLDER, 400)
+	const unique = uniqueIds(ids)
+	if (unique.length === 0) return 0
 
 	const assets = assetsOf(db)
 	let moved = 0

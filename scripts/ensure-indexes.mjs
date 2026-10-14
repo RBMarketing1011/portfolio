@@ -53,6 +53,14 @@ await db
 	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
 await db
+	.collection('platformInvites')
+	.createIndex({ tokenHash: 1 }, { unique: true })
+await db.collection('platformInvites').createIndex({ email: 1 })
+await db
+	.collection('platformInvites')
+	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
+await db
 	.collection('sessions')
 	.createIndex({ sessionToken: 1 }, { unique: true })
 await db

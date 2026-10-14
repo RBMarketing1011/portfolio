@@ -100,12 +100,14 @@ import {
 	decideKeyAction,
 	DELETE_WARNING,
 	effectiveDeep,
+	emptySelection,
 	isEmptySelection,
 	joinWords,
 	scopeOf,
 	selectBreadcrumb,
 	selectBulkCount,
 	selectBulkExisting,
+	selectBulkScope,
 	selectDestination,
 	selectEmptyKind,
 	selectMoveCurrent,
@@ -114,6 +116,7 @@ import {
 	selectScopeText,
 	selectSubfolders,
 	useMediaLibrary,
+	type BulkScope,
 	type KeyContext,
 	type LibraryActions,
 	type LibraryController,
@@ -121,6 +124,39 @@ import {
 } from './use-media-library'
 
 type DialogKind = 'move' | 'tag' | 'delete' | 'retag' | 'tags' | 'folder' | null
+
+/**
+ * What a bulk dialog is about, as of the moment it opens: what it says, and the very selection
+ * its action will run on. A dialog that said "Delete 12 images" must delete those 12 even if a
+ * background reload moved the selection while it was up, and a successful action clears the
+ * selection while its dialog is still fading out, when a title reading "Delete 0 images?" would
+ * misreport what the person just confirmed.
+ */
+type BulkSnapshot = {
+	count: number
+	/** The scope in words ("all 312 images matching tag:kitchen in Clients/Acme"). */
+	words: string
+	existing: { slug: string; label: string; count: number }[]
+	current: string | null | undefined
+	/** What the action runs on. */
+	scope: BulkScope
+}
+
+const NO_SNAPSHOT: BulkSnapshot = {
+	count: 0,
+	words: '',
+	existing: [],
+	current: undefined,
+	scope: { selection: emptySelection, key: { q: '' }, total: 0 },
+}
+
+const takeSnapshot = (state: LibraryState): BulkSnapshot => ({
+	count: selectBulkCount(state),
+	words: selectScopeText(state),
+	existing: selectBulkExisting(state),
+	current: selectMoveCurrent(state),
+	scope: selectBulkScope(state),
+})
 
 /** The page's props, plus a seam for the proof: a controller to render instead of making one. */
 type LibraryProps = MediaLibraryProps & { controller?: LibraryController }
@@ -684,7 +720,18 @@ function Library(props: LibraryProps) {
 	const uploadRef = useRef<UploadManagerHandle>(null)
 	const [railOpen, setRailOpen] = useState(false)
 	const [dialog, setDialog] = useState<DialogKind>(null)
+	const [taken, setTaken] = useState<BulkSnapshot>(NO_SNAPSHOT)
 	const closeDialog = () => setDialog(null)
+	const openDialog = (kind: Exclude<DialogKind, null>) => {
+		if (kind === 'move' || kind === 'tag' || kind === 'delete' || kind === 'retag')
+			setTaken(takeSnapshot(state))
+		setDialog(kind)
+	}
+	// The keyboard listener is made once; it opens dialogs through the latest of these.
+	const openRef = useRef(openDialog)
+	useEffect(() => {
+		openRef.current = openDialog
+	})
 	const openUpload = () => uploadRef.current?.openPicker()
 
 	const openAsset = selectOpenAsset(state)
@@ -695,8 +742,6 @@ function Library(props: LibraryProps) {
 	const destination = selectDestination(state)
 	const emptyKind = selectEmptyKind(state)
 	const subfolders = selectSubfolders(state)
-	const bulkCount = selectBulkCount(state)
-	const scopeText = dialog === 'delete' || dialog === 'retag' || dialog === 'move' ? selectScopeText(state) : ''
 	const loadedIds = useMemo(() => state.assets.map((asset) => asset.id), [state.assets])
 	const allSelected =
 		loadedIds.length > 0 &&
@@ -744,7 +789,7 @@ function Library(props: LibraryProps) {
 			} else if (action === 'close-detail') actions.closeDetail()
 			else if (action === 'clear-selection') actions.clearSelection()
 			else if (action === 'select-all') actions.selectEveryLoaded()
-			else if (action === 'delete') setDialog('delete')
+			else if (action === 'delete') openRef.current('delete')
 		}
 		document.addEventListener('keydown', onKeyDown)
 		return () => document.removeEventListener('keydown', onKeyDown)
@@ -789,18 +834,29 @@ function Library(props: LibraryProps) {
 						{pluralize(state.folders.total, 'image')} · {formatBytes(state.folders.bytes)}
 					</p>
 				</div>
-				<div className='min-w-0 flex-1 basis-64 empty:hidden'>
-					<AiStatusBanner
-						status={state.tagging}
-						pending={state.pending}
-						working={state.aiWorking}
-						blockedMessage={state.aiBlocked}
-						canWrite={can.write}
-						onTagUntagged={actions.tagUntagged}
-						onRetryFailed={actions.retryFailed}
+				<div className='min-w-0 flex-1 basis-80 sm:max-w-xl'>
+					<SearchBar
+						value={state.draft}
+						chips={state.query.chips}
+						warnings={state.query.warnings}
+						corrections={state.corrections}
+						dropped={state.dropped}
+						loading={state.loading || state.refreshing}
+						scope={scope}
+						recent={state.recent}
+						canSave={can.write && (state.params.q !== '' || state.params.folder !== undefined)}
+						onChange={actions.setDraft}
+						onSubmit={actions.submitDraft}
+						onRemoveChip={actions.removeChip}
+						onClearScope={actions.clearScope}
+						onToggleScopeDeep={actions.toggleDeep}
+						onClearAll={actions.clearAll}
+						fetchSuggestions={actions.fetchSuggestions}
+						onSave={actions.saveSearch}
+						inputRef={searchInputRef}
 					/>
 				</div>
-				<div className='flex flex-wrap items-center gap-2'>
+				<div className='flex flex-wrap items-center gap-2 sm:ml-auto'>
 					{can.write ? (
 						<>
 							<Button
@@ -828,26 +884,17 @@ function Library(props: LibraryProps) {
 				</div>
 			</header>
 
-			<SearchBar
-				value={state.draft}
-				chips={state.query.chips}
-				warnings={state.query.warnings}
-				corrections={state.corrections}
-				dropped={state.dropped}
-				loading={state.loading || state.refreshing}
-				scope={scope}
-				recent={state.recent}
-				canSave={can.write && (state.params.q !== '' || state.params.folder !== undefined)}
-				onChange={actions.setDraft}
-				onSubmit={actions.submitDraft}
-				onRemoveChip={actions.removeChip}
-				onClearScope={actions.clearScope}
-				onToggleScopeDeep={actions.toggleDeep}
-				onClearAll={actions.clearAll}
-				fetchSuggestions={actions.fetchSuggestions}
-				onSave={actions.saveSearch}
-				inputRef={searchInputRef}
-			/>
+			<div className='empty:hidden'>
+				<AiStatusBanner
+					status={state.tagging}
+					pending={state.pending}
+					working={state.aiWorking}
+					blockedMessage={state.aiBlocked}
+					canWrite={can.write}
+					onTagUntagged={actions.tagUntagged}
+					onRetryFailed={actions.retryFailed}
+				/>
+			</div>
 
 			<div className='flex items-start gap-6'>
 				<aside
@@ -932,11 +979,11 @@ function Library(props: LibraryProps) {
 						aiConfigured={state.tagging.configured}
 						onSelectAllMatching={actions.selectAllMatching}
 						onClear={actions.clearSelection}
-						onMove={() => setDialog('move')}
-						onTag={() => setDialog('tag')}
-						onRetag={() => setDialog('retag')}
+						onMove={() => openDialog('move')}
+						onTag={() => openDialog('tag')}
+						onRetag={() => openDialog('retag')}
 						onAcceptTags={() => void actions.bulkAccept()}
-						onDelete={() => setDialog('delete')}
+						onDelete={() => openDialog('delete')}
 					/>
 				</section>
 			</div>
@@ -990,40 +1037,40 @@ function Library(props: LibraryProps) {
 			<MoveDialog
 				open={dialog === 'move'}
 				onOpenChange={(next) => !next && closeDialog()}
-				title={`Move ${pluralize(bulkCount, 'image')}`}
-				description={`Choose where ${scopeText || 'the images you selected'} should go.`}
+				title={`Move ${pluralize(taken.count, 'image')}`}
+				description={`Choose where ${taken.words || 'the images you selected'} should go.`}
 				folders={state.folders.folders}
-				currentId={selectMoveCurrent(state)}
+				currentId={taken.current}
 				confirmLabel='Move here'
-				onConfirm={actions.bulkMove}
+				onConfirm={(folderId) => actions.bulkMove(folderId, taken.scope)}
 			/>
 
 			<BulkTagDialog
 				open={dialog === 'tag'}
 				onOpenChange={(next) => !next && closeDialog()}
-				count={bulkCount}
-				existing={dialog === 'tag' ? selectBulkExisting(state) : []}
+				count={taken.count}
+				existing={taken.existing}
 				fetchSuggestions={actions.fetchTagSuggestions}
-				onSubmit={actions.bulkTags}
+				onSubmit={(change) => actions.bulkTags(change, taken.scope)}
 			/>
 
 			<ConfirmDialog
 				open={dialog === 'delete'}
 				onOpenChange={(next) => !next && closeDialog()}
-				title={`Delete ${pluralize(bulkCount, 'image')}?`}
-				description={`Delete ${scopeText}. ${DELETE_WARNING}`}
+				title={`Delete ${pluralize(taken.count, 'image')}?`}
+				description={`Delete ${taken.words}. ${DELETE_WARNING}`}
 				confirmLabel='Delete images'
 				destructive
-				onConfirm={actions.bulkDelete}
+				onConfirm={() => actions.bulkDelete(taken.scope)}
 			/>
 
 			<ConfirmDialog
 				open={dialog === 'retag'}
 				onOpenChange={(next) => !next && closeDialog()}
-				title={`Auto-tag ${pluralize(bulkCount, 'image')} again?`}
-				description={`Auto-tagging will look at ${scopeText} again and replace their automatic tags. Tags you added or kept stay, and tags you removed are not brought back. This counts against your daily auto-tagging limit.`}
+				title={`Auto-tag ${pluralize(taken.count, 'image')} again?`}
+				description={`Auto-tagging will look at ${taken.words} again and replace their automatic tags. Tags you added or kept stay, and tags you removed are not brought back. This counts against your daily auto-tagging limit.`}
 				confirmLabel='Auto-tag again'
-				onConfirm={actions.bulkRetag}
+				onConfirm={() => actions.bulkRetag(taken.scope)}
 			/>
 
 			<TagManagerDialog
@@ -1053,7 +1100,7 @@ function Library(props: LibraryProps) {
 				className='sr-only'>
 				{state.announcement.text}
 				{/* A repeat of the same words is only heard when the text really changes. */}
-				{state.announcement.id % 2 === 0 ? '​' : ''}
+				{state.announcement.id % 2 === 0 ? '\u200b' : ''}
 			</div>
 		</div>
 	)

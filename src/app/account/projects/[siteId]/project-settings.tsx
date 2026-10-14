@@ -15,6 +15,7 @@ import {
 	RefreshCw,
 	Trash2,
 } from 'lucide-react'
+import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -67,6 +68,9 @@ export function ProjectSettings({
 	const [busy, setBusy] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [saved, setSaved] = useState<string | null>(null)
+	const [dialog, setDialog] = useState<
+		'regenerate' | 'domain' | 'delete' | null
+	>(null)
 
 	const [origin, setOrigin] = useState('')
 
@@ -134,69 +138,48 @@ export function ProjectSettings({
 		router.refresh()
 	}
 
-	const removeDomain = async () => {
-		if (
-			!confirm(
-				`Stop serving this project on ${project.customDomain}? It will answer on its ${appHost} address instead.`,
-			)
-		)
-			return
-		setBusy('remove-domain')
-		setError(null)
+	/** Each dialog action returns an error to show in the dialog, or null once done. */
+	const removeDomain = async (): Promise<string | null> => {
 		const response = await fetch(`/api/sites/${project.id}/settings`, {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ customDomain: null }),
 		})
-		setBusy(null)
 		if (!response.ok) {
 			const payload = await response.json().catch(() => ({}))
-			setError(payload.error ?? 'Could not remove that domain.')
-			return
+			return payload.error ?? 'Could not remove that domain.'
 		}
 		const { site } = await response.json()
 		absorb(site)
 		setPending(null)
+		setDialog(null)
 		router.refresh()
+		return null
 	}
 
-	const regenerate = async () => {
-		if (
-			!confirm(
-				'Anyone you already sent the old link to will lose access. Continue?',
-			)
-		)
-			return
-		setBusy('token')
+	const regenerate = async (): Promise<string | null> => {
 		const response = await fetch(`/api/sites/${project.id}/settings`, {
 			method: 'POST',
 		})
-		setBusy(null)
-		if (!response.ok) return setError('Could not make a new link.')
+		if (!response.ok) return 'Could not make a new link.'
 		const { site } = await response.json()
 		setToken(site.previewToken)
+		setDialog(null)
 		router.refresh()
+		return null
 	}
 
-	const remove = async () => {
-		if (
-			!confirm(
-				`Delete "${project.name}" and everything in it? This cannot be undone.`,
-			)
-		)
-			return
-		setBusy('delete')
+	const remove = async (): Promise<string | null> => {
 		const response = await fetch(`/api/sites/${project.id}`, {
 			method: 'DELETE',
 		})
-		setBusy(null)
 		if (!response.ok) {
 			const payload = await response.json().catch(() => ({}))
-			setError(payload.error ?? 'Could not delete that project.')
-			return
+			return payload.error ?? 'Could not delete that project.'
 		}
 		router.push('/account/projects')
 		router.refresh()
+		return null
 	}
 
 	return (
@@ -231,32 +214,54 @@ export function ProjectSettings({
 				)}
 			</div>
 
-			{error && <p className='text-sm text-destructive'>{error}</p>}
-
-			<section className='rounded-xl border border-white/10 bg-white/3 p-6'>
-				<h2 className='flex items-center gap-2 font-display text-lg font-semibold text-white'>
-					<Link2 className='size-4 text-slate-500' /> Share a preview
-				</h2>
-				<p className='mt-1 text-sm leading-6 text-slate-400'>
-					Works whether or not the project is live, and needs no account. Send
-					it to anyone you want an opinion from.
-				</p>
-				<CopyField value={previewUrl} href={previewPath} />
-				{can.edit && (
-					<button
-						type='button'
-						onClick={regenerate}
-						disabled={busy !== null}
-						className='mt-3 inline-flex items-center gap-1.5 text-xs text-slate-500 transition-colors hover:text-white'>
-						{busy === 'token' ? (
-							<Loader2 className='size-3 animate-spin' />
-						) : (
-							<RefreshCw className='size-3' />
+			<div className='grid items-start gap-6 lg:grid-cols-2'>
+				<section className='rounded-xl border border-white/10 bg-white/3 p-6'>
+					<h2 className='font-display text-lg font-semibold text-white'>
+						Project name
+					</h2>
+					<p className='mt-1 text-sm leading-6 text-slate-400'>
+						How this project is named on your account and in the builder. It does
+						not change the site's address.
+					</p>
+					<div className='mt-4 flex items-center gap-2'>
+						<Input
+							aria-label='Project name'
+							value={name}
+							disabled={!can.edit}
+							onChange={(event) => setName(event.target.value)}
+						/>
+						{can.edit && (
+							<Button
+								onClick={() => patch({ name }, 'name')}
+								disabled={busy !== null || name === project.name}
+								className='shrink-0 bg-brand font-bold text-ink hover:bg-brand-strong'>
+								{busy === 'name' && <Loader2 className='animate-spin' />}
+								Save name
+							</Button>
 						)}
-						Make a new link and kill the old one
-					</button>
-				)}
-			</section>
+					</div>
+					{saved === 'name' && (
+						<p className='mt-2 text-sm text-slate-500'>Saved</p>
+					)}
+				</section>
+				<section className='rounded-xl border border-white/10 bg-white/3 p-6'>
+					<h2 className='flex items-center gap-2 font-display text-lg font-semibold text-white'>
+						<Link2 className='size-4 text-slate-500' /> Share a preview
+					</h2>
+					<p className='mt-1 text-sm leading-6 text-slate-400'>
+						Works whether or not the project is live, and needs no account. Send
+						it to anyone you want an opinion from.
+					</p>
+					<CopyField
+						value={previewUrl}
+						href={previewPath}
+						onRegenerate={can.edit ? () => setDialog('regenerate') : undefined}
+						disabled={busy !== null}
+					/>
+				</section>
+			</div>
+
+			{error && <p className='text-sm text-destructive'>{error}</p>}
 
 			{can.publish && (
 				<section className='space-y-6 rounded-xl border border-white/10 bg-white/3 p-6'>
@@ -444,14 +449,10 @@ export function ProjectSettings({
 							{project.customDomain && (
 								<Button
 									variant='outline'
-									onClick={removeDomain}
+									onClick={() => setDialog('domain')}
 									disabled={busy !== null}
 									className='border-white/15 bg-transparent text-slate-300 hover:bg-white/5'>
-									{busy === 'remove-domain' ? (
-										<Loader2 className='animate-spin' />
-									) : (
-										<Trash2 />
-									)}
+									<Trash2 />
 									Remove
 								</Button>
 							)}
@@ -464,32 +465,6 @@ export function ProjectSettings({
 				</section>
 			)}
 
-			<section className='max-w-xl space-y-3'>
-				<h2 className='font-display text-lg font-semibold text-white'>
-					Project name
-				</h2>
-				<Input
-					aria-label='Project name'
-					value={name}
-					disabled={!can.edit}
-					onChange={(event) => setName(event.target.value)}
-				/>
-				{can.edit && (
-					<div className='flex items-center gap-3'>
-						<Button
-							onClick={() => patch({ name }, 'name')}
-							disabled={busy !== null || name === project.name}
-							className='bg-brand font-bold text-ink hover:bg-brand-strong'>
-							{busy === 'name' && <Loader2 className='animate-spin' />}
-							Save name
-						</Button>
-						{saved === 'name' && (
-							<span className='text-sm text-slate-500'>Saved</span>
-						)}
-					</div>
-				)}
-			</section>
-
 			{can.delete && (
 				<section className='max-w-xl rounded-xl border border-destructive/30 p-6'>
 					<h2 className='font-display text-lg font-semibold text-white'>
@@ -500,18 +475,43 @@ export function ProjectSettings({
 					</p>
 					<Button
 						variant='outline'
-						onClick={remove}
+						onClick={() => setDialog('delete')}
 						disabled={busy !== null}
 						className='mt-4 border-destructive/40 bg-transparent text-destructive hover:bg-destructive/10'>
-						{busy === 'delete' ? (
-							<Loader2 className='animate-spin' />
-						) : (
-							<Trash2 />
-						)}
+						<Trash2 />
 						Delete project
 					</Button>
 				</section>
 			)}
+
+			<ConfirmDeleteDialog
+				open={dialog === 'regenerate'}
+				onOpenChange={(open) => !open && setDialog(null)}
+				title='Make a new preview link?'
+				description='The current link stops working immediately. Anyone you already sent it to will lose access.'
+				actionLabel='Make new link'
+				icon={<RefreshCw />}
+				onConfirm={regenerate}
+			/>
+
+			<ConfirmDeleteDialog
+				open={dialog === 'domain'}
+				onOpenChange={(open) => !open && setDialog(null)}
+				title='Remove this domain?'
+				description={`Stop serving this project on ${project.customDomain}. It will answer on its ${appHost} address instead.`}
+				actionLabel='Remove domain'
+				onConfirm={removeDomain}
+			/>
+
+			<ConfirmDeleteDialog
+				open={dialog === 'delete'}
+				onOpenChange={(open) => !open && setDialog(null)}
+				title='Delete this project?'
+				description={`"${project.name}" and everything in it (its pages and images) will be deleted. This cannot be undone.`}
+				confirmText={project.name}
+				actionLabel='Delete project'
+				onConfirm={remove}
+			/>
 		</div>
 	)
 }
@@ -584,7 +584,18 @@ function CheckRow({
 	)
 }
 
-function CopyField({ value, href }: { value: string; href: string }) {
+function CopyField({
+	value,
+	href,
+	onRegenerate,
+	disabled,
+}: {
+	value: string
+	href: string
+	/** Shown only when the person may replace the link. */
+	onRegenerate?: () => void
+	disabled?: boolean
+}) {
 	const [copied, setCopied] = useState(false)
 
 	return (
@@ -618,6 +629,17 @@ function CopyField({ value, href }: { value: string; href: string }) {
 				className='flex shrink-0 items-center rounded-md bg-white/5 px-3 text-slate-200 transition-colors hover:bg-white/10'>
 				<ExternalLink className='size-3.5' />
 			</a>
+			{onRegenerate && (
+				<button
+					type='button'
+					title='Make a new link and kill the old one'
+					aria-label='Make a new link and kill the old one'
+					onClick={onRegenerate}
+					disabled={disabled}
+					className='flex shrink-0 items-center rounded-md bg-white/5 px-3 text-slate-200 transition-colors hover:bg-white/10 disabled:opacity-50'>
+					<RefreshCw className='size-3.5' />
+				</button>
+			)}
 		</div>
 	)
 }

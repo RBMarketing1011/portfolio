@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -99,167 +100,175 @@ export function TeamManager({
 	if (members === null) return <TeamSkeleton />
 
 	return (
-		<div className='space-y-12'>
-			<div className='flex flex-wrap items-end justify-between gap-4'>
-				<div>
-					<h1 className='font-display text-3xl font-semibold text-white'>
-						Team
-					</h1>
-					<p className='mt-2 leading-7 text-slate-400'>
-						Everyone on this account, and what their role lets them do.
-					</p>
-				</div>
-				{can.invite && (
-					<InviteDialog
-						roles={roles}
-						onInvited={(email) => {
-							setNotice(`Invitation sent to ${email}.`)
-							void refresh()
-						}}
-						onError={setError}
-					/>
-				)}
+		<div className='space-y-8'>
+			<div>
+				<h1 className='font-display text-3xl font-semibold text-white'>
+					Team
+				</h1>
+				<p className='mt-2 leading-7 text-slate-400'>
+					The users on this account, and the roles that decide what they can do.
+				</p>
 			</div>
-
 			{error && <p className='text-sm text-destructive'>{error}</p>}
 			{notice && <p className='text-sm text-brand'>{notice}</p>}
 
-			<section>
-				<h2 className='font-display text-lg font-semibold text-white'>
-					People
-				</h2>
-				<div className='-mx-6 mt-4 overflow-x-auto px-6 sm:mx-0 sm:px-0'>
-					<table className='w-full min-w-[34rem] border-collapse text-sm'>
-						<thead>
-							<tr className='border-b border-white/10 text-left text-xs font-semibold uppercase tracking-widest text-slate-500'>
-								<th className='py-3 pr-4 font-semibold'>Person</th>
-								<th className='py-3 pr-4 font-semibold'>Role</th>
-								<th className='py-3 font-semibold'>
-									<span className='sr-only'>Actions</span>
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{members.map((member) => (
-								<tr key={member.id} className='border-b border-white/5'>
-									<td className='py-3 pr-4'>
-										<span className='text-white'>{member.email}</span>
-										{member.userId === you && (
-											<span className='ml-2 text-xs text-slate-500'>you</span>
-										)}
-									</td>
-									<td className='py-3 pr-4'>
-										{member.isOwner || !can.manage ? (
-											<span className='text-slate-400'>
-												{member.isOwner ? 'Account owner' : member.roleName}
-											</span>
-										) : (
-											<Select
-												value={member.roleId}
-												onValueChange={async (roleId) => {
-													const response = await fetch(
-														`/api/account/team/${member.id}`,
-														{
-															method: 'PATCH',
-															headers: {
-																'Content-Type': 'application/json',
-															},
-															body: JSON.stringify({ roleId }),
-														},
-													)
-													if (!response.ok) {
-														const body = await response.json().catch(() => ({}))
-														setError(
-															body.error ?? 'Could not change that role.',
-														)
-													}
-													void refresh()
-												}}>
-												<SelectTrigger className='h-8 w-44'>
-													<SelectValue />
-												</SelectTrigger>
-												<SelectContent>
-													{roles.map((role) => (
-														<SelectItem key={role.id} value={role.id}>
-															{role.name}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										)}
-									</td>
-									<td className='py-3 text-right'>
-										{can.manage && !member.isOwner && (
-											<ConfirmButton
-												label={`Remove ${member.email}`}
-												title={`Remove ${member.email}?`}
-												description='They lose access to this account immediately. Anything they built stays.'
-												action='Remove'
-												onConfirm={async () => {
-													const response = await fetch(
-														`/api/account/team/${member.id}`,
-														{ method: 'DELETE' },
-													)
-													if (!response.ok) {
-														const body = await response.json().catch(() => ({}))
-														setError(body.error ?? 'Could not remove them.')
-													}
-													await refresh()
-												}}
-											/>
-										)}
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
-			</section>
+			<Tabs defaultValue='users'>
+				<TabsList>
+					<TabsTrigger value='users'>Users ({members.length})</TabsTrigger>
+					<TabsTrigger value='roles'>Roles ({roles.length})</TabsTrigger>
+				</TabsList>
 
-			{invites.length > 0 && (
-				<section>
-					<h2 className='font-display text-lg font-semibold text-white'>
-						Pending invitations
-					</h2>
-					<ul className='mt-4 space-y-2'>
-						{invites.map((invite) => (
-							<li
-								key={invite.id}
-								className='flex items-center gap-3 rounded-lg border border-white/10 bg-white/3 px-4 py-3 text-sm'>
-								<Mail className='size-4 shrink-0 text-slate-500' />
-								<span className='min-w-0 flex-1 truncate text-white'>
-									{invite.email}
-								</span>
-								<span className='shrink-0 text-xs text-slate-500'>
-									{invite.roleName} · expires{' '}
-									{new Date(invite.expiresAt).toLocaleDateString()}
-								</span>
-								{can.invite && (
-									<button
-										type='button'
-										aria-label={`Revoke the invitation for ${invite.email}`}
-										onClick={async () => {
-											await fetch(`/api/account/invites?id=${invite.id}`, {
-												method: 'DELETE',
-											})
-											void refresh()
-										}}
-										className='shrink-0 text-slate-600 transition-colors hover:text-destructive'>
-										<X className='size-4' />
-									</button>
-								)}
-							</li>
-						))}
-					</ul>
-				</section>
+				<TabsContent value='users' className='space-y-8 pt-4'>
+					<div className='flex justify-end'>
+						{can.invite && (
+							<InviteDialog
+								roles={roles}
+								onInvited={(email) => {
+									setNotice(`Invitation sent to ${email}.`)
+									void refresh()
+								}}
+								onError={setError}
+							/>
+						)}
+					</div>
+					<section>
+						<div className='-mx-6 overflow-x-auto px-6 sm:mx-0 sm:px-0'>
+							<table className='w-full min-w-[34rem] border-collapse text-sm'>
+								<thead>
+									<tr className='border-b border-white/10 text-left text-xs font-semibold uppercase tracking-widest text-slate-500'>
+										<th className='py-3 pr-4 font-semibold'>Person</th>
+										<th className='py-3 pr-4 font-semibold'>Role</th>
+										<th className='py-3 font-semibold'>
+											<span className='sr-only'>Actions</span>
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{members.map((member) => (
+										<tr key={member.id} className='border-b border-white/5'>
+											<td className='py-3 pr-4'>
+												<span className='text-white'>{member.email}</span>
+												{member.userId === you && (
+													<span className='ml-2 text-xs text-slate-500'>you</span>
+												)}
+											</td>
+											<td className='py-3 pr-4'>
+												{member.isOwner || !can.manage ? (
+													<span className='text-slate-400'>
+														{member.isOwner ? 'Account owner' : member.roleName}
+													</span>
+												) : (
+													<Select
+														value={member.roleId}
+														onValueChange={async (roleId) => {
+															const response = await fetch(
+																`/api/account/team/${member.id}`,
+																{
+																	method: 'PATCH',
+																	headers: {
+																		'Content-Type': 'application/json',
+																	},
+																	body: JSON.stringify({ roleId }),
+																},
+															)
+															if (!response.ok) {
+																const body = await response.json().catch(() => ({}))
+																setError(
+																	body.error ?? 'Could not change that role.',
+																)
+															}
+															void refresh()
+														}}>
+														<SelectTrigger className='h-8 w-44'>
+															<SelectValue />
+														</SelectTrigger>
+														<SelectContent>
+															{roles.map((role) => (
+																<SelectItem key={role.id} value={role.id}>
+																	{role.name}
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												)}
+											</td>
+											<td className='py-3 text-right'>
+												{can.manage && !member.isOwner && (
+													<ConfirmButton
+														label={`Remove ${member.email}`}
+														title={`Remove ${member.email}?`}
+														description='They lose access to this account immediately. Anything they built stays.'
+														action='Remove'
+														onConfirm={async () => {
+															const response = await fetch(
+																`/api/account/team/${member.id}`,
+																{ method: 'DELETE' },
+															)
+															if (!response.ok) {
+																const body = await response.json().catch(() => ({}))
+																setError(body.error ?? 'Could not remove them.')
+															}
+															await refresh()
+														}}
+													/>
+												)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</section>
+
+					{invites.length > 0 && (
+						<section>
+							<h2 className='font-display text-lg font-semibold text-white'>
+								Pending invitations
+							</h2>
+							<ul className='mt-4 space-y-2'>
+								{invites.map((invite) => (
+									<li
+										key={invite.id}
+										className='flex items-center gap-3 rounded-lg border border-white/10 bg-white/3 px-4 py-3 text-sm'>
+										<Mail className='size-4 shrink-0 text-slate-500' />
+										<span className='min-w-0 flex-1 truncate text-white'>
+											{invite.email}
+										</span>
+										<span className='shrink-0 text-xs text-slate-500'>
+											{invite.roleName} · expires{' '}
+											{new Date(invite.expiresAt).toLocaleDateString()}
+										</span>
+										{can.invite && (
+											<button
+												type='button'
+												aria-label={`Revoke the invitation for ${invite.email}`}
+												onClick={async () => {
+													await fetch(`/api/account/invites?id=${invite.id}`, {
+														method: 'DELETE',
+													})
+													void refresh()
+												}}
+												className='shrink-0 text-slate-600 transition-colors hover:text-destructive'>
+												<X className='size-4' />
+											</button>
+										)}
+									</li>
+								))}
+							</ul>
+						</section>
 			)}
 
-			<RolesSection
-				roles={roles}
-				canManage={can.roles}
-				onChanged={refresh}
-				onError={setError}
-			/>
+				</TabsContent>
+
+				<TabsContent value='roles' className='pt-4'>
+					<RolesSection
+						roles={roles}
+						canManage={can.roles}
+						onChanged={refresh}
+						onError={setError}
+					/>
+				</TabsContent>
+			</Tabs>
 		</div>
 	)
 }

@@ -7,7 +7,11 @@ import {
 	Images,
 	LayoutDashboard,
 	LayoutTemplate,
+	Building2,
+	Globe,
 	Settings,
+	ShieldCheck,
+	UserCog,
 	Users,
 } from 'lucide-react'
 import {
@@ -25,10 +29,24 @@ const ICONS = {
 	team: Users,
 	media: Images,
 	settings: Settings,
+	admin: ShieldCheck,
+	accounts: Building2,
+	sites: Globe,
+	people: UserCog,
 }
 
-export function AccountNav({ items }: { items: NavItem[] }) {
+export function AccountNav({
+	items,
+	showLibrary = true,
+}: {
+	items: NavItem[]
+	showLibrary?: boolean
+}) {
 	const pathname = usePathname()
+	const bestMatch = items
+		.map((item) => item.href)
+		.filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+		.sort((a, b) => b.length - a.length)[0]
 
 	return (
 		<>
@@ -36,11 +54,9 @@ export function AccountNav({ items }: { items: NavItem[] }) {
 				<SidebarMenu>
 					{items.map((item) => {
 						const Icon = ICONS[item.icon]
-						// Overview would otherwise light up on every child route.
-						const active =
-							item.href === '/account'
-								? pathname === '/account'
-								: pathname === item.href || pathname.startsWith(`${item.href}/`)
+						// The root item (Overview) is a prefix of every other route, so a match
+						// only counts when no other item matches the path more specifically.
+						const active = item.href === bestMatch
 
 						return (
 							<SidebarMenuItem key={item.href}>
@@ -61,6 +77,7 @@ export function AccountNav({ items }: { items: NavItem[] }) {
 				</SidebarMenu>
 			</SidebarGroup>
 
+			{showLibrary && (
 			<SidebarGroup className='mt-auto'>
 				<SidebarMenu>
 					<SidebarMenuItem>
@@ -73,6 +90,7 @@ export function AccountNav({ items }: { items: NavItem[] }) {
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarGroup>
+			)}
 		</>
 	)
 }

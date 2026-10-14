@@ -854,7 +854,8 @@ type Run = {
  *    spent, out of time, or the run was stopped) is not in it. A claim lost to another worker
  *    is, with whatever is stored now.
  *  - A database failure (claim, sweep, count, budget) is the one thing that throws, and only
- *    when nothing was processed: a run that got somewhere reports what it did.
+ *    when nothing was processed: a run that got somewhere reports what it did (if the count of
+ *    what is left is the part that failed, `remaining` is 1: ask again, the next answer is exact).
  *  - "Stop claiming" and "do not call the model" are different. Any stop reason (a spent
  *    budget, a rate limit, a config error, a failing database) ends claiming. Only a
  *    provider-wide refusal (rate limit, config) also keeps the images already in flight
@@ -1267,7 +1268,16 @@ export async function runTagging(
 			if (result.status === 'rejected') run.infra ??= { error: result.reason }
 	}
 
-	const remaining = await assets.countDocuments(asFilter({ workspaceId, ...queued(clock()) }))
+	// A failed count is a database failure like any other: thrown only if nothing was processed.
+	// Otherwise the work done is worth returning, and "at least one" keeps the client asking
+	// (the next answer is exact) instead of reading an unknown as "nothing left".
+	let remaining = 1
+	try {
+		remaining = await assets.countDocuments(asFilter({ workspaceId, ...queued(clock()) }))
+	} catch (error) {
+		run.infra ??= { error }
+		console.error('[media]', 'could not count what is left:', describe(error))
+	}
 	if (run.infra && run.done.length === 0) throw run.infra.error
 
 	run.done.sort((a, b) => a.seq - b.seq)

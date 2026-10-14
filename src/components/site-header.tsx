@@ -634,14 +634,6 @@ function MobileNav() {
 							Book An Assessment
 						</Link>
 					</Button>
-					<Button
-						asChild
-						variant='outline'
-						className='mt-3 w-full border-brand/40 bg-transparent font-semibold text-white hover:border-brand hover:bg-brand/10 hover:text-white'>
-						<Link href='/builder' onClick={close}>
-							Try The Builder
-						</Link>
-					</Button>
 				</div>
 			</SheetContent>
 		</Sheet>
@@ -676,12 +668,6 @@ export default function SiteHeader({
 				asChild
 				className='hidden whitespace-nowrap bg-brand font-bold text-ink hover:bg-brand-strong sm:inline-flex lg:hidden xl:inline-flex'>
 				<Link href='/contact'>Book An Assessment</Link>
-			</Button>
-			<Button
-				asChild
-				variant='outline'
-				className='hidden whitespace-nowrap border-brand/40 bg-transparent font-semibold text-white hover:border-brand hover:bg-brand/10 hover:text-white sm:inline-flex lg:hidden xl:inline-flex'>
-				<Link href='/builder'>Try The Builder</Link>
 			</Button>
 		</>
 	)

@@ -108,7 +108,7 @@ export function FolderPicker({
 					onChange={() => onSelect(null)}
 				/>
 				<Library aria-hidden className='size-4 shrink-0 text-slate-400' />
-				<span className='truncate'>Library root (Unfiled)</span>
+				<span className='truncate'>All media (no folder)</span>
 				{currentId === null && (
 					<span className='ml-auto text-xs text-slate-400'>Current</span>
 				)}

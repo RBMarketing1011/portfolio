@@ -1056,7 +1056,7 @@ await check('detail panel: an image with no tags, caption or colours renders cle
 	ok(textOf(root).includes('No tags yet.'))
 	eq(bySlot(root, 'detail-palette').length, 0, 'no empty palette section')
 	eq(textOf(findNode(field(root, 'Caption'), (n) => n.tag === 'textarea')), '')
-	eq(textOf(findNode(field(root, 'Folder'), (n) => n.attrs.role === 'combobox')).trim(), 'Unfiled')
+	eq(textOf(findNode(field(root, 'Folder'), (n) => n.attrs.role === 'combobox')).trim(), 'No folder')
 	ok(dd(root, 'Kind') === undefined, 'no Kind row without a kind')
 	const img = findNode(bySlot(root, 'detail-preview')[0], (n) => n.tag === 'img')
 	eq(img.attrs['data-placeholder'], undefined, 'no blur data, no placeholder')
@@ -1133,7 +1133,7 @@ await check('detail panel: a viewer can still search by the image\'s folder, whi
 	ok(button, 'a search button beside the folder path')
 	const unfiled = parseHtml(renderBody({ canWrite: false, asset: asset({ folderId: null, folderPath: '' }) }))
 	ok(!byTag(unfiled, 'button').some((b) => String(b.attrs['aria-label']).startsWith('Show images in')), 'nothing to search in the root')
-	ok(textOf(unfiled).includes('Unfiled'))
+	ok(textOf(unfiled).includes('No folder'))
 })
 
 await check('detail panel: delete is shown by canDelete alone, independent of canWrite', () => {
@@ -2254,7 +2254,7 @@ await check('field state: a stored value that changes under an untouched field i
 await check('folders: Unfiled first, then every folder in order with its depth, hostile data cleaned', () => {
 	const choices = folderChoices(folders)
 	eq(choices.map((c) => [c.value, c.label, c.path, c.depth]), [
-		[UNFILED, 'Unfiled', '', 0],
+		[UNFILED, 'No folder', '', 0],
 		[F_CLIENTS, 'Clients', 'Clients', 0],
 		[F_ACME, 'Acme', 'Clients/Acme', 1],
 		[F_BRAND, 'Brand', 'Brand', 0],
@@ -2273,7 +2273,7 @@ await check('folders: Unfiled first, then every folder in order with its depth, 
 		{ id: 'd', name: 'D', path: 5, depth: 1.5 },
 	])
 	eq(messy.map((c) => [c.value, c.label, c.path, c.depth]), [
-		[UNFILED, 'Unfiled', '', 0],
+		[UNFILED, 'No folder', '', 0],
 		['a', 'Untitled folder', 'Untitled folder', MEDIA_LIMITS.maxFolderDepth],
 		['b', 'B', 'x/B', 0],
 		['c', 'C', 'C', 0],
@@ -4380,7 +4380,7 @@ await check('panel: the folder picker lists Unfiled and the indented folders, an
 	try {
 		const items = rig.app.bySlot('select-item')
 		eq(items.map((i) => i.props['data-value']), ['unfiled', F_CLIENTS, F_ACME, F_BRAND])
-		eq(items.map((i) => i.props['data-text']), ['Unfiled', 'Clients', 'Clients/Acme', 'Brand'])
+		eq(items.map((i) => i.props['data-text']), ['No folder', 'Clients', 'Clients/Acme', 'Brand'])
 		const indent = (item) => item.children[0].props.style?.paddingLeft
 		eq(items.map(indent), ['0rem', '0rem', '0.75rem', '0rem'], 'a child is indented under its parent')
 		eq(captured.select.value, F_ACME, 'shows where the image is')

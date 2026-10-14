@@ -21,7 +21,6 @@ import {
 	FolderInput,
 	FolderOpen,
 	Images,
-	Inbox,
 	Loader2,
 	Pencil,
 	Plus,
@@ -197,7 +196,6 @@ const Count = ({ n, busy }: { n: number; busy?: boolean }) => (
 export function FolderTree({
 	folders,
 	total,
-	unfiled,
 	unreviewed,
 	active,
 	canWrite,
@@ -285,7 +283,6 @@ export function FolderTree({
 	const navItems = useMemo<NavItem[]>(() => {
 		const items: NavItem[] = [
 			{ key: 'all', kind: 'all', parentKey: null, expandable: false, expanded: false },
-			{ key: 'unfiled', kind: 'unfiled', parentKey: null, expandable: false, expanded: false },
 		]
 		if (reviewCount > 0)
 			items.push({ key: 'review', kind: 'review', parentKey: null, expandable: false, expanded: false })
@@ -383,7 +380,6 @@ export function FolderTree({
 
 	const activate = (key: string) => {
 		if (key === 'all') onSelect(undefined)
-		else if (key === 'unfiled') onSelect('unfiled')
 		else if (key === 'review') onReview()
 		else {
 			const id = idOfKey(key)
@@ -508,25 +504,12 @@ export function FolderTree({
 			selected={active === undefined}
 			level={1}
 			pad={0.5}
-			dropState='none'>
+			dropState={dropState('all')}
+			drag={canWrite ? dragProps('all', null) : undefined}>
 			<span className='size-5 shrink-0' />
 			<Images aria-hidden className='size-4 shrink-0 text-slate-400' />
 			<span className='min-w-0 truncate'>All media</span>
-			<Count n={countOf(total)} />
-		</TreeRow>,
-		<TreeRow
-			key='unfiled'
-			{...rowEvents('unfiled')}
-			label={`Unfiled, ${noImages(countOf(unfiled))}`}
-			selected={active === 'unfiled'}
-			level={1}
-			pad={0.5}
-			dropState={dropState('unfiled')}
-			drag={canWrite ? dragProps('unfiled', null) : undefined}>
-			<span className='size-5 shrink-0' />
-			<Inbox aria-hidden className='size-4 shrink-0 text-slate-400' />
-			<span className='min-w-0 truncate'>Unfiled</span>
-			<Count n={countOf(unfiled)} busy={busyDrops.has('unfiled')} />
+			<Count n={countOf(total)} busy={busyDrops.has('all')} />
 		</TreeRow>,
 	)
 

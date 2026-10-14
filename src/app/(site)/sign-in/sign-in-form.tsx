@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { signIn } from 'next-auth/react'
 import { Loader2, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -133,10 +132,7 @@ export function SignInForm() {
 			</Button>
 
 			<p className='text-center text-sm text-slate-500'>
-				No account?{' '}
-				<Link href='/sign-up' className='text-brand hover:text-brand-strong'>
-					Create one
-				</Link>
+				Access is by invitation. Ask your administrator for one.
 			</p>
 		</form>
 	)

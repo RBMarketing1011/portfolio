@@ -17,7 +17,12 @@
  * the future and chosen so that no counter exists for them (a past day would be removed by
  * the TTL monitor in the middle of a check, and a real day must never be touched), so the
  * global counters this run creates are its own, and only those are deleted. Everything is
- * deleted in a `finally`, including on failure. No indexes are created or dropped.
+ * deleted after each section, in a `finally`, and when SIGINT or SIGTERM arrives (a run that
+ * is killed outright, which cannot be caught, leaves at most one section behind). No indexes
+ * are created or dropped. What a killed run leaves is recognisable and nothing else looks like
+ * it: assets with `uploadedBy: 'proof'` whose pathname is `workspaces/<their own workspaceId>/
+ * media/proof-<n>-...`, counters whose `_id` starts with those workspace ids, and `global:<day>`
+ * counters for days 60 or more days ahead.
  *
  * Speed: the database is a shared cluster and a round trip costs 50-150 ms, so checks that
  * do not touch the process environment run side by side (PROVE_PARALLEL, default 6) and
@@ -25,7 +30,10 @@
  *
  * Knobs: PROVE_ONLY=<regex> runs only the checks whose name matches; PROVE_SRC=<dir>
  * loads a copy of src/lib/media from <dir> (used to check the proof fails when the code
- * is deliberately broken); PROVE_PARALLEL=<n> sets how many checks run side by side.
+ * is deliberately broken); PROVE_PARALLEL=<n> sets how many checks run side by side;
+ * PROVE_LATENCY_MS=<n> delays every database operation by n ms, to see how the checks that
+ * measure real time behave on a bad link (they size their budgets from a fresh latency
+ * reading and repeat a scenario whose premise the slow database spoiled).
  */
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
@@ -111,6 +119,9 @@ const CHECK_TIMEOUT_MS = 150_000
 async function execute({ name, fn, seq }) {
 	if (seq) setEnv()
 	let timer
+	const began = Date.now()
+	// A check that takes long says so, which is how a slow database shows up.
+	const took = () => (Date.now() - began >= 15_000 ? ` [${Math.round((Date.now() - began) / 1000)} s]` : '')
 	try {
 		await Promise.race([
 			fn(),
@@ -120,7 +131,7 @@ async function execute({ name, fn, seq }) {
 		])
 		if (!seq && !envIsClean()) throw new Error('it changed the environment, so it must be registered with { seq: true }')
 		passed++
-		console.log(`PASS  ${name}`)
+		console.log(`PASS  ${name}${took()}`)
 	} catch (error) {
 		failed++
 		const detail = (error && error.message ? error.message : String(error)).split('\n').slice(0, 8).join(' | ')
@@ -136,6 +147,7 @@ async function runRegistry() {
 		const wanted = checks.filter((c) => !only || only.test(c.name))
 		if (!wanted.length) continue
 		console.log(`\n== ${title}`)
+		const sectionBegan = Date.now()
 		const side = wanted.filter((c) => !c.seq)
 		let next = 0
 		await Promise.all(
@@ -144,6 +156,18 @@ async function runRegistry() {
 			}),
 		)
 		for (const c of wanted.filter((entry) => entry.seq)) await execute(c)
+		// Nothing of this section is needed again, and a run that dies later should not leave it behind.
+		try {
+			const left = await cleanupCreated()
+			if (left) {
+				failed++
+				console.log(`FAIL  cleanup after "${title}" (${left} documents are still there)`)
+			}
+		} catch (error) {
+			failed++
+			console.log(`FAIL  cleanup after "${title}" (${error})`)
+		}
+		console.log(`   (${Math.round((Date.now() - sectionBegan) / 1000)} s)`)
 	}
 }
 
@@ -200,6 +224,7 @@ const nextMidnightIso = (ms) => new Date((Math.floor(ms / DAY) + 1) * DAY).toISO
  * check that needs the day after its own asks for it in the same breath (no await between).
  */
 function newDay(hour = 12) {
+	if (halted) throw new Error('the proof was interrupted')
 	if (dayCounter >= DAY_ROOM) throw new Error('the proof used up its block of test days')
 	const ms = dayBase + dayCounter++ * DAY
 	globalKeysUsed.push(`global:${dayKey(ms)}`)
@@ -211,9 +236,15 @@ function newDay(hour = 12) {
 /* -------------------------------------------------------------------------- */
 
 const uri = process.env.MONGODB_URI
-const client = uri ? new MongoClient(uri) : null
+// A check is a burst of parallel operations, and on a remote cluster every new connection costs a TLS handshake (often
+// 0.3-1 s): a pool that starts with its connections open makes the first bursts as fast as the later ones.
+const client = uri ? new MongoClient(uri, { minPoolSize: 20 }) : null
+/** Accounts handed out since the last cleanup; every one is fresh, so nothing here is ever shared with anyone else. */
 const workspaces = []
+/** Set when the run is being interrupted: nothing new is created from then on. */
+let halted = false
 const newWs = () => {
+	if (halted) throw new Error('the proof was interrupted')
 	const id = new ObjectId()
 	workspaces.push(id)
 	return id
@@ -224,6 +255,61 @@ let usage
 let ruleCol
 let folderCol
 let seq = 0
+
+/* -------------------------------------------------------------------------- */
+/* Cleanup                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const removed = { accounts: 0, assets: 0, folders: 0, rules: 0, accountCounters: 0, globalCounters: 0 }
+
+/**
+ * Deletes what the accounts and days handed out so far created, and forgets them. Only documents carrying one of
+ * this run's account ids, and the counters named after those accounts or after this run's own days, are touched.
+ * It runs after every section (so a run that is killed leaves one section's worth behind, not everything), when
+ * SIGINT or SIGTERM arrives, and at the end. Returns how many of those documents are still there (0 when it worked).
+ */
+async function cleanupCreated({ forget = true } = {}) {
+	if (!db) return 0
+	const accounts = forget ? workspaces.splice(0) : [...workspaces]
+	const days = forget ? globalKeysUsed.splice(0) : [...globalKeysUsed]
+	if (!accounts.length && !days.length) return 0
+	const named = accounts.length ? { $regex: `^(?:${accounts.map(hex).join('|')}):` } : null
+	if (forget) removed.accounts += accounts.length
+	if (accounts.length) {
+		removed.assets += (await assets.deleteMany({ workspaceId: { $in: accounts } })).deletedCount
+		removed.folders += (await folderCol.deleteMany({ workspaceId: { $in: accounts } })).deletedCount
+		removed.rules += (await ruleCol.deleteMany({ workspaceId: { $in: accounts } })).deletedCount
+		removed.accountCounters += (await usage.deleteMany({ _id: named })).deletedCount
+	}
+	if (days.length) removed.globalCounters += (await usage.deleteMany({ _id: { $in: days } })).deletedCount
+	let left = 0
+	if (accounts.length) {
+		left += await assets.countDocuments({ workspaceId: { $in: accounts } })
+		left += await folderCol.countDocuments({ workspaceId: { $in: accounts } })
+		left += await ruleCol.countDocuments({ workspaceId: { $in: accounts } })
+		left += await usage.countDocuments({ _id: named })
+	}
+	if (days.length) left += await usage.countDocuments({ _id: { $in: days } })
+	return left
+}
+
+/** Ctrl+C or a termination request: stop creating things, clean up, and leave. A second signal leaves at once. */
+async function stopEarly(signal) {
+	if (halted) process.exit(130)
+	halted = true
+	console.log(`\n${signal}: stopping, and removing what this run created`)
+	try {
+		// A check that was mid-flight may still insert something, so the sweep is repeated.
+		for (let round = 0; round < 3; round++) {
+			await cleanupCreated({ forget: false })
+			await new Promise((resolve) => setTimeout(resolve, 400))
+		}
+	} catch (error) {
+		console.log(`cleanup failed: ${error}`)
+	}
+	process.exit(130)
+}
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => void stopEarly(signal))
 
 /** A complete asset document (every field the type promises), with `terms` built the way commitAsset builds them. */
 function assetDoc(ws, extra = {}) {
@@ -441,6 +527,66 @@ function spyDb(inner, intercept) {
 		},
 	})
 	return { db: proxy, ops }
+}
+
+/**
+ * The same database behind a slow link: every operation waits `ms` first (a cursor waits when it is read). A way to see
+ * how the checks behave when the network is bad (PROVE_LATENCY_MS=300); 0 returns the database itself.
+ */
+function slowDb(inner, ms) {
+	if (!(ms > 0)) return inner
+	const lag = () => new Promise((resolve) => setTimeout(resolve, ms))
+	const cursorOf = (cursor) => {
+		const proxy = new Proxy(cursor, {
+			get(target, prop) {
+				const value = target[prop]
+				if (typeof value !== 'function') return value
+				if (prop === 'toArray') return async (...args) => (await lag(), target.toArray(...args))
+				return (...args) => {
+					const out = value.apply(target, args)
+					return out === target ? proxy : out
+				}
+			},
+		})
+		return proxy
+	}
+	const collectionOf = (collection) =>
+		new Proxy(collection, {
+			get(target, prop) {
+				const value = target[prop]
+				if (typeof value !== 'function') return value
+				if (prop === 'find' || prop === 'aggregate') return (...args) => cursorOf(value.apply(target, args))
+				return async (...args) => (await lag(), value.apply(target, args))
+			},
+		})
+	return new Proxy(inner, {
+		get(target, prop) {
+			if (prop === 'collection') return (name) => collectionOf(target.collection(name))
+			if (prop === 'command') return async (...args) => (await lag(), target.command(...args))
+			const value = target[prop]
+			return typeof value === 'function' ? value.bind(target) : value
+		},
+	})
+}
+
+/**
+ * Answers every call on the usage counters itself, without touching them, and remembers which counters it was asked
+ * about: for the checks that need the REAL clock (a garbage `now` falls back to it), whose counters must never be written.
+ * `held` is the count every counter read reports.
+ */
+function offlineCounters({ held = 0 } = {}) {
+	const keys = new Set()
+	const ack = { acknowledged: true, matchedCount: 1, modifiedCount: 1, upsertedCount: 0, upsertedId: null }
+	const intercept = (entry) => {
+		if (entry.collection !== 'mediaAiUsage') return undefined
+		const id = entry.args[0]?._id
+		if (typeof id === 'string') keys.add(id)
+		else if (Array.isArray(id?.$in)) for (const key of id.$in) keys.add(key)
+		if (entry.op === 'find') return { toArray: async () => (id?.$in ?? []).map((key) => ({ _id: key, count: held })) }
+		if (entry.op === 'findOneAndUpdate') return Promise.resolve({ _id: id, count: 1, expiresAt: new Date() })
+		return Promise.resolve(ack)
+	}
+	return { keys, intercept }
 }
 
 /** The field paths and operators of an update, whether it is an operator document or a pipeline of stages. */
@@ -691,7 +837,7 @@ function registerBudget() {
 		'12abc',
 		'+7',
 		'7 7',
-		'７',
+		'\uFF17',
 		'999999999999999999999999',
 		'null',
 		'undefined',
@@ -1148,7 +1294,8 @@ function registerClaims() {
 
 		// The first worker comes back while the second still holds the claim: its answer must not land.
 		first.gate.resolve()
-		await run1
+		const lost = await run1
+		assert.deepEqual(lost.processed.map((p) => p.status), ['running'], 'a lost claim reports what is stored now: the other worker still holds it')
 		const midway = await get(image._id)
 		assert.equal(midway.tagging.status, 'running', 'a stale worker finished an image another worker holds')
 		assert.equal(midway.tagging.attempts, 2)
@@ -1209,7 +1356,8 @@ function registerClaims() {
 		assert.equal(requeued.tagging.status, 'pending')
 		assert.equal(requeued.tagging.attempts, 0)
 		gate.resolve()
-		await first
+		const dropped = await first
+		assert.deepEqual(dropped.processed.map((p) => p.status), ['pending'], 'a dropped result reports what is stored now, not what the run hoped for')
 		const final = await get(image._id)
 		assert.equal(final.tagging.status, 'pending', 'the dropped result must not mark the requeued image done')
 		assert.equal(final.caption, '')
@@ -1258,12 +1406,16 @@ function registerClaims() {
 		assert.equal((await get(other._id)).tagging.status, 'pending')
 	})
 
-	check('limit: default 2, never above the batch maximum, junk means the default', async () => {
+	check('limit: default 2, never above the batch maximum or below one image, fractions round down, junk means the default', async () => {
 		const cases = [
 			[{}, MEDIA_LIMITS.aiBatchDefault],
 			[{ limit: 99 }, MEDIA_LIMITS.aiBatchMax],
 			[{ limit: 1 }, 1],
 			[{ limit: 3 }, 3],
+			[{ limit: 0 }, 1],
+			[{ limit: -3 }, 1],
+			[{ limit: 2.9 }, 2],
+			[{ limit: 4.9 }, MEDIA_LIMITS.aiBatchMax],
 			[{ limit: Number.NaN }, MEDIA_LIMITS.aiBatchDefault],
 			[{ limit: '3' }, MEDIA_LIMITS.aiBatchDefault],
 			[{ limit: null }, MEDIA_LIMITS.aiBatchDefault],
@@ -1296,7 +1448,8 @@ function registerClaims() {
 				const holder = {}
 				const ctx = setup({
 					tag: async () => {
-						const until = Date.now() + 6_000
+						// As long as the database needs: the wait ends the moment `expected` calls are in flight at once.
+						const until = Date.now() + 30_000
 						while (holder.calls.inflight < expected && Date.now() < until) await sleep(10)
 						await sleep(30)
 						return vision()
@@ -1554,7 +1707,7 @@ function registerApply() {
 		const ctx = setup({
 			tag: async () => ({
 				caption: huge,
-				altText: `${huge}\u0000‮`,
+				altText: `${huge}\u0000\u202e`,
 				textInImage: huge,
 				kind: 'banana',
 				keywords: [huge, 'ok phrase', 'ok phrase', 7, null, '<script>alert(1)</script>', ...Array.from({ length: 60 }, (_, i) => `k${i}`)],
@@ -1575,7 +1728,7 @@ function registerApply() {
 		const after = await get(image._id)
 		assert.ok(after.caption.length <= MEDIA_LIMITS.captionMax, `caption ${after.caption.length}`)
 		assert.ok(after.altText.length <= MEDIA_LIMITS.altMax, `alt ${after.altText.length}`)
-		assert.ok(!/[\u0000‮]/.test(after.altText), 'control and bidi characters were stored')
+		assert.ok(!/[\u0000\u202e]/.test(after.altText), 'control and bidi characters were stored')
 		assert.ok(after.textInImage.length <= MEDIA_LIMITS.textInImageMax)
 		assert.equal(after.kind, 'other')
 		assert.ok(after.keywords.length <= MEDIA_LIMITS.keywordsMax)
@@ -1980,6 +2133,56 @@ function registerFailures() {
 		)
 	})
 
+	check('errors from another copy of a module are recognised by class name (a bundler can load a module twice); a look-alike under another name is not', async () => {
+		const copyOf = (name, props = {}) => Object.assign(new Error(`from another copy of ${name}`), { name, ...props })
+		const viaModel = [
+			['TaggerError permanent', copyOf('TaggerError', { kind: 'permanent' }), 'failed', TAGGING_ERRORS.unreadable],
+			['TaggerError declined', copyOf('TaggerError', { kind: 'declined' }), 'skipped', undefined],
+			['TaggerError retryable', copyOf('TaggerError', { kind: 'retryable' }), 'pending', undefined],
+			['look-alike permanent', copyOf('OtherError', { kind: 'permanent' }), 'pending', undefined],
+			['look-alike config', copyOf('OtherError', { kind: 'config' }), 'pending', undefined],
+		]
+		await Promise.all(
+			viaModel.map(async ([label, error, status, stored]) => {
+				const r = await oneImage({ tag: async () => { throw error } })
+				assert.equal(r.after.tagging.status, status, label)
+				assert.equal(r.after.tagging.error, stored, label)
+				assert.ok(!('blocked' in r.out), `${label}: it must not block the run`)
+			}),
+		)
+		const config = await oneImage({ tag: async () => { throw copyOf('TaggerError', { kind: 'config' }) } })
+		assert.equal(config.out.blocked.kind, 'config')
+		const limited = await oneImage({ tag: async () => { throw copyOf('TaggerError', { kind: 'rate_limited', retryAfterMs: 4_000 }) } })
+		assert.deepEqual([limited.out.blocked.kind, limited.out.blocked.retryAfterMs], ['rate_limited', 4_000])
+		await Promise.all(
+			['BlobGoneError', 'BlobUrlError', 'BlobTooLargeError', 'UnsupportedImageError'].map(async (name) => {
+				const r = await oneImage({ read: async () => { throw copyOf(name) } })
+				assert.deepEqual([r.after.tagging.status, r.after.tagging.error], ['failed', TAGGING_ERRORS.unreadable], name)
+				assert.equal(countOf(r.c.ws), 0, `${name}: the unit was not given back`)
+			}),
+		)
+		const lookalike = await oneImage({ read: async () => { throw copyOf('BlobGone') } })
+		assert.equal(lookalike.after.tagging.status, 'pending', 'a look-alike name must not be read as a permanent failure')
+	})
+
+	check('what is logged about an error is bounded and on one line, however long the error is and whatever it contains', async () => {
+		const LS = String.fromCharCode(0x2028)
+		const PS = String.fromCharCode(0x2029)
+		const breaks = ['\r', '\n', LS, PS]
+		// The token comes first: only the start of the text survives the length bound, so only there can redaction be seen.
+		const huge = `vercel_blob_rw_abc123SECRET first line\nsecond line\r${'x'.repeat(1_000_000)}${LS}tail`
+		const r = await oneImage({ tag: async () => { throw new Error(huge) } })
+		assert.equal(r.after.tagging.status, 'pending')
+		const lines = allLogs.filter((line) => line.includes(hex(r.image._id)))
+		assert.ok(lines.length >= 1, 'the failure was not logged')
+		for (const line of lines) {
+			assert.ok(line.length < 600, `a log line of ${line.length} characters`)
+			assert.ok(!breaks.some((character) => line.includes(character)), 'a line break reached a log line')
+			assert.ok(!line.includes('abc123SECRET'), 'a blob token reached a log line')
+		}
+		assert.ok(!JSON.stringify(r.after).includes('first line'), 'error text was stored')
+	})
+
 	check('a seam that throws synchronously, or returns a rejected promise, is the same retryable failure', async () => {
 		const ctx = setup()
 		ctx.deps.tag = () => {
@@ -2111,6 +2314,39 @@ function registerFailures() {
 		assert.ok(ctx.calls.tag.length <= 2, `calls ${ctx.calls.tag.length}`)
 		assert.equal(out.remaining, 4 - out.processed.filter((p) => p.status === 'done').length)
 		await assertTidy(ctx.ws)
+	})
+
+	check('an image still being read when another finds the provider refusing never reaches the model: it is released (attempt and budget unit given back)', async () => {
+		const reading = deferred()
+		const refused = deferred()
+		const ctx = setup({
+			// The refusal is held back until the slow image is demonstrably in flight (a worker can be slow to get its
+			// claim, and then there would be nothing to release), and the slow image reaches the model stage only after it.
+			read: async (url) => {
+				if (url.endsWith('/slow.jpg')) {
+					reading.resolve()
+					await Promise.race([refused.promise, sleep(8_000)])
+					await sleep(150)
+				}
+				return PNG
+			},
+			tag: async () => {
+				await Promise.race([reading.promise, sleep(8_000)])
+				refused.resolve()
+				throw new TaggerError('401', 'config')
+			},
+		})
+		const images = await seed(ctx.ws, { url: 'https://example.invalid/proof/fast.jpg' }, { url: 'https://example.invalid/proof/slow.jpg' })
+		const out = await runTagging(db, ctx.ws, { limit: 2, concurrency: 2 }, ctx.deps)
+		assert.equal(out.blocked.kind, 'config')
+		assert.equal(ctx.calls.read.length, 2, 'the slow image was never in flight, so this check proved nothing')
+		assert.equal(ctx.calls.tag.length, 1, 'an image reached the model after the run had been refused')
+		for (const image of images) assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 }, image.url)
+		assert.deepEqual(out.processed.map((p) => p.status), ['pending'], 'only the refused image is a verdict; the released one is not reported')
+		const c = await counters(ctx.ws, ctx.clock.ms)
+		assert.equal(countOf(c.ws), 0, 'both units must be given back')
+		assert.equal(countOf(c.global), 0)
+		assert.equal(out.remaining, 2)
 	})
 
 	check('config wins over a rate limit when both are found in one run', async () => {
@@ -2263,6 +2499,80 @@ function registerInfrastructure() {
 		assert.equal(healed.processed[0].status, 'done')
 		assert.equal((await get(image._id)).tagging.attempts, 2)
 	})
+
+	check('a failing count of what is left, after images were done, is not thrown: the work is reported and the client is told to ask again; with nothing done it is thrown', async () => {
+		const failingCount = (entry) => {
+			if (entry.collection === 'mediaAssets' && entry.op === 'countDocuments') return Promise.reject(new Error('count failed'))
+		}
+		const ctx = setup()
+		await seed(ctx.ws, {}, {})
+		const out = await runTagging(spyDb(db, failingCount).db, ctx.ws, { limit: 1 }, ctx.deps)
+		assert.deepEqual(out.processed.map((p) => p.status), ['done'], 'a finished image was thrown away with the failed count')
+		assert.ok(out.remaining >= 1, `remaining ${out.remaining}: an unknown count must not read as "nothing left"`)
+		assert.deepEqual((await docsOf(ctx.ws)).map((d) => d.tagging.status).sort(), ['done', 'pending'])
+		assert.ok(allLogs.some((line) => line.includes('could not count')), 'the failure was not logged')
+
+		const idle = setup()
+		await assert.rejects(runTagging(spyDb(db, failingCount).db, idle.ws, { limit: 1 }, idle.deps), /count failed/)
+	})
+
+	check('a failing sweep, or a failing first look at the budget, is thrown before anything is claimed or sent to the model', async () => {
+		const cases = [
+			['the sweep', (entry) => (entry.collection === 'mediaAssets' && entry.op === 'updateMany' ? Promise.reject(new Error('sweep failed')) : undefined), /sweep failed/],
+			[
+				'the budget read',
+				(entry) => (entry.collection === 'mediaAiUsage' && entry.op === 'find' ? { toArray: () => Promise.reject(new Error('budget read failed')) } : undefined),
+				/budget read failed/,
+			],
+		]
+		for (const [label, intercept, pattern] of cases) {
+			const ctx = setup()
+			const [image] = await seed(ctx.ws, {})
+			await assert.rejects(runTagging(spyDb(db, intercept).db, ctx.ws, { limit: 2 }, ctx.deps), pattern, label)
+			assert.equal(ctx.calls.tag.length + ctx.calls.read.length, 0, `${label}: the run went on`)
+			assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 }, `${label}: the image was touched`)
+		}
+	})
+
+	check('an unreadable tag vocabulary or folder list does not stop tagging: the model simply gets no hints', async () => {
+		const ctx = setup()
+		const folder = await makeFolder(ctx.ws, 'Clients')
+		await seed(ctx.ws, { tags: [manual('van', 'Van')], tagging: { status: 'done', attempts: 1 } })
+		const [image] = await seed(ctx.ws, { folderId: folder._id })
+		const unreadable = { toArray: () => Promise.reject(new Error('read failed')) }
+		const flaky = spyDb(db, (entry) => {
+			if (entry.collection === 'mediaAssets' && entry.op === 'aggregate') return unreadable
+			if (entry.collection === 'mediaFolders' && entry.op === 'find') return unreadable
+		})
+		const out = await runTagging(flaky.db, ctx.ws, { limit: 1 }, ctx.deps)
+		assert.deepEqual(out.processed.map((p) => p.status), ['done'])
+		assert.deepEqual(ctx.calls.tag[0].input.knownTags, [], 'no vocabulary, no hints')
+		assert.ok(!ctx.calls.tag[0].input.folderPath, 'no folder list, no folder path')
+		assert.equal((await get(image._id)).tagging.status, 'done')
+		assert.ok(allLogs.some((line) => line.includes('tag vocabulary')), 'the vocabulary failure was not logged')
+		assert.ok(allLogs.some((line) => line.includes('the folders')), 'the folder failure was not logged')
+	})
+
+	check('a tag-rules read that fails after the model call applies nothing (a deleted tag could come back): the image is retried, and the call is still paid for', async () => {
+		const ctx = setup()
+		const [image] = await seed(ctx.ws, {})
+		const unreadable = { sort: () => unreadable, limit: () => unreadable, toArray: () => Promise.reject(new Error('rules unavailable')) }
+		const flaky = spyDb(db, (entry) => {
+			if (entry.collection === 'mediaTagRules' && entry.op === 'find') return unreadable
+		})
+		const out = await runTagging(flaky.db, ctx.ws, { limit: 1 }, ctx.deps)
+		const after = await get(image._id)
+		assert.deepEqual(after.tagging, { status: 'pending', attempts: 1 })
+		assert.deepEqual(after.tags, [])
+		assert.equal(after.caption, '')
+		assert.deepEqual(out.processed.map((p) => p.status), ['pending'])
+		const c = await counters(ctx.ws, ctx.clock.ms)
+		assert.equal(c.ws.count, 1, 'the model was called: the unit stays spent')
+		assert.equal(c.ws.inputTokens, 1000, 'and its tokens are recorded')
+		const healed = await runTagging(db, ctx.ws, { limit: 1 }, ctx.deps)
+		assert.deepEqual(healed.processed.map((p) => p.status), ['done'])
+		assert.equal((await get(image._id)).tagging.attempts, 2)
+	})
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2375,115 +2685,168 @@ function registerTime() {
 		)
 	})
 
-	// The next four measure real elapsed time against a database whose round trip is not under
-	// this proof's control, so the budgets are generous and every claim is about an order of events.
-	check('real time: a model call that hangs is aborted at the deadline, the image is released, and the run returns promptly', async () => {
-		const dayMs = newDay()
-		const ws = newWs()
-		const { deps, calls } = makeDeps(liveClock(dayMs), {
-			tag: (input, { signal }) =>
-				new Promise((resolve, reject) => {
-					const timer = setTimeout(() => resolve(vision()), 60_000)
-					signal.addEventListener('abort', () => {
-						clearTimeout(timer)
-						reject(new TaggerError('The AI request was cancelled', 'retryable'))
-					})
-				}),
+	/*
+	 * The next four measure real elapsed time, and a database round trip lasts as long as the network says: a budget
+	 * that is plenty at 50 ms a call is nothing at 1 s, and then the model is never called, so nothing about it can be
+	 * observed. So every attempt sizes its budget from a fresh latency reading, and a scenario whose premise did not hold
+	 * (the call it is about never started) throws SlowDatabase instead of failing and is repeated with more time. Only a
+	 * scenario that DID start and then misbehaves is a failure.
+	 */
+	class SlowDatabase extends Error {}
+
+	const roundTrip = async () => {
+		const times = []
+		for (let i = 0; i < 3; i++) {
+			const sent = Date.now()
+			await db.command({ ping: 1 })
+			times.push(Date.now() - sent)
+		}
+		return times.sort((a, b) => a - b)[1]
+	}
+
+	/**
+	 * `preMs`: room for the database work a run does before the model is called (about eight round trips, doubled on
+	 * every retry). `afterMs`: how long after its deadline a run may take to wrap up (settle, refund, count: about five).
+	 * A budget is never above 20 s: the model call is capped at 25 s whatever the budget says.
+	 */
+	const realTime = async (scenario) => {
+		let slow
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const rtt = await roundTrip()
+			try {
+				return await scenario({ rtt, preMs: 14 * rtt * 2 ** attempt, afterMs: 2_000 + 10 * rtt })
+			} catch (error) {
+				if (!(error instanceof SlowDatabase)) throw error
+				slow = error
+			}
+		}
+		throw slow
+	}
+
+	/** A model call that never answers; only the signal ends it. */
+	const hangs = (input, { signal }) =>
+		new Promise((resolve, reject) => {
+			const timer = setTimeout(() => resolve(vision()), 60_000)
+			signal.addEventListener('abort', () => {
+				clearTimeout(timer)
+				reject(new TaggerError('The AI request was cancelled', 'retryable'))
+			})
 		})
-		const [image] = await seed(ws, {})
-		const started = Date.now()
-		const out = await runTagging(db, ws, { limit: 1, deadlineMs: 5_000 }, deps)
-		const elapsed = Date.now() - started
-		assert.equal(calls.tag.length, 1, 'the model call never started: the database was too slow for this budget')
-		assert.ok(elapsed >= 4_700, `it returned after ${elapsed} ms, before the deadline: the call was not given the time left`)
-		assert.ok(elapsed < 8_500, `the run took ${elapsed} ms for a 5 s budget`)
-		assert.equal(calls.tag[0].signal.aborted, true)
-		assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 })
-		assert.equal(countOf((await counters(ws, dayMs)).ws), 0)
-		assert.equal(out.processed.length, 0)
-		assert.equal(out.remaining, 1)
+
+	check('real time: a model call that hangs is aborted at the deadline, the image is released, and the run returns promptly', async () => {
+		await realTime(async ({ preMs, afterMs }) => {
+			const dayMs = newDay()
+			const ws = newWs()
+			const deadlineMs = Math.min(20_000, preMs + 3_000)
+			const { deps, calls } = makeDeps(liveClock(dayMs), { tag: hangs })
+			const [image] = await seed(ws, {})
+			const started = Date.now()
+			const out = await runTagging(db, ws, { limit: 1, deadlineMs }, deps)
+			const elapsed = Date.now() - started
+			if (calls.tag.length === 0) throw new SlowDatabase('the model call never started: the database was too slow for this budget')
+			assert.ok(elapsed >= deadlineMs - 300, `it returned after ${elapsed} ms, before the ${deadlineMs} ms deadline: the call was not given the time left`)
+			assert.ok(elapsed < deadlineMs + afterMs, `the run took ${elapsed} ms for a ${deadlineMs} ms budget`)
+			assert.equal(calls.tag[0].signal.aborted, true)
+			assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 })
+			assert.equal(countOf((await counters(ws, dayMs)).ws), 0)
+			assert.equal(out.processed.length, 0)
+			assert.equal(out.remaining, 1)
+		})
 	}, { seq: true })
 
 	check('real time: a model seam that ignores its signal cannot hold the run past the deadline, and its late answer is discarded', async () => {
-		const dayMs = newDay()
-		const ws = newWs()
-		const finished = deferred()
-		const { deps, calls } = makeDeps(liveClock(dayMs), {
-			tag: async () => {
-				await sleep(8_000)
-				finished.resolve()
-				return vision({ caption: 'LATE ANSWER' })
-			},
+		await realTime(async ({ preMs, afterMs }) => {
+			const dayMs = newDay()
+			const ws = newWs()
+			const finished = deferred()
+			const deadlineMs = Math.min(20_000, preMs + 2_000)
+			// The seam answers well after the run had to return, whenever it was called.
+			const lateMs = deadlineMs + afterMs + 2_000
+			const { deps, calls } = makeDeps(liveClock(dayMs), {
+				tag: async () => {
+					await sleep(lateMs)
+					finished.resolve()
+					return vision({ caption: 'LATE ANSWER' })
+				},
+			})
+			const [image] = await seed(ws, {})
+			const started = Date.now()
+			await runTagging(db, ws, { limit: 1, deadlineMs }, deps)
+			const elapsed = Date.now() - started
+			if (calls.tag.length === 0) throw new SlowDatabase('the model call never started: the database was too slow for this budget')
+			assert.ok(elapsed < deadlineMs + afterMs, `the run took ${elapsed} ms for a ${deadlineMs} ms budget: it waited for a seam that ignores its signal`)
+			assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 })
+			await finished.promise
+			await sleep(300)
+			const later = await get(image._id)
+			assert.equal(later.caption, '', 'the abandoned call wrote its answer after all')
+			assert.deepEqual(later.tagging, { status: 'pending', attempts: 0 })
+			assert.deepEqual(strayRejections, [], 'an abandoned call left an unhandled rejection')
 		})
-		const [image] = await seed(ws, {})
-		const started = Date.now()
-		await runTagging(db, ws, { limit: 1, deadlineMs: 4_000 }, deps)
-		const elapsed = Date.now() - started
-		assert.equal(calls.tag.length, 1, 'the model call never started: the database was too slow for this budget')
-		assert.ok(elapsed < 6_500, `the run took ${elapsed} ms: it waited for a seam that ignores its signal`)
-		assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 })
-		await finished.promise
-		await sleep(300)
-		const later = await get(image._id)
-		assert.equal(later.caption, '', 'the abandoned call wrote its answer after all')
-		assert.deepEqual(later.tagging, { status: 'pending', attempts: 0 })
-		assert.deepEqual(strayRejections, [], 'an abandoned call left an unhandled rejection')
 	}, { seq: true })
 
 	check('real time: a blob read that ignores its timeout cannot hold the run past the deadline either; the model is never called', async () => {
-		const dayMs = newDay()
-		const ws = newWs()
-		const finished = deferred()
-		const { deps, calls } = makeDeps(liveClock(dayMs), {
-			read: async () => {
-				await sleep(8_000)
-				finished.resolve()
-				return PNG
-			},
+		await realTime(async ({ preMs, afterMs }) => {
+			const dayMs = newDay()
+			const ws = newWs()
+			const finished = deferred()
+			const deadlineMs = Math.min(20_000, preMs + 2_000)
+			const lateMs = deadlineMs + afterMs + 2_000
+			const { deps, calls } = makeDeps(liveClock(dayMs), {
+				read: async () => {
+					await sleep(lateMs)
+					finished.resolve()
+					return PNG
+				},
+			})
+			const [image] = await seed(ws, {})
+			const started = Date.now()
+			await runTagging(db, ws, { limit: 1, deadlineMs }, deps)
+			const elapsed = Date.now() - started
+			if (calls.read.length === 0) throw new SlowDatabase('the read never started: the database was too slow for this budget')
+			assert.ok(elapsed < deadlineMs + afterMs, `the run took ${elapsed} ms for a ${deadlineMs} ms budget`)
+			assert.equal(calls.tag.length, 0)
+			assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 })
+			assert.equal(countOf((await counters(ws, dayMs)).ws), 0)
+			await finished.promise
+			await sleep(300)
+			assert.deepEqual(strayRejections, [])
 		})
-		const [image] = await seed(ws, {})
-		const started = Date.now()
-		await runTagging(db, ws, { limit: 1, deadlineMs: 4_000 }, deps)
-		const elapsed = Date.now() - started
-		assert.equal(calls.read.length, 1, 'the read never started: the database was too slow for this budget')
-		assert.ok(elapsed < 6_500, `the run took ${elapsed} ms`)
-		assert.equal(calls.tag.length, 0)
-		assert.deepEqual((await get(image._id)).tagging, { status: 'pending', attempts: 0 })
-		assert.equal(countOf((await counters(ws, dayMs)).ws), 0)
-		await finished.promise
-		await sleep(300)
-		assert.deepEqual(strayRejections, [])
 	}, { seq: true })
 
 	check('real time: slow images and a short budget: it stops claiming, nothing is left running, and what it did not finish is pending with attempts at 0', async () => {
-		const dayMs = newDay()
-		const ws = newWs()
-		const { deps, calls } = makeDeps(liveClock(dayMs), {
-			tag: (input, { signal }) =>
-				new Promise((resolve, reject) => {
-					const timer = setTimeout(() => resolve(vision()), 2_000)
-					signal.addEventListener('abort', () => {
-						clearTimeout(timer)
-						reject(new TaggerError('The AI request was cancelled', 'retryable'))
-					})
-				}),
+		await realTime(async ({ preMs, afterMs }) => {
+			const dayMs = newDay()
+			const ws = newWs()
+			// The first image takes 0.8 s and finishes well inside the budget; the second one's call hangs until the
+			// deadline aborts it. Nothing after the deadline is claimed.
+			const firstMs = 800
+			const deadlineMs = Math.min(20_000, preMs + firstMs + afterMs)
+			let calledBefore = 0
+			const { deps, calls } = makeDeps(liveClock(dayMs), {
+				tag: (input, opts) => {
+					if (calledBefore++ === 0) return new Promise((resolve) => setTimeout(() => resolve(vision()), firstMs))
+					return hangs(input, opts)
+				},
+			})
+			await seed(ws, {}, {}, {}, {})
+			const started = Date.now()
+			const out = await runTagging(db, ws, { limit: 4, concurrency: 1, deadlineMs }, deps)
+			const elapsed = Date.now() - started
+			const docs = await docsOf(ws)
+			const done = docs.filter((d) => d.tagging.status === 'done')
+			const rest = docs.filter((d) => d.tagging.status !== 'done')
+			if (done.length === 0 || calls.tag.length < 2) throw new SlowDatabase(`the budget was used up before the second image: ${done.length} done, ${calls.tag.length} model calls`)
+			assert.ok(elapsed < deadlineMs + afterMs, `the run took ${elapsed} ms for a ${deadlineMs} ms budget`)
+			assert.equal(done.length, 1)
+			assert.equal(calls.tag.length, 2, 'an image was claimed after the deadline, or the second was not given the time left')
+			for (const doc of rest) assert.deepEqual(doc.tagging, { status: 'pending', attempts: 0 }, `${doc.filename} was left in a half state`)
+			assert.equal(rest.length, 3)
+			assert.equal(out.processed.length, 1)
+			assert.equal(countOf((await counters(ws, dayMs)).ws), 1, 'unfinished images must not have paid')
+			assert.equal(out.remaining, 3)
+			await assertTidy(ws)
 		})
-		await seed(ws, {}, {}, {}, {})
-		const started = Date.now()
-		const out = await runTagging(db, ws, { limit: 4, concurrency: 1, deadlineMs: 5_000 }, deps)
-		const elapsed = Date.now() - started
-		assert.ok(elapsed < 8_000, `elapsed ${elapsed}`)
-		const docs = await docsOf(ws)
-		const done = docs.filter((d) => d.tagging.status === 'done')
-		const rest = docs.filter((d) => d.tagging.status !== 'done')
-		// The first image has the whole budget; the second cannot finish in what is left, whatever the database does.
-		assert.ok(done.length >= 1 && done.length <= 2, `done ${done.length}`)
-		assert.ok(calls.tag.length >= done.length && calls.tag.length <= done.length + 1)
-		for (const doc of rest) assert.deepEqual(doc.tagging, { status: 'pending', attempts: 0 }, `${doc.filename} was left in a half state`)
-		assert.equal(out.processed.length, done.length)
-		assert.equal(countOf((await counters(ws, dayMs)).ws), done.length, 'unfinished images must not have paid')
-		assert.equal(out.remaining, rest.length)
-		await assertTidy(ws)
 	}, { seq: true })
 }
 
@@ -2692,6 +3055,31 @@ function registerQueueOps() {
 		const many = await seed(mine.ws, ...Array.from({ length: MEDIA_LIMITS.bulkIdsCap + 40 }, () => ({ tagging: { status: 'done', attempts: 1 } })))
 		assert.equal(await queueTagging(db, mine.ws, many.map((d) => d._id), deps), many.length, 'more ids than one slice')
 		assert.equal(await assets.countDocuments({ workspaceId: mine.ws, 'tagging.status': 'pending' }), many.length + 1)
+	})
+
+	check('a claim that lands between the decision and the write is not overwritten by queueTagging or requeueUntagged (the rule is the write\'s own filter)', async () => {
+		const { ws, clock } = setup()
+		const deps = { configured: () => true, now: clock.now }
+		const [doneImage, failedImage] = await seed(
+			ws,
+			{ tagging: { status: 'done', attempts: 1 } },
+			{ tagging: { status: 'failed', attempts: 3, error: TAGGING_ERRORS.unavailable } },
+		)
+		// Another worker takes the image in the instant before the caller's write reaches the database.
+		const racing = (id) =>
+			spyDb(db, (entry, real) => {
+				if (entry.collection === 'mediaAssets' && entry.op === 'updateMany')
+					return assets
+						.updateOne({ _id: id }, { $set: { 'tagging.status': 'running', 'tagging.leaseUntil': new Date(clock.ms + 30_000), 'tagging.attempts': 1 } })
+						.then(() => real())
+			}).db
+		assert.equal(await queueTagging(racing(doneImage._id), ws, [doneImage._id], deps), 0, 'a claim that landed first was reset')
+		assert.equal(await requeueUntagged(racing(failedImage._id), ws, deps), 0, 'a claim that landed first was reset')
+		for (const image of [doneImage, failedImage]) {
+			const after = await get(image._id)
+			assert.deepEqual([after.tagging.status, after.tagging.attempts], ['running', 1], 'the claim must stand')
+			sameTime(after.tagging.leaseUntil, clock.ms + 30_000)
+		}
 	})
 
 	check('requeueUntagged: skipped for want of a key and failed images go back to pending; a refusal, a live lease and other accounts do not', async () => {
@@ -2935,6 +3323,73 @@ function registerSafety() {
 		assert.equal(spy.ops.length, 0, `queries were made for a bad account: ${JSON.stringify(spy.ops.map((o) => o.op))}`)
 	})
 
+	check('a clock that throws or answers with something that is not a date falls back to the real one, and its counters are the real UTC day (none is written here)', async () => {
+		const garbage = [
+			() => {
+				throw new Error('clock exploded')
+			},
+			() => new Date(Number.NaN),
+			() => 'yesterday',
+			() => 1_700_000_000_000,
+			() => null,
+			() => undefined,
+			() => ({ getTime: () => 5 }),
+		]
+		const t0 = Date.now()
+		const days = new Set()
+		for (const now of garbage) {
+			const ws = newWs()
+			const [image] = await seed(ws, {})
+			// The counters are answered here, so the real day's counters are never touched.
+			const offline = offlineCounters()
+			const spy = spyDb(db, offline.intercept)
+			const started = Date.now()
+			const out = await runTagging(spy.db, ws, { limit: 1 }, makeDeps(now).deps)
+			const finished = Date.now()
+			assert.deepEqual(out.processed.map((p) => p.status), ['done'], `clock ${String(now)}`)
+			assert.equal((await get(image._id)).tagging.status, 'done')
+			// The lease came from the real clock, not from the garbage.
+			const claim = spy.ops.find((o) => o.collection === 'mediaAssets' && o.op === 'findOneAndUpdate')
+			const lease = claim.args[1][0].$set['tagging.leaseUntil']
+			assert.ok(lease instanceof Date && +lease >= started + MEDIA_LIMITS.aiLeaseMs && +lease <= finished + MEDIA_LIMITS.aiLeaseMs, `lease ${lease}`)
+			for (const key of offline.keys) days.add(key.split(':')[1])
+
+			// The status reads the same way, and says when a spent budget resets, by the real clock.
+			const spent = offlineCounters({ held: 10 ** 9 })
+			const status = await getTaggingStatus(spyDb(db, spent.intercept).db, ws, { configured: () => true, now })
+			assert.equal(status.budgetExhausted, true)
+			assert.ok([nextMidnightIso(started), nextMidnightIso(Date.now())].includes(status.resetsAt), `resetsAt ${status.resetsAt}`)
+		}
+		const allowed = new Set([dayKey(t0), dayKey(Date.now())])
+		assert.ok(days.size > 0 && [...days].every((day) => allowed.has(day)), `counters were keyed by ${[...days]}`)
+	})
+
+	check('reserveAiBudget and refundAiBudget given something that is not a date use the real UTC day (none is written here)', async () => {
+		const t0 = Date.now()
+		const days = new Set()
+		for (const bad of [new Date(Number.NaN), 'yesterday', null, undefined, 12345, {}]) {
+			const offline = offlineCounters()
+			const spy = spyDb(db, offline.intercept)
+			const ws = newWs()
+			assert.deepEqual(await reserveAiBudget(spy.db, ws, bad), { ok: true }, String(bad))
+			await refundAiBudget(spy.db, ws, bad)
+			assert.ok(offline.keys.size >= 2, 'both counters should have been named')
+			for (const key of offline.keys) days.add(key.split(':')[1])
+		}
+		const allowed = new Set([dayKey(t0), dayKey(Date.now())])
+		assert.ok([...days].every((day) => allowed.has(day)), `counters were keyed by ${[...days]}`)
+	})
+
+	check('a huge ids list is bounded: the run still works, and only the named image of this account is tagged', async () => {
+		const ctx = setup()
+		const [target, other] = await seed(ctx.ws, {}, {})
+		const ids = [target._id, ...Array.from({ length: 20_000 }, () => new ObjectId())]
+		const out = await runTagging(db, ctx.ws, { ids, limit: 4 }, ctx.deps)
+		assert.deepEqual(out.processed.map((p) => hex(p.id)), [hex(target._id)])
+		assert.equal((await get(other._id)).tagging.status, 'pending')
+		assert.equal(ctx.calls.tag.length, 1)
+	})
+
 	check('other accounts are never read, claimed, swept, queued, requeued or counted by any call', async () => {
 		const mine = setup()
 		const theirs = newWs()
@@ -3094,12 +3549,22 @@ async function main() {
 		return
 	}
 	await client.connect()
-	db = client.db()
+	db = slowDb(client.db(), Number(process.env.PROVE_LATENCY_MS) || 0)
 	assets = db.collection('mediaAssets')
 	usage = db.collection('mediaAiUsage')
 	ruleCol = db.collection('mediaTagRules')
 	folderCol = db.collection('mediaFolders')
 	PNG = await sharp({ create: { width: 24, height: 16, channels: 3, background: '#3366aa' } }).png().toBuffer()
+	// Open the pool's connections side by side now, so no check pays for a handshake.
+	await Promise.all(Array.from({ length: 20 }, () => db.command({ ping: 1 })))
+	// Most of the time below is waiting for this: a check is a chain of round trips.
+	const pings = []
+	for (let i = 0; i < 3; i++) {
+		const sent = Date.now()
+		await db.command({ ping: 1 })
+		pings.push(Date.now() - sent)
+	}
+	console.log(`database round trip: about ${Math.round(pings.reduce((a, b) => a + b, 0) / pings.length)} ms`)
 	dayBase = await pickDayBase()
 
 	registerConstants()
@@ -3128,29 +3593,13 @@ try {
 	globalThis.fetch = realFetch
 	AbortSignal.timeout = AbortSignalTimeout
 	try {
-		if (db) {
-			// Only this run's accounts, and only the counters it created: its accounts' own, and the global days it picked.
-			const ids = workspaces.map((id) => hex(id))
-			const gone = {
-				assets: (await assets.deleteMany({ workspaceId: { $in: workspaces } })).deletedCount,
-				folders: (await folderCol.deleteMany({ workspaceId: { $in: workspaces } })).deletedCount,
-				rules: (await ruleCol.deleteMany({ workspaceId: { $in: workspaces } })).deletedCount,
-				workspaceCounters: ids.length
-					? (await usage.deleteMany({ _id: { $regex: `^(?:${ids.join('|')}):` } })).deletedCount
-					: 0,
-				globalCounters: (await usage.deleteMany({ _id: { $in: globalKeysUsed } })).deletedCount,
-			}
-			const left =
-				(await assets.countDocuments({ workspaceId: { $in: workspaces } })) +
-				(await folderCol.countDocuments({ workspaceId: { $in: workspaces } })) +
-				(await ruleCol.countDocuments({ workspaceId: { $in: workspaces } })) +
-				(ids.length ? await usage.countDocuments({ _id: { $regex: `^(?:${ids.join('|')}):` } }) : 0) +
-				(await usage.countDocuments({ _id: { $in: globalKeysUsed } }))
+		// Whatever was handed out since the last section (everything, if the harness itself failed).
+		const left = await cleanupCreated()
+		if (db)
 			console.log(
-				`\ncleanup: removed ${gone.assets} assets, ${gone.folders} folders, ${gone.rules} rules, ${gone.workspaceCounters} account counters and ${gone.globalCounters} global counters across ${workspaces.length} accounts; ${left} left`,
+				`\ncleanup: removed ${removed.assets} assets, ${removed.folders} folders, ${removed.rules} rules, ${removed.accountCounters} account counters and ${removed.globalCounters} global counters across ${removed.accounts} accounts; ${left} left`,
 			)
-			if (left) failed++
-		}
+		if (left) failed++
 	} catch (error) {
 		failed++
 		console.log(`FAIL  cleanup (${error})`)
@@ -3162,4 +3611,6 @@ try {
 	await client?.close().catch(() => {})
 }
 console.log(`\n${passed} passed, ${failed} failed (${((Date.now() - started) / 1000).toFixed(0)} s)`)
+// The aggregator (prove-media-all.mjs) reads this form.
+console.log(`${passed}/${passed + failed} passed`)
 process.exit(failed ? 1 : 0)

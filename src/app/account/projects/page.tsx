@@ -33,6 +33,7 @@ export default async function ProjectsPage() {
 		<ProjectsTable
 			initial={rows}
 			canCreate={membership.permissions.has('projects.create')}
+			canDelete={membership.permissions.has('projects.delete')}
 		/>
 	)
 }

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sidebar'
 import { NavUser } from '@/components/nav-user'
 import { TeamSwitcher, type AccountOption } from '@/components/team-switcher'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { AccountNav, type NavItem } from './account-nav'
 
@@ -52,6 +53,7 @@ export function AccountShell({
 	email,
 	userName,
 	userImage,
+	viaAdmin,
 	children,
 }: {
 	items: NavItem[]
@@ -61,6 +63,7 @@ export function AccountShell({
 	email: string
 	userName: string
 	userImage: string | null
+	viaAdmin: boolean
 	children: React.ReactNode
 }) {
 	const wide = isWidePath(usePathname())
@@ -89,6 +92,17 @@ export function AccountShell({
 					<SidebarTrigger className='-ml-1' />
 					<span className='truncate text-sm font-semibold'>{accountName}</span>
 				</header>
+
+				{viaAdmin && (
+					<div className='flex items-center justify-between gap-3 border-b border-brand/30 bg-brand/10 px-4 py-2 text-sm'>
+						<span>
+							Viewing <strong>{accountName}</strong> as an administrator.
+						</span>
+						<Link href='/admin/accounts' className='shrink-0 font-semibold text-brand hover:underline'>
+							Back to admin
+						</Link>
+					</div>
+				)}
 
 				<div
 					className={cn(

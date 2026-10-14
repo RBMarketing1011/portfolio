@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { Section } from '@/components/sections'
+import { auth } from '@/lib/auth'
+import { isPlatformAdmin } from '@/lib/admin/role'
 import { buildMetadata } from '@/lib/seo'
 import { currentMembership } from '@/lib/workspace/current'
 import { SignInForm } from './sign-in-form'
@@ -15,6 +17,9 @@ export const metadata = buildMetadata({
 export default async function SignInPage() {
 	// Membership, not just a session: a token that outlived its account would
 	// bounce here from /account and back forever.
+	const session = await auth()
+	if (session?.user?.id && (await isPlatformAdmin(session.user.id)))
+		redirect('/admin')
 	if (await currentMembership()) redirect('/account')
 
 	return (

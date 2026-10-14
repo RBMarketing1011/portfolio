@@ -113,11 +113,6 @@ export function AcceptInvite({
 							Sign in to accept
 						</Link>
 					</Button>
-					<Button asChild variant='outline' className='w-full border-white/15'>
-						<Link href={`/sign-up?next=/invite/${token}`}>
-							Create an account
-						</Link>
-					</Button>
 				</div>
 			)}
 		</div>

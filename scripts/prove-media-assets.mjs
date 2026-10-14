@@ -195,7 +195,8 @@ const NEVER = () => new Promise(() => {})
  * The scheduler. `check` queues a check and returns at once; up to PROVE_CONCURRENCY run together, each in a
  * context of its own, and results print in the order the checks were written. A check that changes something
  * global (a library limit, an environment variable) is `exclusive`: it starts only when nothing else is running
- * and nothing else starts until it is done.
+ * and nothing else starts until it is done. Waiting for the pool to empty must not leave the pool idle, so an
+ * exclusive check takes its turn only when no ordinary check is left to start (they all still run, one by one).
  */
 const CONCURRENCY = Math.max(1, Number(process.env.PROVE_CONCURRENCY ?? 8))
 /** The runner (prove-media-all) gives a proof five minutes; this ends the run, cleanup included, before that. */
@@ -231,10 +232,14 @@ async function execute({ entry, name, fn, opts }) {
 
 function pump() {
 	while (queue.length) {
-		const task = queue[0]
 		if (exclusiveRunning || running >= CONCURRENCY) return
-		if (task.opts.exclusive && running > 0) return
-		queue.shift()
+		let next = queue.findIndex((queued) => !queued.opts.exclusive)
+		if (next < 0) {
+			// Only exclusive checks are left: each needs the pool empty.
+			if (running > 0) return
+			next = 0
+		}
+		const [task] = queue.splice(next, 1)
 		running++
 		if (task.opts.exclusive) exclusiveRunning = true
 		als
@@ -1052,11 +1057,35 @@ async function sectionRegister() {
 		assert.ok((await docOf(doc._id)).folderId.equals(folder))
 	})
 
+	check('the folder is deleted right after the insert: the new image is moved to the root instead of pointing at nothing', async () => {
+		const ws = newWs()
+		const folder = await mkFolder(ws, 'Doomed')
+		const ref = put(ws, await unique(710))
+		const spy = spyDb(db, async (ev) => {
+			if (at(ev, 'mediaAssets', 'insertOne', 1, 'after')) await folderCol.deleteOne({ _id: folder._id })
+		})
+		const { doc } = await register(ws, ref, { folderId: folder._id }, spy)
+		assert.equal(doc.folderId, null)
+		assert.equal((await assetCol.findOne({ workspaceId: ws, pathname: ref.pathname })).folderId, null)
+		assertNoDeletes()
+	})
+
 	check('a 24-hex string folder id is re-parsed, not trusted as an object', async () => {
 		const ws = newWs()
 		const folder = (await folderCol.insertOne({ workspaceId: ws, parentId: null, name: 'C', nameKey: 'c', createdBy: 'x', createdAt: new Date(), updatedAt: new Date() })).insertedId
 		const { doc } = await register(ws, put(ws, await unique(81)), { folderId: hex(folder) })
 		assert.ok(doc.folderId instanceof ObjectId && doc.folderId.equals(folder))
+	})
+
+	check('no folder at all (the key absent, or undefined) registers at the root: a missing folder is not a bad one, and nothing is deleted', async () => {
+		const ws = newWs()
+		const absent = put(ws, await unique(82))
+		const first = await A.registerUploadedBlob(db, { workspaceId: ws, userId: 'u' }, { url: absent.url, pathname: absent.pathname, filename: 'a.png' })
+		assert.equal(first.doc.folderId, null)
+		assert.equal((await docOf(first.doc._id)).folderId, null, 'an explicit null on disk, not a missing field')
+		const explicit = await register(ws, put(ws, await unique(83)), { folderId: undefined })
+		assert.equal(explicit.doc.folderId, null)
+		assertNoDeletes()
 	})
 
 	const folderFailures = [
@@ -1249,6 +1278,20 @@ async function sectionClaims() {
 			assert.equal(await countIn(ws), 0)
 		})
 
+	check('an absurdly long url or pathname (100,000 characters) is a 400 that costs the store nothing, and nothing is deleted', async () => {
+		const ws = newWs()
+		const real = put(ws, await unique(132), { name: 'x.png' })
+		const longPath = `${prefixOf(ws)}${'a'.repeat(100_000)}.png`
+		const longUrl = `https://${STORE}.public.blob.vercel-storage.com/${longPath}`
+		for (const [url, pathname] of [[longUrl, longPath], [longUrl, real.pathname], [real.url, longPath]])
+			noLeak(await rejects(A.registerUploadedBlob(db, { workspaceId: ws, userId: 'u' }, { url, pathname, filename: 'x.png', folderId: null }), 400))
+		assert.deepEqual(sdkCalls.head, [], 'the store is never asked about an absurd claim')
+		assertNoDeletes()
+		assertNoRead()
+		assertKept([real])
+		assert.equal(await countIn(ws), 0)
+	})
+
 	check('no such blob (BlobGone at head): 400 with the fixed "no longer stored" text, nothing deleted', async () => {
 		const ws = newWs()
 		const ref = { url: norm(blobUrl(`${prefixOf(ws)}gone.png`)), pathname: `${prefixOf(ws)}gone.png`, name: 'gone.png' }
@@ -1366,6 +1409,61 @@ async function sectionRejections() {
 		assert.deepEqual(Object.keys(calls.del[0].info).sort(), ['pathname', 'url'], 'only what is needed to delete')
 		assertDeleted(ws, [ref])
 	})
+
+	// The same property for every way a proven blob is refused. The request spells the url with an explicit :443 (the
+	// same blob, another spelling); whatever the reason for the refusal, what is deleted is what head described.
+	const spelled = (ref) => ({ ...ref, url: ref.url.replace('.com/', '.com:443/') })
+	const assertDeletedExactlyInfo = (ws, ref) => {
+		assert.notEqual(spelled(ref).url, ref.url, 'the request really does spell it differently')
+		assert.equal(calls.del.length, 1, 'one blob is deleted')
+		assert.deepEqual(calls.del[0].info, { url: ref.url, pathname: ref.pathname }, "head's url and pathname and nothing else")
+		assert.equal(calls.del[0].prefix, prefixOf(ws))
+		assert.deepEqual(sdkCalls.del, [ref.url], 'the SDK is given the store\'s own spelling')
+		assert.ok(!blobs.has(ref.url))
+	}
+	const exactlyInfo = [
+		['oversize at head (413)', 413, async (ws) => put(ws, await unique(1500), { size: MEDIA_LIMITS.maxBytes + 1 }), {}],
+		['an unsupported content type (415)', 415, async (ws) => put(ws, await unique(1501), { contentType: 'image/svg+xml' }), {}],
+		['an empty object (422)', 422, async (ws) => put(ws, Buffer.alloc(0), { size: 0 }), {}],
+		['bytes that do not decode (422)', 422, async (ws) => put(ws, randomBytes(512)), {}],
+		['bigger at the download than head said (413)', 413, async (ws) => put(ws, Buffer.alloc(MEDIA_LIMITS.maxBytes + 1024), { size: 1000 }), {}],
+		['the total-bytes quota (429)', 429, async (ws) => {
+			await seed(ws, 1, { bytes: MEDIA_LIMITS.maxTotalBytes - 10 }, { blobsToo: false })
+			return put(ws, await unique(1502), { size: 11 })
+		}, {}],
+		['a folder that does not exist (400)', 400, async (ws) => put(ws, await unique(1503)), { folderId: new ObjectId() }],
+	]
+	for (const [label, status, make, extra] of exactlyInfo)
+		check(`the request spelled the url with :443, and the cleanup still deletes exactly what head described: ${label}`, async () => {
+			const ws = newWs()
+			const ref = await make(ws)
+			await rejects(register(ws, spelled(ref), extra), status)
+			assertDeletedExactlyInfo(ws, ref)
+			assert.equal(await assetCol.countDocuments({ workspaceId: ws, pathname: ref.pathname }), 0, 'and no asset for it')
+		})
+
+	check('the request spelled the url with :443, and the cleanup still deletes exactly what head described: an exact duplicate', async () => {
+		const ws = newWs()
+		const bytes = await unique(1504)
+		const first = put(ws, bytes, { name: 'first.png' })
+		await register(ws, first)
+		const again = put(ws, bytes, { name: 'again.png' })
+		const out = await register(ws, spelled(again))
+		assert.equal(out.status, 'duplicate')
+		assertDeletedExactlyInfo(ws, again)
+		assertKept([first])
+	})
+
+	check('the request spelled the url with :443, and the cleanup still deletes exactly what head described: the library is full (429)', async () => {
+		await withLimits({ maxAssets: 3 }, async () => {
+			const ws = newWs()
+			await seed(ws, 3, {}, { blobsToo: false })
+			const ref = put(ws, await unique(1505))
+			await rejects(register(ws, spelled(ref)), 429)
+			assertDeletedExactlyInfo(ws, ref)
+			assert.equal(await countIn(ws), 3)
+		})
+	}, { exclusive: true })
 
 	check('exactly maxBytes is accepted (the size is stored as head reported it)', async () => {
 		const ws = newWs()
@@ -1486,6 +1584,23 @@ async function sectionRejections() {
 		assertKept([twin])
 		await resetBig(ws)
 	})
+
+	check('the asset cap at a small size: the last place is still given (the cap is >=, not >), the next one is refused (429) and its blob deleted', async () => {
+		await withLimits({ maxAssets: 6 }, async () => {
+			const ws = newWs()
+			await seed(ws, 4, {}, { blobsToo: false })
+			await register(ws, put(ws, await unique(182), { name: 'fifth.png' }))
+			await register(ws, put(ws, await unique(183), { name: 'sixth.png' }))
+			assert.equal(await countIn(ws), 6)
+			assertNoDeletes()
+			const ref = put(ws, await unique(184), { name: 'seventh.png' })
+			const error = await rejects(register(ws, ref), 429)
+			noLeak(error)
+			assert.equal(calls.read.length, 2, 'the refused one was never downloaded')
+			assertDeleted(ws, [ref])
+			assert.equal(await countIn(ws), 6)
+		})
+	}, { exclusive: true })
 
 	check('the total-bytes quota (429): exactly at the quota is accepted, one byte over is not (and is deleted, never downloaded)', async () => {
 		const ws = newWs()
@@ -1629,13 +1744,15 @@ async function sectionRace() {
 		hooks.read = async (_url, n) => {
 			if (n === 1) await firstDone.wait()
 		}
-		const calls2 = [register(ws, ref), register(ws, ref)]
+		const spy = spyDb(db)
+		const calls2 = [register(ws, ref, {}, spy), register(ws, ref, {}, spy)]
 		const settled = []
 		const track = calls2.map((p, i) => p.then((r) => { settled.push(i); firstDone.open(); return r }))
 		const [a, b] = await Promise.all(track)
 		assert.ok(a.doc._id.equals(b.doc._id))
 		assert.equal(await countIn(ws), 1)
 		assert.equal(calls.read.length, 2, 'both downloaded: neither knew about the other')
+		assert.equal(spy.counts.get('mediaAssets.insertOne'), 1, 'the slow call looked again after the analysis and found its twin: it never tried to insert')
 		assertNoDeletes()
 		assertKept([ref])
 		assert.equal((await docOf(a.doc._id)).rev, 0)
@@ -1845,6 +1962,102 @@ async function sectionRace() {
 			}),
 		)
 	})
+
+	/**
+	 * Interleavings nobody wrote down. Browser and webhook twins for 24 blobs, and singles that must be refused (five
+	 * ways) or answered as duplicates, all started at once in a shuffled order, with a random pause in front of every
+	 * database call, every store lookup and every download. What each job ends in does not depend on the interleaving,
+	 * so every outcome is asserted exactly. (A refusal that races a twin of the SAME blob is the documented residual
+	 * and is kept out of the mix: no single here has a twin.) The seed fixes the shuffle and the first pauses; later
+	 * pauses are drawn in the order calls happen to arrive, so interleavings differ from run to run, which is the point.
+	 */
+	const stressSeeds = [20260115, 7, 424242]
+	for (const seed of stressSeeds)
+		check(`random interleavings (seed ${seed}): twins keep one asset and their blob, each refusal deletes exactly its own blob, nothing points at a deleted blob`, async () => {
+			let state = (Number(process.env.PROVE_SEED ?? seed) ^ 0x9e3779b9) >>> 0
+			const rand = (n) => {
+				state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+				return (state >>> 8) % n
+			}
+			const ws = newWs()
+			// Pauses only start once the library has its originals: setup is not what is being shuffled.
+			let shaking = false
+			const spy = spyDb(db, async (ev) => {
+				if (shaking && ev.phase === 'before') await sleep(rand(10))
+			})
+			hooks.head = async () => shaking && sleep(rand(8))
+			hooks.read = async () => shaking && sleep(rand(15))
+
+			const originals = []
+			for (let i = 0; i < 4; i++) {
+				const bytes = await unique(2100 + i)
+				originals.push({ bytes, doc: (await register(ws, put(ws, bytes, { name: `orig-${i}.png` }))).doc })
+			}
+
+			const jobs = []
+			const pairs = []
+			for (let i = 0; i < 24; i++) {
+				const ref = put(ws, await unique(2200 + i), { name: `pair-${i}.png` })
+				pairs.push(ref)
+				// Half of the requests spell the url another way: the same blob, as a browser may name it.
+				for (const spellIt of [false, i % 2 === 0])
+					jobs.push({ ref, run: () => register(ws, spellIt ? { ...ref, url: ref.url.replace('.com/', '.com:443/') } : ref, {}, spy), expect: { twin: true } })
+			}
+			const refused = []
+			const refuse = (ref, status, extra = {}) => {
+				refused.push(ref)
+				jobs.push({ ref, run: () => register(ws, ref, extra, spy), expect: { status } })
+			}
+			for (let i = 0; i < 4; i++) refuse(put(ws, await unique(2300 + i), { name: `big-${i}.png`, size: MEDIA_LIMITS.maxBytes + 1 }), 413)
+			for (let i = 0; i < 4; i++) refuse(put(ws, await unique(2310 + i), { name: `svg-${i}.png`, contentType: 'image/svg+xml' }), 415)
+			for (let i = 0; i < 4; i++) refuse(put(ws, randomBytes(300 + i), { name: `junk-${i}.png` }), 422)
+			for (let i = 0; i < 4; i++) refuse(put(ws, await unique(2320 + i), { name: `nofolder-${i}.png` }), 400, { folderId: new ObjectId() })
+			for (let i = 0; i < 8; i++) {
+				const original = originals[i % originals.length]
+				const ref = put(ws, original.bytes, { name: `copy-${i}.png` })
+				refused.push(ref)
+				jobs.push({ ref, run: () => register(ws, ref, {}, spy), expect: { duplicateOf: original.doc._id } })
+			}
+			for (let i = jobs.length - 1; i > 0; i--) {
+				const j = rand(i + 1)
+				;[jobs[i], jobs[j]] = [jobs[j], jobs[i]]
+			}
+
+			shaking = true
+			const settled = await Promise.allSettled(jobs.map((job) => job.run()))
+			shaking = false
+
+			const winners = new Map()
+			settled.forEach((result, i) => {
+				const { ref, expect } = jobs[i]
+				const where = `${ref.pathname.split('/').pop()} (seed ${seed})`
+				if (expect.twin) {
+					assert.equal(result.status, 'fulfilled', `${where}: ${result.reason?.message}`)
+					assert.equal(result.value.status, 'created', where)
+					const known = winners.get(ref.pathname)
+					if (known) assert.ok(known.equals(result.value.doc._id), `${where}: the two answers are one asset`)
+					else winners.set(ref.pathname, result.value.doc._id)
+				} else if (expect.duplicateOf) {
+					assert.equal(result.status, 'fulfilled', `${where}: ${result.reason?.message}`)
+					assert.equal(result.value.status, 'duplicate', where)
+					assert.ok(result.value.doc._id.equals(expect.duplicateOf), `${where}: the original is the answer`)
+				} else {
+					assert.equal(result.status, 'rejected', where)
+					assert.ok(result.reason instanceof A.AssetError && result.reason.status === expect.status, `${where}: ${result.reason?.status} ${result.reason?.message}`)
+				}
+			})
+
+			const docs = await assetCol.find({ workspaceId: ws }).toArray()
+			assert.equal(docs.length, originals.length + pairs.length, 'one asset per original and per twin pair, nothing else')
+			assert.equal(new Set(docs.map((d) => d.pathname)).size, docs.length, 'no pathname twice')
+			for (const d of docs) {
+				assert.ok(blobs.has(norm(d.url)), `${d.pathname}: an asset whose blob is gone`)
+				assert.equal(d.rev, 0, `${d.pathname}: written once, never rewritten`)
+			}
+			for (const ref of pairs) assert.ok(docs.some((d) => d.pathname === ref.pathname), `${ref.pathname}: the twins left no asset`)
+			assertDeleted(ws, refused)
+			assertKept([...pairs, ...originals.map((o) => ({ url: o.doc.url, pathname: o.doc.pathname }))])
+		})
 }
 
 /* -------------------------------------------------------------------------- */
@@ -2337,6 +2550,36 @@ async function sectionUpdate() {
 			assert.deepEqual(stored[key], a[key], key)
 		assert.ok(!stored.terms.includes('evil'))
 		assert.equal(stored.captionEdited, true, 'derived from the caption change, not copied from the body')
+		// Not a list of fields to compare, the whole document: only what a caption edit changes may differ.
+		const untouched = ({ caption, captionEdited, rev, terms, updatedAt, ...rest }) => rest
+		assert.deepEqual(untouched(stored), untouched(a), 'nothing but what a caption edit changes was touched')
+	})
+
+	check('a body of Mongo operators, dotted paths and prototype keys changes nothing it did not ask for', async () => {
+		const ws = newWs()
+		const a = await one(ws, { name: 'Stay', tags: [manual('keep')], notes: 'keep me' })
+		const body = JSON.parse(
+			JSON.stringify({
+				notes: 'asked for this',
+				$set: { name: 'Hijacked', workspaceId: 'x' },
+				$unset: { tags: '' },
+				$inc: { rev: 50 },
+				$rename: { notes: 'caption' },
+				'tags.0.label': 'Hijacked',
+				'tagging.status': 'failed',
+				'$where': 'sleep(10000)',
+				'_id': { $ne: null },
+				'workspaceId': { $ne: null },
+			}),
+		)
+		const out = await update(ws, a._id, body)
+		const stored = await docOf(a._id)
+		assert.deepEqual(stored, out)
+		assert.equal(stored.notes, 'asked for this')
+		assert.equal(stored.rev, 1)
+		const untouched = ({ notes, rev, terms, updatedAt, ...rest }) => rest
+		assert.deepEqual(untouched(stored), untouched(a), 'only the notes changed')
+		assert.equal(await countIn(ws), 1)
 	})
 
 	check('a body with a "__proto__" key is just a key: nothing is polluted and only known fields apply', async () => {
@@ -2588,6 +2831,7 @@ async function sectionBulkMove() {
 		['an operator object', () => ({ $ne: null })],
 		['a number', () => 42],
 		['an array', () => [new ObjectId()]],
+		['undefined (only an explicit null is the root)', () => undefined],
 	])
 		check(`target ${label}: a 400 and nothing moves`, async () => {
 			const ws = newWs()

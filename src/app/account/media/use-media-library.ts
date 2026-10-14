@@ -1051,6 +1051,10 @@ const isFatalStatus = (error: unknown) =>
 export const backoffMs = (errors: number): number =>
 	Math.min(AI_BACKOFF_MAX_MS, AI_GAP_MS * 2 ** Math.max(1, errors))
 
+/** A count from the network: only a positive whole number is believed, so every reader of one agrees. */
+const count = (value: unknown): number =>
+	typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
+
 /**
  * Works through the tagging queue from the open page, one batch at a time: while
  * `setActive(true)`, POST /process, wait, ask again. At least 3 s between calls and 10 s
@@ -1065,7 +1069,12 @@ export function createAiLoop(deps: AiLoopDeps) {
 	let lastEnd = Number.NEGATIVE_INFINITY
 	let gap = 0
 	let errors = 0
+	/** An explicit ask (a person pressed "Tag them now") that has not gone out yet. */
 	let next: ProcessOptions | null = null
+	/** A person asked: the next call skips the wait. Only that call, and only while the ask stands. */
+	let kicked = false
+	/** The call in flight is the one that carries an explicit ask. */
+	let carrying = false
 
 	const clear = () => {
 		if (timer !== null) deps.clearTimeout(timer)
@@ -1077,17 +1086,21 @@ export function createAiLoop(deps: AiLoopDeps) {
 		if (!active || inFlight) return
 		// Hidden: nothing is scheduled, `resume` does it when the tab is back.
 		if (deps.hidden()) return
-		const wait = Math.max(0, lastEnd + gap - deps.now())
+		const wait = kicked ? 0 : Math.max(0, lastEnd + gap - deps.now())
 		timer = deps.setTimeout(() => {
 			timer = null
 			void run()
 		}, wait)
 	}
 
+	/** The loop is over: whatever was asked and not yet sent goes with it. */
 	const stop = (reason: AiStopReason, message?: string) => {
 		active = false
 		clear()
 		inFlight = null
+		next = null
+		kicked = false
+		carrying = false
 		deps.onWorking(false)
 		deps.onStop(reason, message)
 	}
@@ -1095,8 +1108,11 @@ export function createAiLoop(deps: AiLoopDeps) {
 	async function run(): Promise<void> {
 		if (!active || inFlight) return
 		if (deps.hidden()) return
-		const options = next ?? {}
+		const asked = next
+		const options = asked ?? {}
 		next = null
+		kicked = false
+		carrying = asked !== null
 		const controller = new AbortController()
 		inFlight = controller
 		let response: MediaProcessResponse
@@ -1106,6 +1122,7 @@ export function createAiLoop(deps: AiLoopDeps) {
 			// Stopped (or restarted) while the request was out: whatever it says is stale.
 			if (inFlight !== controller) return
 			inFlight = null
+			carrying = false
 			lastEnd = deps.now()
 			if (isAbortError(error) || controller.signal.aborted) return schedule()
 			errors++
@@ -1120,30 +1137,53 @@ export function createAiLoop(deps: AiLoopDeps) {
 		lastEnd = deps.now()
 		errors = 0
 		deps.onResponse(response)
-		// The page may have stopped the loop while it was applying the answer.
-		if (!active) return
+		carrying = false
 
+		// The wait before the next call belongs to this answer, whether the loop goes on or is
+		// started again later (a status read, an upload): the spacing holds across a stop, so two
+		// counts that disagree can never make it spin.
+		const blocked = response.blocked
+		if (blocked?.kind === 'rate_limited') {
+			const waits = Number.isFinite(blocked.retryAfterMs) ? (blocked.retryAfterMs as number) : 30_000
+			gap = Math.min(MEDIA_LIMITS.aiRetryAfterMaxMs, Math.max(AI_GAP_MS, waits))
+		} else gap = response.processed.length === 0 ? AI_EMPTY_GAP_MS : AI_GAP_MS
+
+		// What the answer says about the queue is read even when the page paused the loop in the
+		// meantime (a status read that raced this call): a bad key or an empty queue is news.
 		if (!response.configured) return stop('unconfigured')
 		if (response.budgetExhausted) return stop('budget')
-		const blocked = response.blocked
 		if (blocked?.kind === 'config') return stop('blocked', blocked.message)
-		if (blocked?.kind === 'rate_limited') {
-			const asked = Number.isFinite(blocked.retryAfterMs) ? (blocked.retryAfterMs as number) : 30_000
-			gap = Math.min(MEDIA_LIMITS.aiRetryAfterMaxMs, Math.max(AI_GAP_MS, asked))
-		} else if (response.remaining <= 0) return stop('done')
-		else gap = response.processed.length === 0 ? AI_EMPTY_GAP_MS : AI_GAP_MS
+		// Nothing left to claim ends the loop, unless a person asked for more while this call was
+		// out: that ask still goes.
+		if (blocked?.kind !== 'rate_limited' && count(response.remaining) === 0 && next === null)
+			return stop('done')
+		// Only a loop that is still wanted asks again (the page may have stopped it while it applied the answer).
 		schedule()
 	}
 
 	return {
-		/** Start working (true) or stop (false). Safe to call on every state change. */
-		setActive(on: boolean) {
+		/**
+		 * Start working (true) or stop (false). Safe to call on every state change. A stop aborts
+		 * the call in flight unless `abort` is false: a batch the server is already tagging is
+		 * real work, so a pause for a reason that is not "leave" lets its answer land. Leaving
+		 * ends that call even when the loop was already paused.
+		 */
+		setActive(on: boolean, { abort = true }: { abort?: boolean } = {}) {
+			if (!on && abort && inFlight) {
+				inFlight.abort()
+				inFlight = null
+				carrying = false
+				// The server may be working on it all the same: an aborted call still counts for the spacing.
+				lastEnd = deps.now()
+				gap = Math.max(gap, AI_GAP_MS)
+			}
 			if (on === active) return
 			if (!on) {
 				active = false
 				clear()
-				inFlight?.abort()
-				inFlight = null
+				// An ask that had not gone out yet is not replayed by a later start.
+				next = null
+				kicked = false
 				deps.onWorking(false)
 				return
 			}
@@ -1154,19 +1194,21 @@ export function createAiLoop(deps: AiLoopDeps) {
 		},
 		/**
 		 * An explicit ask (Tag them now, Retry): go now, with these options once. It ignores the
-		 * gaps and a halt, because a person pressed the button.
+		 * gaps and a halt, because a person pressed the button. Made while a call is out, it goes
+		 * as soon as that one answers.
 		 */
 		kick(options: ProcessOptions) {
 			next = options
 			errors = 0
-			gap = 0
-			lastEnd = Number.NEGATIVE_INFINITY
+			kicked = true
 			if (!active) {
 				active = true
 				deps.onWorking(true)
 			}
 			schedule()
 		},
+		/** A person's ask is still to be sent, or is out right now: the loop is wanted whatever the counts say. */
+		hasAsk: () => next !== null || carrying,
 		/** The tab went to the background: no new call until `resume`. A call in flight finishes. */
 		pause: clear,
 		resume: schedule,
@@ -1421,15 +1463,18 @@ export function createLibraryController(options: ControllerOptions) {
 		if (noticeTimer !== null) env.clearTimeout(noticeTimer)
 		noticeTimer = null
 	}
+	/** Good news fades by itself; a problem stays until it is dismissed. */
+	const armNoticeTimer = (id: number) => {
+		noticeTimer = env.setTimeout(() => {
+			noticeTimer = null
+			if (state.notice?.id === id) set({ notice: null })
+		}, NOTICE_MS)
+	}
 	const notify = (tone: Tone, text: string, extra: { retry?: 'refresh' } = {}) => {
 		clearNoticeTimer()
 		const id = ++sequence
 		set({ notice: { id, tone, text, ...extra }, announcement: { id: ++sequence, text } })
-		if (tone === 'info')
-			noticeTimer = env.setTimeout(() => {
-				noticeTimer = null
-				if (state.notice?.id === id) set({ notice: null })
-			}, NOTICE_MS)
+		if (tone === 'info') armNoticeTimer(id)
 	}
 
 	/* ---- small lookups --------------------------------------------------- */
@@ -1489,19 +1534,35 @@ export function createLibraryController(options: ControllerOptions) {
 
 	/* ---- fetching the list ------------------------------------------------- */
 
-	/** The "all matching" flag survives a new page only while the total it was made under still holds. */
+	/**
+	 * The "all matching" flag survives a new page only while what it was made for still holds:
+	 * the same total, and a result that is still exact (not truncated, nothing dropped, within
+	 * the cap). Otherwise the cards that were chosen stay chosen and the "all" ends.
+	 */
 	const reconcileAllMatching = (
 		selection: Selection,
-		total: number,
+		response: Pick<MediaSearchResponse, 'total' | 'truncated' | 'dropped'>,
 		ids: readonly string[],
 	): Selection => {
 		if (!selection.allMatching) return selection
-		if (selection.matchTotal !== total)
+		const exact = canSelectAllMatching({
+			total: response.total,
+			truncated: response.truncated === true,
+			dropped: response.dropped ?? [],
+		})
+		if (!exact || selection.matchTotal !== response.total)
 			return { ...selection, allMatching: false, matchTotal: 0 }
 		return extendAllMatching(selection, ids)
 	}
 
-	async function fetchPage(kind: 'first' | 'more' | 'refresh', opts: { prune?: boolean } = {}) {
+	/**
+	 * A reload was asked to drop the selected images that left the results (a move, a keep). It
+	 * stays asked until a list lands, so a request that superseded the one it was made for, or an
+	 * unmount in between, cannot lose it.
+	 */
+	let pruneNext = false
+
+	async function fetchPage(kind: 'first' | 'more' | 'refresh') {
 		const ticket = searchGate.begin()
 		const params = state.params
 		const key = resultsKeyOf(params)
@@ -1542,7 +1603,7 @@ export function createLibraryController(options: ControllerOptions) {
 			total: response.total,
 			truncated: response.truncated === true,
 			hasMore: response.hasMore === true,
-			pending: typeof response.pending === 'number' ? response.pending : state.pending,
+			pending: typeof response.pending === 'number' ? count(response.pending) : state.pending,
 			resultsKey: key,
 			error: null,
 			loading: false,
@@ -1556,7 +1617,7 @@ export function createLibraryController(options: ControllerOptions) {
 				...meta,
 				assets: merged,
 				nextOffset: offset + response.assets.length,
-				selection: reconcileAllMatching(state.selection, response.total, ids),
+				selection: reconcileAllMatching(state.selection, response, ids),
 			})
 			announce(
 				`Loaded ${pluralize(added, 'more image')}. ${formatCount(merged.length)} of ${formatCount(
@@ -1565,11 +1626,22 @@ export function createLibraryController(options: ControllerOptions) {
 			)
 		} else {
 			const totalChanged = response.total !== state.total
-			let selection = reconcileAllMatching(state.selection, response.total, ids)
-			if (kind === 'refresh' && opts.prune)
+			let selection = reconcileAllMatching(state.selection, response, ids)
+			if (pruneNext) {
 				selection = pruneSelection(selection, new Set(ids))
+				pruneNext = false
+			}
+			// The sheet's image outlives the list it was opened from: a reload that no longer holds
+			// it (it was retagged out of the query, moved, or fell past the page) keeps showing it,
+			// or `?asset=` would name an image the sheet does not show.
+			const open = state.openId
+			const fetchedAsset =
+				open !== null && !ids.includes(open)
+					? (findAsset(open) ?? state.fetchedAsset)
+					: state.fetchedAsset
 			set({
 				...meta,
+				fetchedAsset,
 				assets: page,
 				nextOffset: offset + response.assets.length,
 				sortApplied: isSort(response.sort) ? response.sort : state.sortApplied,
@@ -1591,6 +1663,8 @@ export function createLibraryController(options: ControllerOptions) {
 				)
 		}
 		evaluateLoop()
+		// The list that landed may not hold the open image (a new search under an open sheet).
+		ensureOpenLoaded()
 	}
 
 	/** First page of the current search again, with skeletons (a retry, or a refresh that caught a new search in flight). */
@@ -1605,8 +1679,9 @@ export function createLibraryController(options: ControllerOptions) {
 	/** Reloads the list in place (the cards stay until the answer lands). */
 	function refreshList(opts: { prune?: boolean } = {}) {
 		if (!mounted) return
+		if (opts.prune) pruneNext = true
 		if (state.loading) return fetchFirst()
-		void fetchPage('refresh', opts)
+		void fetchPage('refresh')
 	}
 
 	function retry() {
@@ -1633,7 +1708,7 @@ export function createLibraryController(options: ControllerOptions) {
 		try {
 			const tagging = await api.processStatus()
 			if (mine !== taggingSeq || !mounted) return
-			set({ tagging, pending: tagging.pending })
+			set({ tagging, pending: count(tagging.pending) })
 			evaluateLoop()
 		} catch {
 			// Status is a convenience.
@@ -1700,13 +1775,19 @@ export function createLibraryController(options: ControllerOptions) {
 		clearDebounce()
 		// A change of q, folder or deep ends the selection; a change of sort does not.
 		const selection = selectionAfterParamsChange(prev, params, state.selection)
+		// An image that stays open (Back to a URL that names it) keeps the copy the page has while
+		// the list is emptied, so the sheet does not close for the length of the request.
+		const carried =
+			opts.keepOpen && state.openId !== null
+				? (findAsset(state.openId) ?? state.fetchedAsset)
+				: null
 		set({
 			params,
 			draft: opts.setDraft === false ? state.draft : params.q,
 			selection,
 			selecting: selection !== state.selection ? false : state.selecting,
 			openId: opts.keepOpen ? state.openId : null,
-			fetchedAsset: opts.keepOpen ? state.fetchedAsset : null,
+			fetchedAsset: carried,
 			assets: [],
 			hasMore: false,
 			loading: true,
@@ -1835,14 +1916,21 @@ export function createLibraryController(options: ControllerOptions) {
 
 	/* ---- the open image ---------------------------------------------------- */
 
+	/** The image a request is out for, so a remount can tell "being fetched" from "never asked". */
+	let openFetching: string | null = null
+
 	async function fetchOpen(id: string) {
 		const ticket = openGate.begin()
+		openFetching = id
 		try {
 			const asset = await api.getAsset(id, ticket.signal)
-			if (!ticket.isCurrent() || state.openId !== id) return
+			if (!ticket.isCurrent()) return
+			openFetching = null
+			if (state.openId !== id) return
 			set({ fetchedAsset: asset })
 		} catch (error) {
 			if (!ticket.isCurrent() || isAbortError(error)) return
+			openFetching = null
 			if (state.openId === id) {
 				set({ openId: null, fetchedAsset: null })
 				syncUrl('replace')
@@ -1856,13 +1944,24 @@ export function createLibraryController(options: ControllerOptions) {
 		}
 	}
 
+	/** The open image is in the list, already fetched or on its way: otherwise ask for it. */
+	function ensureOpenLoaded() {
+		const id = state.openId
+		if (id === null || openFetching === id) return
+		if (state.fetchedAsset?.id === id || state.assets.some((asset) => asset.id === id)) return
+		void fetchOpen(id)
+	}
+
 	function setOpen(id: string | null, history: HistoryMode) {
 		if (id === state.openId) return
 		const kept = id !== null && state.fetchedAsset?.id === id ? state.fetchedAsset : null
-		if (id === null) openGate.cancel()
+		if (id === null) {
+			openGate.cancel()
+			openFetching = null
+		}
 		set({ openId: id, fetchedAsset: kept })
 		if (history !== 'none') syncUrl('replace')
-		if (id !== null && !kept && !state.assets.some((asset) => asset.id === id)) void fetchOpen(id)
+		ensureOpenLoaded()
 	}
 
 	const openIndex = () =>
@@ -1927,10 +2026,16 @@ export function createLibraryController(options: ControllerOptions) {
 		const keep = state.openId !== null && gone.has(state.openId) ? findAsset(state.openId) : undefined
 		const before = state.assets.length
 		const assets = removeAssets(state.assets, gone)
+		// What left the view is no longer chosen, and an "all matching" was made for a set that
+		// just changed size.
+		const selection = removeFromSelection(state.selection, gone)
 		set({
 			assets,
 			total: Math.max(0, state.total - (before - assets.length)),
 			fetchedAsset: keep ?? state.fetchedAsset,
+			selection,
+			selecting:
+				selection !== state.selection && isEmptySelection(selection) ? false : state.selecting,
 		})
 	}
 
@@ -2054,15 +2159,19 @@ export function createLibraryController(options: ControllerOptions) {
 	const bulkBody = (extra: BulkExtra, target: BulkTarget): BulkBody => ({ ...extra, target }) as BulkBody
 
 	/**
-	 * Runs one action over the selection and says how many it changed against how many were
-	 * asked. A big id selection goes in slices the server accepts; an "all matching" one goes
-	 * as the search with the total the person saw, and a 409 (the set moved) ends that mode.
+	 * Runs one action over a scope (the selection as of when the person confirmed, unless the
+	 * caller hands over the live one) and says how many it changed against how many were asked.
+	 * A big id selection goes in slices the server accepts; an "all matching" one goes as the
+	 * search with the total the person saw, and a 409 (the set moved) ends that mode.
 	 */
-	async function runBulk(extra: BulkExtra): Promise<{ asked: number; affected: number }> {
-		const selection = state.selection
+	async function runBulk(
+		extra: BulkExtra,
+		scope: BulkScope,
+	): Promise<{ asked: number; affected: number }> {
+		const { selection } = scope
 		const asked = selection.allMatching ? selection.matchTotal : selection.ids.size
 		if (asked === 0) throw new Error('Select some images first.')
-		const target = bulkTargetFor(selection, state.resultsKey, state.total)
+		const target = bulkTargetFor(selection, scope.key, scope.total)
 		let affected = 0
 		try {
 			if ('ids' in target) {
@@ -2090,27 +2199,38 @@ export function createLibraryController(options: ControllerOptions) {
 		notify(result.tone, result.text)
 	}
 
-	async function bulkMove(folderId: string | null): Promise<void> {
+	/*
+	 * Each takes the scope it is to act on. A confirmation hands over the one it was opened for, so
+	 * what the person read ("Delete 12 images") is exactly what runs even if the selection moved
+	 * while the dialog was up; without one, the live selection is used.
+	 */
+	async function bulkMove(
+		folderId: string | null,
+		scope: BulkScope = selectBulkScope(state),
+	): Promise<void> {
 		requirePermission('write')
-		const { asked, affected } = await runBulk({ action: 'move', folderId })
+		const { asked, affected } = await runBulk({ action: 'move', folderId }, scope)
 		report('move', asked, affected)
 		clearSelection()
 		scheduleRefresh({ list: true, folders: true, prune: true })
 	}
 
-	async function bulkTags(change: { add: string[]; remove: string[] }): Promise<void> {
+	async function bulkTags(
+		change: { add: string[]; remove: string[] },
+		scope: BulkScope = selectBulkScope(state),
+	): Promise<void> {
 		requirePermission('write')
 		let asked = 0
 		let added: number | null = null
 		let removed: number | null = null
 		if (change.add.length > 0) {
-			const result = await runBulk({ action: 'addTags', tags: change.add })
+			const result = await runBulk({ action: 'addTags', tags: change.add }, scope)
 			asked = result.asked
 			added = result.affected
 		}
 		if (change.remove.length > 0) {
 			try {
-				const result = await runBulk({ action: 'removeTags', tags: change.remove })
+				const result = await runBulk({ action: 'removeTags', tags: change.remove }, scope)
 				asked = result.asked
 				removed = result.affected
 			} catch (error) {
@@ -2137,19 +2257,19 @@ export function createLibraryController(options: ControllerOptions) {
 		scheduleFacets()
 	}
 
-	async function bulkRetag(): Promise<void> {
+	async function bulkRetag(scope: BulkScope = selectBulkScope(state)): Promise<void> {
 		requirePermission('write')
-		const ids = state.selection.allMatching ? [] : [...state.selection.ids]
-		const { asked, affected } = await runBulk({ action: 'retag' })
+		const ids = scope.selection.allMatching ? [] : [...scope.selection.ids]
+		const { asked, affected } = await runBulk({ action: 'retag' }, scope)
 		report('retag', asked, affected)
 		if (affected > 0) markQueued(ids, affected)
 		scheduleRefresh({ list: true })
 	}
 
-	async function bulkAccept(): Promise<void> {
+	async function bulkAccept(scope: BulkScope = selectBulkScope(state)): Promise<void> {
 		requirePermission('write')
 		try {
-			const { asked, affected } = await runBulk({ action: 'acceptAutoTags' })
+			const { asked, affected } = await runBulk({ action: 'acceptAutoTags' }, scope)
 			report('acceptAutoTags', asked, affected)
 		} catch (error) {
 			notify('error', messageOf(error))
@@ -2160,11 +2280,11 @@ export function createLibraryController(options: ControllerOptions) {
 		scheduleFacets()
 	}
 
-	async function bulkDelete(): Promise<void> {
+	async function bulkDelete(scope: BulkScope = selectBulkScope(state)): Promise<void> {
 		requirePermission('delete')
-		const selection = state.selection
+		const { selection } = scope
 		const ids = selection.allMatching ? [] : [...selection.ids]
-		const { asked, affected } = await runBulk({ action: 'delete' })
+		const { asked, affected } = await runBulk({ action: 'delete' }, scope)
 		report('delete', asked, affected)
 		if (!selection.allMatching) dropFromList(ids)
 		// An open image that was deleted is gone with the rest.
@@ -2392,15 +2512,12 @@ export function createLibraryController(options: ControllerOptions) {
 
 	/* ---- the AI loop ------------------------------------------------------------- */
 
-	/** An explicit "Tag them now": runs even when the counts say nothing is waiting yet. */
-	let forced = false
 	/** The server said "not you" (401/403/404): no point asking again until the page is reloaded. */
 	let aiFatal = false
 	let taggedThisRun = 0
 	let lastTaggingAnnounce = Number.NEGATIVE_INFINITY
 
 	function handleProcessResponse(response: MediaProcessResponse) {
-		forced = false
 		let assets = state.assets
 		let fetched = state.fetchedAsset
 		for (const item of response.processed) {
@@ -2413,7 +2530,7 @@ export function createLibraryController(options: ControllerOptions) {
 			}
 			if (fetched?.id === asset.id) fetched = mergeServerAsset(fetched, asset)
 		}
-		const remaining = Math.max(0, response.remaining)
+		const remaining = count(response.remaining)
 		set({
 			assets,
 			fetchedAsset: fetched,
@@ -2440,6 +2557,9 @@ export function createLibraryController(options: ControllerOptions) {
 				)
 			}
 		}
+		// The answer is the freshest count there is: a loop paused by an older one (a status
+		// read that raced this call) goes on if the queue is not empty after all.
+		evaluateLoop()
 	}
 
 	const loop = createAiLoop({
@@ -2453,7 +2573,6 @@ export function createLibraryController(options: ControllerOptions) {
 			if (aiWorking !== state.aiWorking) set({ aiWorking })
 		},
 		onStop(reason, message) {
-			forced = false
 			if (reason === 'blocked') {
 				set({ aiBlocked: message ?? 'Auto-tagging stopped.' })
 				announce(message ?? 'Auto-tagging stopped.')
@@ -2473,16 +2592,22 @@ export function createLibraryController(options: ControllerOptions) {
 
 	function evaluateLoop() {
 		const { tagging } = state
+		// Tagging is a write: a role without it never runs the loop, and an explicit ask made
+		// before the role changed is not carried over to a role that has it back (the loop drops
+		// what it was asked when it is stopped). An explicit "Tag them now" runs the loop even when
+		// the counts say nothing is waiting yet.
+		const canWrite = options.can().write
 		const wanted =
 			mounted &&
-			(forced ||
-				(options.can().write &&
-					tagging.configured &&
+			canWrite &&
+			(loop.hasAsk() ||
+				(tagging.configured &&
 					state.pending > 0 &&
 					!tagging.budgetExhausted &&
 					state.aiBlocked === null &&
 					!aiFatal))
-		loop.setActive(wanted)
+		// Pausing keeps a batch that is already out: the server is tagging it either way.
+		loop.setActive(wanted, { abort: !mounted })
 	}
 
 	/** Queue every skipped or failed image again and start: the banner's "Tag them now" and Retry. */
@@ -2490,7 +2615,6 @@ export function createLibraryController(options: ControllerOptions) {
 		if (!options.can().write) return
 		set({ aiBlocked: null })
 		aiFatal = false
-		forced = true
 		taggedThisRun = 0
 		loop.kick({ requeue: true })
 	}
@@ -2530,24 +2654,34 @@ export function createLibraryController(options: ControllerOptions) {
 		for (const timer of [refreshTimer, facetTimer]) if (timer !== null) env.clearTimeout(timer)
 		refreshTimer = null
 		facetTimer = null
-		refreshWanted = { list: false, folders: false, tagging: false, prune: false }
+		// What was asked for and not yet done (`refreshWanted`) and what was in flight (the
+		// `loading`, `refreshing` and `loadingMore` flags) stay in the state: a mount after this
+		// one (StrictMode's second pass, a page shown again) picks them up. Nothing else may
+		// still answer into a page that is gone.
 		searchGate.cancel()
 		facetGate.cancel()
 		openGate.cancel()
+		openFetching = null
 		loop.setActive(false)
 	}
 
 	/**
-	 * On mount, the URL is read and compared with what the server rendered. `initial` can be
-	 * stale after a client-side Back, so when the two differ the first page is fetched again
-	 * (with facets), seeded from the URL, and the server-rendered results are discarded.
+	 * On mount, the URL is read and compared with what the page holds. `initial` can be stale
+	 * after a client-side Back, so when the URL describes another search the first page is
+	 * fetched again (with facets), seeded from the URL, and the rendered results are discarded.
+	 *
+	 * A mount can also follow an unmount of the same page (StrictMode runs effects twice; a
+	 * page can be hidden and shown again). The unmount aborted whatever was in flight, so what
+	 * the state says is under way (a first page, a reload, the open image, the typed pause, a
+	 * coalesced refresh) is started again, or it would wait for an answer that never comes.
 	 */
 	function mount(): () => void {
 		if (mounted) return unmount
 		mounted = true
 		cleanups = [env.onPopState(restoreFromUrl), env.onVisibilityChange(onVisibility)]
 		hydrateFromStorage()
-		const decision = decideReconcile(initial.params, env.location().search)
+		// Against what the page holds now, which on the first mount is what the server rendered.
+		const decision = decideReconcile(state.params, env.location().search)
 		if (decision.refetch)
 			applyParams(decision.params, {
 				history: 'none',
@@ -2555,7 +2689,15 @@ export function createLibraryController(options: ControllerOptions) {
 				setDraft: true,
 				force: true,
 			})
-		if (decision.asset) setOpen(decision.asset, 'none')
+		else if (state.loading) void fetchPage('first')
+		else if (state.refreshing) void fetchPage('refresh')
+		else if (state.loadingMore) set({ loadingMore: false })
+		// The URL says which image is open, including none.
+		setOpen(decision.asset, 'none')
+		ensureOpenLoaded()
+		if (normalizeParams({ q: state.draft }).q !== state.params.q) setDraft(state.draft)
+		if (state.notice?.tone === 'info') armNoticeTimer(state.notice.id)
+		if (refreshWanted.list || refreshWanted.folders || refreshWanted.tagging) scheduleRefresh({})
 		evaluateLoop()
 		return unmount
 	}
@@ -2681,7 +2823,7 @@ export function selectDestination(state: LibraryState): { folderId: string | nul
 		const known = state.folders.folders.find((f) => f.id === folder)
 		if (known) return { folderId: known.id, label: `Upload to ${known.path}` }
 	}
-	return { folderId: null, label: 'Upload to Unfiled' }
+	return { folderId: null, label: 'Upload' }
 }
 
 export type EmptyKind = 'library' | 'folder' | 'missing-folder' | 'results'
@@ -2770,6 +2912,19 @@ export function selectScopeText(state: LibraryState): string {
 		deep: key.folder !== undefined ? (key.deep ?? hasQueryClause(key.q)) : false,
 	})
 }
+
+/**
+ * What a bulk action is about, as of one moment: the selection, the search it was made under and
+ * the total the person saw. A confirmation takes it when it opens, so what was confirmed is
+ * exactly what runs.
+ */
+export type BulkScope = { selection: Selection; key: ResultsKey; total: number }
+
+export const selectBulkScope = (state: LibraryState): BulkScope => ({
+	selection: state.selection,
+	key: state.resultsKey,
+	total: state.total,
+})
 
 /** The number a bulk action is about: the whole result for "all matching", else the chosen cards. */
 export const selectBulkCount = (state: LibraryState): number =>

@@ -359,7 +359,8 @@ test('menuActionsFor: permission and depth decide the menu; none means no button
 test('activeKeyOf and tabStopKey: one tab stop, with sensible fallbacks', () => {
 	const model = buildFolderTree([dto(1, null, 'A')])
 	assert.equal(activeKeyOf(undefined, model), 'all')
-	assert.equal(activeKeyOf('unfiled', model), 'unfiled')
+	// There is no Unfiled row any more; a stale unfiled scope lands on All media's key.
+	assert.equal(activeKeyOf('unfiled', model), 'all')
 	assert.equal(activeKeyOf(hex(1), model), `f:${hex(1)}`)
 	assert.equal(activeKeyOf(hex(9), model), null)
 	assert.equal(activeKeyOf('garbage', model), null)
@@ -750,7 +751,7 @@ test('delete: says images and subfolders move up and nothing is deleted', () => 
 	assert.match(text, /No images are deleted/)
 	assert.match(text, /12 images and 2 subfolders/)
 	assert.match(text, /move up to "Clients"/)
-	assert.match(deleteExplanation({ id: 'x', name: 'A', images: 1, subfolders: 0, destination: null }), /1 image move up to the library root \(Unfiled\)/)
+	assert.match(deleteExplanation({ id: 'x', name: 'A', images: 1, subfolders: 0, destination: null }), /1 image move up to All media/)
 	assert.match(deleteExplanation({ id: 'x', name: 'A', images: 0, subfolders: 1, destination: 'P' }), /1 subfolder move up/)
 	assert.match(deleteExplanation({ id: 'x', name: 'A', images: 0, subfolders: 0, destination: 'P' }), /empty/)
 	assert.match(deleteExplanation({ id: 'x', name: 'A', images: 1200, subfolders: 0, destination: null }), /1,200 images/)
@@ -765,7 +766,7 @@ test('tree: empty library renders the top entries and nothing else', () => {
 	const { html, warnings } = render({})
 	assert.deepEqual(warnings, [])
 	const items = treeitems(html)
-	assert.deepEqual(items.map((i) => i['aria-label']), ['All media, 0 images', 'Unfiled, 0 images'])
+	assert.deepEqual(items.map((i) => i['aria-label']), ['All media, 0 images'])
 	assert.match(html, /role="tree"/)
 	assert.ok(!html.includes('Needs review'))
 	assert.ok(!html.includes('Saved searches'))
@@ -799,7 +800,7 @@ test('tree: singular and thousands separators in names and counts', () => {
 	})
 	const labels = treeitems(html).map((i) => i['aria-label'])
 	assert.ok(labels.includes('All media, 1,284 images'))
-	assert.ok(labels.includes('Unfiled, 1 image'))
+	assert.ok(!labels.some((l) => l.startsWith('Unfiled')), 'there is no Unfiled row')
 	assert.ok(labels.includes('One, 1 image'))
 	assert.ok(labels.includes('Many, 1,284 images'))
 	assert.ok(textOf(html).includes('1,284'))
@@ -862,7 +863,7 @@ test('tree: a collapsed branch hides its children but the count of the folder in
 	const withTotal = list.map((f) => (f.parentId === null ? { ...f, total: 40 } : f))
 	const { html } = render({ folders: withTotal })
 	const items = treeitems(html)
-	assert.equal(items.length, 2 + 3)
+	assert.equal(items.length, 1 + 3)
 	assert.ok(items.some((i) => i['aria-label'] === 'Clients, 40 images'))
 	assert.equal(keyed(items, 'Clients')['aria-expanded'], 'false')
 })
@@ -879,16 +880,17 @@ test('tree: Needs review appears only when there is something to review', () => 
 	assert.equal(keyed(treeitems(render({ unreviewed: 1 }).html), 'Needs review')['aria-label'], 'Needs review, 1 image')
 })
 
-test('tree: Needs review sits between Unfiled and the folders', () => {
+test('tree: Needs review sits between All media and the folders', () => {
 	const labels = treeitems(render({ unreviewed: 4, folders: [dto(1, null, 'Acme')] }).html).map((i) => i['aria-label'])
-	assert.deepEqual(labels.map((l) => l.split(',')[0]), ['All media', 'Unfiled', 'Needs review', 'Acme'])
+	assert.deepEqual(labels.map((l) => l.split(',')[0]), ['All media', 'Needs review', 'Acme'])
 })
 
-test('tree: selection variants (All media, Unfiled, a folder, an unknown folder)', () => {
+test('tree: selection variants (All media, a folder, an unknown folder)', () => {
 	const folders = [dto(1, null, 'Acme'), dto(2, 1, 'Hero')]
 	const only = (html) => treeitems(html).filter((i) => i['aria-selected'] === 'true').map((i) => i['aria-label'].split(',')[0])
 	assert.deepEqual(only(render({ folders, active: undefined }).html), ['All media'])
-	assert.deepEqual(only(render({ folders, active: 'unfiled' }).html), ['Unfiled'])
+	// A stale unfiled scope has no row to select.
+	assert.deepEqual(only(render({ folders, active: 'unfiled' }).html), [])
 	assert.deepEqual(only(render({ folders, active: hex(1) }).html), ['Acme'])
 	assert.deepEqual(only(render({ folders, active: hex(2) }).html), ['Acme', 'Hero'].slice(1))
 	// A selection that is not in the list (deleted elsewhere) selects nothing but still leaves one tab stop.
@@ -902,7 +904,7 @@ test('tree: the ancestors of the active folder are open, and the page is the sam
 	const folders = [dto(1, null, 'Acme'), dto(2, 1, 'Hero'), dto(3, 2, 'Deep'), dto(4, null, 'Other'), dto(5, 4, 'Hidden')]
 	const plain = render({ folders, active: hex(3) }).html
 	const labels = treeitems(plain).map((i) => i['aria-label'].split(',')[0])
-	assert.deepEqual(labels, ['All media', 'Unfiled', 'Acme', 'Hero', 'Deep', 'Other'])
+	assert.deepEqual(labels, ['All media', 'Acme', 'Hero', 'Deep', 'Other'])
 	// Storage is not read while rendering (it would make the server and client first paints differ).
 	const saved = globalThis.window
 	globalThis.window = {
@@ -954,7 +956,7 @@ test('tree: a permission-less viewer gets a read-only tree (no controls, still n
 	const { html } = render({ folders: [dto(1, null, 'Acme')], canWrite: false, canDelete: false, unreviewed: 2 })
 	assert.deepEqual(buttons(html).filter((b) => !b.attrs['aria-label']), [])
 	assert.equal(buttons(html).length, 0)
-	assert.equal(treeitems(html).length, 4)
+	assert.equal(treeitems(html).length, 3)
 })
 
 test('tree: hostile names are escaped and cannot become markup', () => {
@@ -966,7 +968,7 @@ test('tree: hostile names are escaped and cannot become markup', () => {
 	assert.ok(!html.includes('<b>x</b>'))
 	const labels = treeitems(html).map((i) => i['aria-label'])
 	for (const name of evil) assert.ok(labels.some((l) => l.startsWith(`${name},`)), name)
-	assert.equal(treeitems(html).length, 2 + evil.length)
+	assert.equal(treeitems(html).length, 1 + evil.length)
 })
 
 test('tree: very long, unicode and blank names render', () => {
@@ -999,7 +1001,7 @@ test('tree: malformed counts and props never print NaN, undefined or null', () =
 })
 
 test('tree: malformed folder lists (null, duplicates, cycles, orphans) render every folder once', () => {
-	for (const folders of [null, undefined, {}, 'x']) assert.equal(treeitems(render({ folders }).html).length, 2)
+	for (const folders of [null, undefined, {}, 'x']) assert.equal(treeitems(render({ folders }).html).length, 1)
 	const messy = [dto(1, 2, 'A'), dto(2, 1, 'B'), dto(3, 99, 'Orphan'), dto(3, null, 'Dup'), dto(4, 4, 'Self')]
 	const { html, warnings } = render({ folders: messy, active: hex(2) })
 	assert.deepEqual(warnings, [])
@@ -1016,7 +1018,7 @@ test('tree: 1000 folders in a chain render quickly and the indent is capped', ()
 	const { html, warnings } = render({ folders, active: hex(1000) })
 	assert.deepEqual(warnings, [])
 	assert.ok(performance.now() - t0 < 3000, `took ${performance.now() - t0}ms`)
-	assert.equal(treeitems(html).length, 1002)
+	assert.equal(treeitems(html).length, 1001)
 	const pads = [...html.matchAll(/padding-left:([\d.]+)rem/g)].map((m) => Number(m[1]))
 	assert.ok(Math.max(...pads) <= 8.5, `max indent ${Math.max(...pads)}rem`)
 	assert.equal(keyed(treeitems(html), 'F1000')['aria-level'], '1000')
@@ -1026,7 +1028,7 @@ test('tree: 1000 sibling folders render once each', () => {
 	const folders = Array.from({ length: 1000 }, (_, i) => dto(i + 1, null, `Folder ${i + 1}`))
 	const { html, warnings } = render({ folders })
 	assert.deepEqual(warnings, [])
-	assert.equal(treeitems(html).length, 1002)
+	assert.equal(treeitems(html).length, 1001)
 	assert.equal(keyed(treeitems(html), 'Folder 1000')['aria-posinset'], '1000')
 })
 
@@ -1058,7 +1060,7 @@ for (const [name, props] of Object.entries(a11yCases)) {
 		assert.ok(html.includes(`id="${tree['aria-labelledby']}"`), 'and the label exists')
 		assert.match(html, /<nav[^>]*aria-label="[^"]+"/)
 		const items = treeitems(html)
-		assert.ok(items.length >= 2)
+		assert.ok(items.length >= 1)
 		for (const item of items) {
 			assert.ok(item['aria-label'] && item['aria-label'].length > 0, 'treeitem has a name')
 			assert.ok(['true', 'false'].includes(item['aria-selected']), `aria-selected on ${item['aria-label']}`)
@@ -1084,7 +1086,7 @@ test('a11y: the per-folder menu button is a real button, named for its folder, a
 	const { list, kids, tops } = thirtyFolders()
 	const { html } = render({ folders: list, active: hex(kids.get(tops[0])[0]) })
 	const menus = buttons(html).filter((b) => b.attrs['aria-label']?.startsWith('Actions for '))
-	assert.equal(menus.length, treeitems(html).length - 2)
+	assert.equal(menus.length, treeitems(html).length - 1)
 	assert.equal(menus.filter((b) => b.attrs.tabindex === '0').length, 1)
 	for (const b of menus) {
 		assert.equal(b.attrs.type, 'button')
@@ -1179,7 +1181,7 @@ test('move dialog: first choice is the library root; every folder follows, inden
 	assert.deepEqual(warnings, [])
 	const rows = radios(html)
 	assert.equal(rows.length, 5)
-	assert.match(rows[0].text, /^Library root \(Unfiled\)/)
+	assert.match(rows[0].text, /^All media \(no folder\)/)
 	assert.deepEqual(rows.slice(1).map((r) => r.text.split(',')[0].replace(/ Current| Not available/g, '').trim()), ['Clients', 'Acme', 'Hero', 'Brand'])
 	const pads = [...html.matchAll(/padding-left:([\d.]+)rem/g)].map((m) => Number(m[1]))
 	assert.deepEqual(pads, [0.5, 1.5, 2.5, 3.5, 1.5])

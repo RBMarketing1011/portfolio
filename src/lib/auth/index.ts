@@ -28,6 +28,21 @@ class TooManyAttempts extends CredentialsSignin {
 export const { handlers, auth, signIn, signOut } = NextAuth({
 	...authConfig,
 	adapter: MongoDBAdapter(getMongoClient()),
+	callbacks: {
+		...authConfig.callbacks,
+		// The email provider creates a user for any address it is given. Accounts
+		// exist only by invitation, so a link may only be sent to, and redeemed by,
+		// a login that is already in the database.
+		async signIn({ account, user }) {
+			if (account?.provider !== 'nodemailer') return true
+			const email = user.email?.toLowerCase().trim()
+			if (!email) return false
+			const db = await getDb()
+			return Boolean(
+				await db.collection('users').findOne({ email }, { projection: { _id: 1 } }),
+			)
+		},
+	},
 	providers: [
 		Nodemailer({
 			server: {

@@ -17,29 +17,62 @@
  * string logic over the raw document fields), and the fixtures name what must and must
  * not match. Where the spec leaves a reading open, the planner's header says which one
  * it took and the check says so.
+ *
+ * Two things sit on top of that:
+ *
+ *  - `mongoMatches` is a small model of Mongo's matching for exactly the operators the
+ *    planner emits. EVERY filter this proof sends to the server is also run through the
+ *    model and the two must agree. That agreement is what licenses the large random runs
+ *    (thousands of queries over random exotic, malformed and boundary documents) to use
+ *    the model alone instead of a slow shared database.
+ *  - PROVE_PLAN_OFFLINE=1 runs everything except the checks that need the server (and no
+ *    MONGODB_URI). It exists for quick local runs and for mutation testing. A run without
+ *    the server has NOT proven the invariant against Mongo, and says so.
+ *
+ * Hygiene: two fresh workspace ids (the library and the fuzz library), documents only in
+ * `mediaAssets`, `_id`-only projections and a time limit on every read, and a watchdog
+ * and signal handlers so a stalled network or an interrupt still deletes what was
+ * inserted. The ids are printed first, so a process killed from outside can be cleaned
+ * up by hand.
  */
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { performance } from 'node:perf_hooks'
 
 const require = createRequire(import.meta.url)
-const { loadTs, rootRequire } = require('./lib/load-ts.cjs')
+const { loadTs, mock, rootRequire } = require('./lib/load-ts.cjs')
 const { MongoClient, ObjectId, BSON } = rootRequire('mongodb')
 
+// Knobs. PROVE_PLAN_SRC / PROVE_FUZZY_SRC load another copy of plan.ts / fuzzy.ts, which is how
+// this proof is checked to FAIL on deliberately broken code (a copy outside the repo must import
+// its neighbours as `@/lib/media/...`). PROVE_PLAN_SCALE grows or shrinks the random runs and
+// PROVE_PLAN_SEED moves them; PROVE_PLAN_WATCHDOG_MS (default 240000) ends a run that hangs.
+const PLAN_SRC = process.env.PROVE_PLAN_SRC || 'src/lib/media/query/plan.ts'
+const FUZZY_SRC = process.env.PROVE_FUZZY_SRC || 'src/lib/media/query/fuzzy.ts'
+const SCALE = Number(process.env.PROVE_PLAN_SCALE) > 0 ? Number(process.env.PROVE_PLAN_SCALE) : 1
+const SEED = Number.isFinite(Number(process.env.PROVE_PLAN_SEED)) ? Number(process.env.PROVE_PLAN_SEED) : 0
+const WATCHDOG_MS = Number(process.env.PROVE_PLAN_WATCHDOG_MS) > 0 ? Number(process.env.PROVE_PLAN_WATCHDOG_MS) : 240_000
+/** How many requests are in flight at once. */
+const WIDTH = Number(process.env.PROVE_PLAN_WIDTH) > 0 ? Math.floor(Number(process.env.PROVE_PLAN_WIDTH)) : 8
+
 const { parseQuery } = loadTs('src/lib/media/query/parse.ts')
-const { planQuery } = loadTs('src/lib/media/query/plan.ts')
-const fuzzy = loadTs('src/lib/media/query/fuzzy.ts')
+const fuzzy = loadTs(FUZZY_SRC)
+// plan.ts imports its neighbour as './fuzzy', so a stand-in is registered under that exact string.
+if (process.env.PROVE_FUZZY_SRC) mock('./fuzzy', fuzzy)
+const { planQuery } = loadTs(PLAN_SRC)
 const { buildFolderIndex } = loadTs('src/lib/media/folder-index.ts')
 const { derivedFields } = loadTs('src/lib/media/terms.ts')
 const text = loadTs('src/lib/media/text.ts')
 const { NAMED_COLORS } = loadTs('src/lib/media/colors.ts')
+const { IS_FLAGS } = loadTs('src/lib/media/query/types.ts')
 const T = loadTs('src/lib/media/types.ts')
 const { editDistance, allowedEdits, fuzzyCandidates, inVocabulary } = fuzzy
 const { stem, slugify, STOPWORDS, indexTokenSets } = text
 
+const OFFLINE = process.env.PROVE_PLAN_OFFLINE === '1'
 const uri = process.env.MONGODB_URI
-if (!uri) {
-	console.error('MONGODB_URI is not set. Run with: node --env-file=.env scripts/prove-media-plan.mjs')
+if (!uri && !OFFLINE) {
+	console.error('MONGODB_URI is not set. Run with: node --env-file=.env scripts/prove-media-plan.mjs (or set PROVE_PLAN_OFFLINE=1 for the checks that need no server)')
 	process.exit(1)
 }
 
@@ -51,7 +84,10 @@ let passed = 0
 let failed = 0
 let assertions = 0
 
+/** PROVE_ONLY=<regex> runs only the checks whose name matches (for working on one part; the run is then not the whole proof). */
+const ONLY = process.env.PROVE_ONLY ? new RegExp(process.env.PROVE_ONLY, 'i') : null
 async function check(name, fn) {
+	if (ONLY && !ONLY.test(name)) return
 	try {
 		await fn()
 		passed++
@@ -62,8 +98,27 @@ async function check(name, fn) {
 		console.log(`FAIL  ${name} (${detail.length > 700 ? `${detail.slice(0, 700)}...` : detail})`)
 	}
 }
-const section = (title) => console.log(`\n== ${title}`)
+let sectionTitle = null
+let sectionStart = 0
+/** Prints how long the section that just ended took, so a slow part of the proof is easy to see. */
+const endSection = () => {
+	if (sectionTitle !== null && performance.now() - sectionStart >= 1000) console.log(`TIME  ${Math.round((performance.now() - sectionStart) / 100) / 10} s  ${sectionTitle}`)
+}
+const section = (title) => {
+	endSection()
+	sectionTitle = title
+	sectionStart = performance.now()
+	console.log(`\n== ${title}`)
+}
 const note = (message) => console.log(`NOTE  ${message}`)
+let skipped = 0
+/** A check that needs the server, in a run that has none. Reported, never silent. */
+const skip = (name, why) => {
+	skipped++
+	console.log(`SKIP  ${name} (${why})`)
+}
+/** A check about the server itself (an insert, a round trip, an index): it only runs with one. */
+const serverCheck = (name, fn) => (OFFLINE ? skip(name, 'offline run, no server') : check(name, fn))
 
 /** deepStrictEqual with a label, counted as one assertion. */
 function eq(actual, expected, label = '') {
@@ -143,24 +198,25 @@ await check('editDistance: past the limit it answers max + 1, never the true dis
 	eq(editDistance('abc', 'abd', 0), 1)
 })
 
-await check('editDistance: matches an independent full-matrix reference (early exit is sound)', () => {
-	// Plain O(nm) optimal-string-alignment, no tricks, written separately from the code under test.
-	const reference = (a, b) => {
-		const n = a.length
-		const m = b.length
-		const d = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0))
-		for (let i = 0; i <= n; i++) d[i][0] = i
-		for (let j = 0; j <= m; j++) d[0][j] = j
-		for (let i = 1; i <= n; i++) {
-			for (let j = 1; j <= m; j++) {
-				d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
-				if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
-					d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1)
-				}
+/** Plain O(nm) optimal-string-alignment, no tricks, written separately from the code under test. */
+const reference = (a, b) => {
+	const n = a.length
+	const m = b.length
+	const d = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0))
+	for (let i = 0; i <= n; i++) d[i][0] = i
+	for (let j = 0; j <= m; j++) d[0][j] = j
+	for (let i = 1; i <= n; i++) {
+		for (let j = 1; j <= m; j++) {
+			d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+			if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+				d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1)
 			}
 		}
-		return d[n][m]
 	}
+	return d[n][m]
+}
+
+await check('editDistance: matches an independent full-matrix reference (early exit is sound)', () => {
 	const next = rng(7)
 	const word = (alphabet, max) => {
 		let out = ''
@@ -247,6 +303,10 @@ await check('fuzzyCandidates: limit, first letter, itself, short words, bad inpu
 	eq(fuzzyCandidates(undefined, V), [])
 	eq(fuzzyCandidates('cafe', V), ['café'], 'accents are one edit')
 	eq(fuzzyCandidates('kithcen', V, 10).length, 3, 'only what is close enough comes back')
+	// A word that no asset holds cannot be what anyone meant: the same rule as inVocabulary.
+	eq(fuzzyCandidates('kithcen', new Map([['kitchen', 0], ['kitchens', 2]])), ['kitchens'])
+	eq(fuzzyCandidates('kithcen', new Map([['kitchen', 0]])), [])
+	eq(fuzzyCandidates('kithcen', new Map([['kitchen', Number.NaN], ['kitchens', -1]])), [])
 })
 
 await check('inVocabulary: the word, its stem, or (when asked) a prefix', () => {
@@ -265,11 +325,77 @@ await check('inVocabulary: the word, its stem, or (when asked) a prefix', () => 
 	ok(inVocabulary('remodeling', new Map([['remodel', 1]]), false))
 })
 
+await check('fuzzyCandidates and inVocabulary: equal a brute-force reference on 400 random vocabularies', () => {
+	const next = rng(11)
+	// A tiny alphabet, and words made as edits of a few base words, make near neighbours, swaps and
+	// ties common: that is where ranking and the limit go wrong.
+	const letter = () => 'abcde'[Math.floor(next() * 5)]
+	const wordOf = (min, max) => {
+		let out = ''
+		for (let i = min + Math.floor(next() * (max - min + 1)); i > 0; i--) out += letter()
+		return out
+	}
+	const edit = (word) => {
+		const i = Math.floor(next() * word.length)
+		switch (Math.floor(next() * 4)) {
+			case 0: return word.slice(0, i) + word.slice(i + 1) // delete
+			case 1: return word.slice(0, i) + letter() + word.slice(i) // insert
+			case 2: return word.slice(0, i) + letter() + word.slice(i + 1) // substitute
+			default: return i + 1 < word.length ? word.slice(0, i) + word[i + 1] + word[i] + word.slice(i + 2) : word // swap
+		}
+	}
+	const editsOf = (word, count) => {
+		let out = word
+		for (let i = 0; i < count; i++) out = edit(out)
+		return out
+	}
+	const allowedFor = (word) => ([...word].length >= 4 ? ([...word].length <= 6 ? 1 : 2) : 0)
+	let compared = 0
+	let nonEmpty = 0
+	let truncated = 0
+	for (let round = 0; round < 400; round++) {
+		const bases = Array.from({ length: 3 + Math.floor(next() * 6) }, () => wordOf(4, 9))
+		const vocab = new Map()
+		for (const base of bases) {
+			vocab.set(base, Math.floor(next() * 5)) // counts 0..4: few values, so ties are common, and 0 means absent
+			for (let i = Math.floor(next() * 5); i > 0; i--) vocab.set(editsOf(base, 1 + Math.floor(next() * 2)), Math.floor(next() * 5))
+		}
+		for (let i = Math.floor(next() * 8); i > 0; i--) vocab.set(wordOf(3, 9), Math.floor(next() * 5))
+		for (let k = 0; k < 6; k++) {
+			const word = next() < 0.8 ? editsOf(bases[Math.floor(next() * bases.length)], Math.floor(next() * 3)) : wordOf(3, 9)
+			const limit = Math.floor(next() * 5) - 1 // -1 .. 3
+			// A word held by no asset (count 0) is absent: it is never a candidate, as it is never "in the vocabulary".
+			const close = [...vocab].filter(([w, c]) => c > 0 && w !== word && w[0] === word[0] && reference(word, w) <= allowedFor(word))
+			const expected = limit < 1 || !allowedFor(word)
+				? []
+				: close
+						.sort((a, b) => reference(word, a[0]) - reference(word, b[0]) || b[1] - a[1] || (a[0] < b[0] ? -1 : 1))
+						.slice(0, limit)
+						.map(([w]) => w)
+			eq(fuzzyCandidates(word, vocab, limit), expected, `${word} limit ${limit} in ${[...vocab].length} words`)
+			compared++
+			if (expected.length > 0) nonEmpty++
+			if (limit > 0 && close.length > limit) truncated++
+
+			const present = (key) => (vocab.get(key) ?? 0) > 0
+			for (const prefix of [false, true]) {
+				const root = stem(word)
+				const expectedIn = present(word) || (root !== word && present(root)) || (prefix && [...vocab].some(([w, c]) => c > 0 && w.startsWith(word)))
+				eq(inVocabulary(word, vocab, prefix), expectedIn, `inVocabulary ${word} prefix=${prefix}`)
+			}
+		}
+	}
+	ok(nonEmpty > 400, `only ${nonEmpty} of ${compared} comparisons returned candidates`)
+	ok(truncated > 100, `only ${truncated} comparisons were cut by the limit, so the ranking was barely tested`)
+})
+
 /* -------------------------------------------------------------------------- */
 /* The library: a real folder tree, hand-built fixtures, a generated bulk     */
 /* -------------------------------------------------------------------------- */
 
+/** Two fresh workspace ids per run: the library the queries are written against, and the random fuzz library. */
 const W = new ObjectId()
+const WF = new ObjectId()
 const NOW = new Date('2026-03-15T10:30:00.000Z')
 const DAY = 86_400_000
 
@@ -874,8 +1000,9 @@ q('tag:kit*,bath', O.or(O.tagPrefix('kit'), O.tag('bath')))
 q('tag:old-name', O.tag('kitchen'), { has: ['tag-kitchen'], lacks: ['tag-old-name'], corrections: [{ from: 'tag:old-name', to: 'tag:kitchen' }] })
 q('tag:chain-1', O.tag('kitchen'), { has: ['tag-kitchen'], corrections: [{ from: 'tag:chain-1', to: 'tag:kitchen' }] })
 q('tag:h1', O.tag('h6'), { has: ['tag-h6'], lacks: ['tag-kitchen'], corrections: [{ from: 'tag:h1', to: 'tag:h6' }] })
-q('tag:cycle-a', O.tag('cycle-b'), { corrections: [{ from: 'tag:cycle-a', to: 'tag:cycle-b' }] })
-q('tag:cycle-b', O.tag('cycle-a'), { corrections: [{ from: 'tag:cycle-b', to: 'tag:cycle-a' }] })
+// A redirect cycle is corrupt data: it is ignored, the tag stays as typed, and nothing is reported (tags.ts resolveTag does the same).
+q('tag:cycle-a', O.tag('cycle-a'), { corrections: [] })
+q('tag:cycle-b', O.tag('cycle-b'), { corrections: [] })
 q('tag:self', O.tag('self'), { corrections: [] })
 q('tag:ghost', O.none, { corrections: [] })
 q('-tag:kitchen', O.not(O.tag('kitchen')))
@@ -1167,6 +1294,112 @@ function lintFilter(filter, path = '') {
 	}
 }
 
+/* -------------------------------------------------------------------------- */
+/* A model of Mongo's matching                                                */
+/* -------------------------------------------------------------------------- */
+
+const isBson = (value) => value !== null && typeof value === 'object' && typeof value._bsontype === 'string'
+const isPlain = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date) && !isBson(value)
+
+function sameValue(a, b) {
+	if (a === null || a === undefined) return b === null || b === undefined
+	if (b === null || b === undefined) return false
+	if (a instanceof Date || b instanceof Date) return a instanceof Date && b instanceof Date && a.getTime() === b.getTime()
+	if (isBson(a) || isBson(b)) return isBson(a) && isBson(b) && a._bsontype === b._bsontype && String(a) === String(b)
+	return a === b
+}
+
+/** Every value a dotted path reaches in a document, walking into arrays the way a query does. */
+function valuesAt(value, parts) {
+	if (parts.length === 0) return [value]
+	const [head, ...rest] = parts
+	if (Array.isArray(value)) {
+		const out = []
+		if (/^\d+$/.test(head)) {
+			const index = Number(head)
+			if (index < value.length) out.push(...valuesAt(value[index], rest))
+		}
+		for (const element of value) if (isPlain(element)) out.push(...valuesAt(element, parts))
+		return out
+	}
+	if (isPlain(value)) return Object.prototype.hasOwnProperty.call(value, head) ? valuesAt(value[head], rest) : []
+	return []
+}
+
+/** What a comparison looks at: each value reached, and the elements of any that is an array. */
+function comparands(reached) {
+	const out = []
+	for (const value of reached) {
+		out.push(value)
+		if (Array.isArray(value)) out.push(...value)
+	}
+	return out
+}
+
+const bsonType = (value) =>
+	value === null ? 'null' : Array.isArray(value) ? 'array' : value instanceof Date ? 'date' : typeof value === 'string' ? 'string' : typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'bool' : isBson(value) ? 'objectId' : 'object'
+const comparable = (a, b) => (typeof a === 'number' && typeof b === 'number') || (a instanceof Date && b instanceof Date) || (typeof a === 'string' && typeof b === 'string')
+const magnitude = (value) => (value instanceof Date ? value.getTime() : value)
+
+/** `{ field: wanted }`: any value reached equals it; null also means the field is missing. */
+function equalsAny(reached, wanted) {
+	if (wanted === null || wanted === undefined) return reached.length === 0 || comparands(reached).some((one) => one === null || one === undefined)
+	return comparands(reached).some((one) => sameValue(one, wanted))
+}
+
+function applyOperator(name, argument, reached) {
+	switch (name) {
+		case '$in':
+			if (!Array.isArray(argument)) throw new Error('$in needs an array')
+			return argument.some((one) => equalsAny(reached, one))
+		case '$ne':
+			return !equalsAny(reached, argument)
+		case '$exists':
+			return argument ? reached.length > 0 : reached.length === 0
+		case '$size':
+			return reached.some((value) => Array.isArray(value) && value.length === argument)
+		case '$type':
+			return comparands(reached).some((one) => bsonType(one) === argument)
+		case '$regex': {
+			const pattern = new RegExp(argument, 'u')
+			return comparands(reached).some((one) => typeof one === 'string' && pattern.test(one))
+		}
+		case '$gt':
+			return comparands(reached).some((one) => comparable(one, argument) && magnitude(one) > magnitude(argument))
+		case '$gte':
+			return comparands(reached).some((one) => comparable(one, argument) && magnitude(one) >= magnitude(argument))
+		case '$lt':
+			return comparands(reached).some((one) => comparable(one, argument) && magnitude(one) < magnitude(argument))
+		case '$lte':
+			return comparands(reached).some((one) => comparable(one, argument) && magnitude(one) <= magnitude(argument))
+		default:
+			throw new Error(`the model of Mongo does not know ${name}`)
+	}
+}
+
+/**
+ * Whether Mongo would return `doc` for `filter`, for the operators the planner emits.
+ * It throws on anything else, and on an empty $and / $or / $nor or a non-array $in, which
+ * the server rejects. It is compared with the server on every filter this proof sends
+ * (`idsMatching`), so it is a model that has been tested rather than one that is trusted.
+ */
+function mongoMatches(doc, filter) {
+	for (const [key, condition] of Object.entries(filter)) {
+		if (key === '$and' || key === '$or' || key === '$nor') {
+			if (!Array.isArray(condition) || condition.length === 0) throw new Error(`${key} needs a non-empty array`)
+			const hit = (one) => mongoMatches(doc, one)
+			if (key === '$and' ? !condition.every(hit) : key === '$or' ? !condition.some(hit) : condition.some(hit)) return false
+		} else if (key.startsWith('$')) {
+			throw new Error(`the model of Mongo does not know ${key}`)
+		} else {
+			const reached = valuesAt(doc, key.split('.'))
+			const operators = isPlain(condition) && Object.keys(condition).length > 0 && Object.keys(condition).every((one) => one.startsWith('$'))
+			if (operators ? !Object.entries(condition).every(([name, argument]) => applyOperator(name, argument, reached)) : !equalsAny(reached, condition)) return false
+		}
+	}
+	return true
+}
+
 const shapeOf = (filter) => {
 	const { workspaceId, ...rest } = filter
 	return JSON.parse(JSON.stringify(rest, (key, value) => (value && value._bsontype === 'ObjectId' ? `oid:${String(value).slice(-4)}` : value)))
@@ -1177,12 +1410,303 @@ const shown = (value, max = 360) => {
 }
 
 /* -------------------------------------------------------------------------- */
+/* The fuzz library: random, exotic, malformed and boundary documents         */
+/* -------------------------------------------------------------------------- */
+
+const FUZZ_WORDS = ['kitchen', 'kitchens', 'Kitchen', 'bathroom', 'roof', 'roofing', 'deck', 'decks', 'patio', 'fence', 'garage', 'window', 'windows', 'door', 'siding', 'side', 'sides', 'floor', 'cabinet', 'cabinets', 'countertop', 'shower', 'sink', 'faucet', 'truck', 'trucks', 'van', 'vans', 'crew', 'technician', 'ladder', 'paint', 'painting', 'painted', 'tile', 'drywall', 'driveway', 'garden', 'lawn', 'pool', 'furnace', 'heater', 'pipe', 'panel', 'lamp', 'team', 'house', 'office', 'logo', 'banner', 'before', 'after', 'new', 'old', 'top', 'front', 'back', 'inside', 'outside', 'near', 'blue', 'white', 'black', 'gray', 'green', 'red', 'natural', 'light', 'dark', 'modern', 'rustic', 'remodel', 'remodeling', 'remodeled', 'install', 'installation', 'repair', 'Acme', 'Hero', 'Shots', 'Beta', 'Social', 'Media', 'Marketing', 'Blog', 'happy', 'happiness', 'babies', 'uses', 'hes', 'themes']
+const FUZZ_STOP = ['the', 'a', 'an', 'and', 'of', 'for', 'with', 'on', 'in', 'at', 'to', 'is', 'it', 'who', 'what', 'we', 'are', 'this', 'that', 'from', 'by', 'as', 'or', 'but', 'if', 'so', 'The', 'And', 'Who', 'FOR']
+/** Scripts, ligatures, case oddities, joined and camelCase runs, runs at and past the 64 the index keeps whole. */
+const FUZZ_EXOTIC = ['Café', 'crème', 'brûlée', '日本', '東京タワー', 'Фото', 'галерея', 'Новый', 'дом', 'ＫＩＴＣＨＥＮ', 'ﬁnish', 'straße', 'Ørsted', 'Æther', 'łódź', 'Þor', 'İstanbul', 'ΟΔΟΣ', 'οδός', '𐍈𐍈', '😀', '🚀', 'x', 'y', 'z', 'Q', '4K', 'H2O', 'iPhone15', 'LeadsNearMe', 'KitchenRemodel', 'kitchenRemodel', 'IMG_2034', 'img-2034', 'a1b2c3', '2026', '1998', '3.5mm', 'v2.0', "O'Brien", "rock'n'roll", 'tag#1', 'e-mail', 't-shirt', 'co-op', '&', 'and/or', '100%', '$5', 'C++', 'a'.repeat(70), `${'a'.repeat(30)}1${'b'.repeat(40)}`, 'x'.repeat(64), 'y'.repeat(65), 'Z'.repeat(66), 'Ⅳ', '²', '٣', 'ǅ', 'ſ', 'K']
+const FUZZ_SEPARATORS = [' ', ' ', ' ', ', ', '-', '_', '.', '/', ' & ', ' - ', '  ', ': ']
+/** Every clause form with a value, for the sweep and the random pieces. */
+const FUZZ_STRUCTURED = [
+	'type:png', 'type:jpg', 'type:jpeg', 'type:png,webp', 'type:gif,avif,jpg', 'color:blue', ...COLOR_NAMES.slice(0, 12).map((name) => `color:${name}`), 'color:blue,red',
+	...T.MEDIA_ORIENTATIONS.map((value) => `orientation:${value}`), 'orientation:portrait,square', ...T.MEDIA_KINDS.map((value) => `kind:${value}`), 'kind:photo,logo',
+	...IS_FLAGS.map((flag) => `is:${flag}`), 'is:dark,light', 'is:tagged,untagged',
+	'width:>1000', 'width:>=1000', 'width:<2000', 'width:<=2000', 'width:1200', 'width:800..1600', 'width:..900', 'width:3000..', 'height:>1000', 'height:<=600', 'height:500..2500',
+	'size:>2mb', 'size:>=1mb', 'size:<500kb', 'size:1mb..8mb', 'size:..300kb',
+	'added:7d', 'added:30d', 'added:month', 'added:year', 'added:today', 'added:2025', 'added:2025-06', 'added:2025-06-15', 'added:>2025-06-01', 'added:<2025-03-01', 'added:2025-03-01..2025-09-01',
+	'folder:none', 'folder:Clients', 'folder:Acme', 'folder:acm', 'folder:ac', 'folder:"Before and After"', 'folder:"Clients/Acme/Hero Shots"', 'folder:Hero,Beta', 'folder:Acme,none', 'folder:nonexistent', 'folder:The', 'folder:日本', 'folder:Jobs', 'folder:"Kitchen 3"', 'folder:kitchen',
+]
+
+/**
+ * A library the hand-written fixtures could not be: random documents whose text mixes
+ * words, stopwords, scripts, ligatures and runs the index cannot keep whole; documents
+ * sitting exactly on, one below and one above every number and instant a query below
+ * compares with; rows missing fields or holding null; and a folder tree with more than 40
+ * folders named for one word, so the "any filed asset" widening is reached. Queries are
+ * built from the documents' own words (so most of them hit something), plus a
+ * deterministic sweep of every structured clause form, alone, negated and next to text.
+ */
+function buildFuzz(seed, workspaceId, scale = 1) {
+	const random = rng(seed)
+	const fpick = (list) => list[Math.floor(random() * list.length)]
+	const fbetween = (low, high) => low + Math.floor(random() * (high - low + 1))
+	const fchance = (p) => random() < p
+
+	const joinedPairs = []
+	const joinedToken = () => {
+		const a = fpick(FUZZ_WORDS).toLowerCase()
+		const b = fpick(FUZZ_WORDS).toLowerCase()
+		joinedPairs.push([a, b])
+		return fchance(0.5) ? a + b : a[0].toUpperCase() + a.slice(1) + b[0].toUpperCase() + b.slice(1)
+	}
+	const token = () => (fchance(0.06) ? joinedToken() : fchance(0.62) ? fpick(FUZZ_WORDS) : fchance(0.45) ? fpick(FUZZ_STOP) : fpick(FUZZ_EXOTIC))
+	const sentence = (low, high) => {
+		let out = ''
+		for (let i = fbetween(low, high); i > 0; i--) out += (out ? fpick(FUZZ_SEPARATORS) : '') + token()
+		return out
+	}
+
+	const folderDefs = [['clients', 'Clients', null], ['acme', 'Acme', 'clients'], ['hero', 'Hero Shots', 'acme'], ['ba', 'Before and After', 'acme'], ['beta', 'Beta Co', 'clients'], ['marketing', 'Marketing', null], ['social', 'Social Media', 'marketing'], ['kitchenf', 'Kitchen Remodel', 'marketing'], ['cafe', 'Café Photos', null], ['jp', '日本の写真', null], ['the', 'The Who', null], ['jobs', 'Jobs', null]]
+	const rootKeys = folderDefs.map(([key]) => key)
+	for (let i = 0; i < 55; i++) folderDefs.push([`k${i}`, `Kitchen ${i}`, 'jobs'])
+	const folderId = Object.fromEntries(folderDefs.map(([key]) => [key, new ObjectId()]))
+	const folders = buildFolderIndex(folderDefs.map(([key, name, parent]) => ({ _id: folderId[key], parentId: parent ? folderId[parent] : null, name })))
+	const placeKeys = [null, null, null, ...rootKeys, 'k3', 'k17', 'k40']
+
+	let serial = 0
+	function makeFuzzDoc(over = {}) {
+		serial++
+		const _id = new ObjectId()
+		const contentType = fpick(Object.keys(EXT))
+		const name = sentence(1, 3)
+		const tags = []
+		for (let i = fbetween(0, 3); i > 0; i--) {
+			const label = sentence(1, 2)
+			const slug = slugify(label)
+			if (slug) tags.push({ slug, label, source: 'manual' })
+		}
+		for (let i = fbetween(0, 3); i > 0; i--) {
+			const label = sentence(1, 2)
+			const slug = slugify(label)
+			if (slug) tags.push({ slug, label, source: 'auto', via: fchance(0.25) ? 'filename' : 'vision', ...(fchance(0.8) ? { confidence: 0.6 + random() * 0.4 } : {}) })
+		}
+		const width = fbetween(100, 5000)
+		const height = fbetween(100, 5000)
+		const place = fpick(placeKeys)
+		const doc = {
+			_id, workspaceId, folderId: place ? folderId[place] : null, name, nameKey: '', filename: `${name.replace(/\s+/g, '-')}.${EXT[contentType]}`, url: 'https://blob.example/fuzz', pathname: `workspaces/${workspaceId}/media/f${serial}-${_id}.${EXT[contentType]}`,
+			contentType, bytes: fbetween(1000, 20_000_000), width, height, pixels: width * height, orientation: fpick(T.MEDIA_ORIENTATIONS), hasAlpha: fchance(0.2), animated: fchance(0.1),
+			colors: [], colorNames: [], brightness: fpick(T.MEDIA_BRIGHTNESS), saturation: fpick(T.MEDIA_SATURATION), sha256: `${_id}`.repeat(3).slice(0, 64), blur: null, tags, rejectedTags: [],
+			caption: fchance(0.6) ? sentence(1, 9) : '', altText: fchance(0.3) ? sentence(1, 4) : '', captionEdited: false, textInImage: fchance(0.2) ? sentence(1, 3).toUpperCase() : '',
+			keywords: fchance(0.4) ? Array.from({ length: fbetween(1, 5) }, token) : [], kind: fchance(0.9) ? fpick(T.MEDIA_KINDS) : null, notes: fchance(0.15) ? sentence(5, 60) : '', terms: [], termsVersion: T.MEDIA_TERMS_VERSION, rev: 1,
+			tagging: { status: fpick(['done', 'done', 'done', 'pending', 'running', 'failed', 'skipped']), attempts: 1 }, uploadedBy: 'proof',
+			createdAt: new Date(Date.UTC(2025, 0, 1) + random() * 460 * DAY), updatedAt: new Date('2026-01-15T12:00:00.000Z'),
+			...over,
+		}
+		doc.pixels = doc.width * doc.height
+		doc.colors = Array.from({ length: fbetween(0, 3) }, () => ({ hex: '#000000', name: fpick(COLOR_NAMES), share: 0.3 }))
+		return { ...doc, ...derivedFields(doc) }
+	}
+
+	const docs = Array.from({ length: Math.round(150 * scale) }, () => makeFuzzDoc())
+	const nowMs = NOW.getTime()
+	const edges = {
+		width: [1000, 2000, 1200, 800, 1600, 900, 3000],
+		height: [1000, 600, 500, 2500],
+		bytes: [2 * MB, 1 * MB, 500 * 1024, 8 * MB, 300 * 1024],
+		createdAt: [nowMs - 7 * DAY, nowMs - 30 * DAY, Date.UTC(2026, 2, 1), Date.UTC(2026, 3, 1) - 1, Date.UTC(2026, 0, 1), Date.UTC(2026, 2, 15), Date.UTC(2026, 2, 16) - 1, Date.UTC(2025, 0, 1), Date.UTC(2026, 0, 1) - 1, Date.UTC(2025, 5, 1), Date.UTC(2025, 6, 1) - 1, Date.UTC(2025, 5, 15), Date.UTC(2025, 5, 16) - 1, Date.UTC(2025, 5, 2) - 1, Date.UTC(2025, 5, 2), Date.UTC(2025, 2, 1), Date.UTC(2025, 8, 2) - 1],
+	}
+	let boundary = 0
+	for (const [column, list] of Object.entries(edges)) {
+		for (const edge of list) {
+			for (const delta of [-1, 0, 1]) {
+				docs.push(makeFuzzDoc({ [column]: column === 'createdAt' ? new Date(edge + delta) : edge + delta }))
+				boundary++
+			}
+		}
+	}
+	const strippable = ['tags', 'tagging', 'folderId', 'colorNames', 'caption', 'altText', 'keywords', 'notes', 'kind', 'brightness', 'saturation', 'textInImage', 'orientation', 'hasAlpha', 'animated', 'rejectedTags', 'name', 'filename']
+	let malformedRows = 0
+	for (let i = 0; i < 24; i++) {
+		const doc = { ...makeFuzzDoc() }
+		for (let k = fbetween(1, 5); k > 0; k--) {
+			const key = fpick(strippable)
+			if (fchance(0.5)) delete doc[key]
+			else doc[key] = null
+		}
+		docs.push(doc)
+		malformedRows++
+	}
+
+	const vocabulary = new Map()
+	for (const doc of docs) for (const term of new Set(doc.terms)) vocabulary.set(term, (vocabulary.get(term) ?? 0) + 1)
+
+	const stringsOf = (doc) => [doc.name, doc.filename, doc.caption, doc.altText, doc.textInImage, doc.notes, ...(Array.isArray(doc.keywords) ? doc.keywords : []), ...(Array.isArray(doc.tags) ? doc.tags.map((tag) => tag?.label) : [])].filter((one) => typeof one === 'string' && one.trim())
+	const piece = (doc) => {
+		const strings = stringsOf(doc)
+		const words = text.normalizeText(strings.length ? fpick(strings) : 'kitchen').split(' ').filter(Boolean)
+		const word = words.length ? fpick(words) : 'kitchen'
+		const tagList = Array.isArray(doc.tags) ? doc.tags.filter((tag) => tag && tag.slug) : []
+		switch (fpick(['term', 'term', 'term', 'prefix', 'prefix', 'phrase', 'phrase', 'implicit', 'implicit', 'joined', 'field', 'field', 'tag', 'tagprefix', 'folder', 'structured', 'structured', 'structured', 'structured', 'typo', 'inflect'])) {
+			case 'term':
+				return word
+			case 'inflect':
+				return fpick([`${word}s`, `${word}ing`, word.slice(0, -1), `${word}ed`, word.replace(/s$/, '')])
+			case 'typo': {
+				if (word.length < 3) return word
+				const at = fbetween(0, word.length - 2)
+				return word.slice(0, at) + word[at + 1] + word[at] + word.slice(at + 2)
+			}
+			case 'prefix':
+				return `${word.slice(0, fbetween(1, Math.min(6, word.length)))}*`
+			case 'phrase': {
+				if (words.length < 2) return `"${word}"`
+				const at = fbetween(0, words.length - 2)
+				return `"${words.slice(at, at + fbetween(2, Math.min(3, words.length - at))).join(' ')}"`
+			}
+			case 'implicit': {
+				if (words.length < 2) return word
+				const at = fbetween(0, words.length - 2)
+				return words.slice(at, at + 2).join(fpick(['-', '_']))
+			}
+			case 'joined': {
+				if (joinedPairs.length === 0) return word
+				const [a, b] = fpick(joinedPairs)
+				return fpick([`${a}-${b}`, `${a}_${b}`, `"${a} ${b}"`, a + b])
+			}
+			case 'field': {
+				const field = fpick(['name', 'caption', 'text'])
+				const shape = fpick(['word', 'word', 'phrase', 'star', 'list'])
+				if (shape === 'phrase' && words.length >= 2) return `${field}:"${words.slice(0, fbetween(2, Math.min(3, words.length))).join(' ')}"`
+				if (shape === 'star') return `${field}:${word.slice(0, fbetween(1, Math.min(5, word.length)))}*`
+				if (shape === 'list') return `${field}:${word},${fpick(FUZZ_WORDS).toLowerCase()}`
+				return `${field}:${word}`
+			}
+			case 'tag': {
+				const one = tagList.length ? fpick(tagList) : null
+				return one ? fpick([`tag:${one.slug}`, `#${one.slug}`, `tag:${one.slug},kitchen`]) : 'tag:kitchen'
+			}
+			case 'tagprefix': {
+				const one = tagList.length ? fpick(tagList) : null
+				return one ? `tag:${one.slug.slice(0, fbetween(1, Math.min(5, one.slug.length)))}*` : 'tag:ki*'
+			}
+			case 'folder': {
+				const one = fpick(folderDefs.slice(0, 12))
+				return fpick([`folder:${one[1].split(' ')[0]}`, `folder:"${one[1]}"`, 'folder:none', 'folder:Clients/Acme', `folder:${one[1].slice(0, 3)}`])
+			}
+			default:
+				return fpick(FUZZ_STRUCTURED)
+		}
+	}
+	const expression = (depth) => {
+		const unary = () => {
+			const base = depth > 0 && fchance(0.28) ? `(${expression(depth - 1)})` : piece(fpick(docs))
+			return fchance(0.22) ? `-${base}` : base
+		}
+		const conjunction = () => Array.from({ length: fbetween(1, 3) }, unary).join(' ')
+		return Array.from({ length: fchance(0.35) ? fbetween(2, 3) : 1 }, conjunction).join(' OR ')
+	}
+
+	const randomQueries = Array.from({ length: Math.round(400 * scale) }, () => expression(fbetween(0, 3)))
+	const sweep = []
+	const wraps = [(clause, other) => `${other} ${clause}`.trim(), (clause, other) => `-${clause} ${other}`.trim(), (clause, other) => (other ? `${other} OR -${clause}` : `-${clause}`), (clause, other) => `-(${clause} ${other || 'x'})`]
+	for (const clause of [...FUZZ_STRUCTURED, 'tag:kitchen', 'tag:ki*', 'tag:zzz', 'tag:old', '#kitchen,bathroom']) {
+		for (const other of ['', 'kitchen', '"before and after"']) for (const wrap of wraps) sweep.push(wrap(clause, other))
+	}
+
+	const ctx = (opts = {}) => ({
+		workspaceId,
+		userId: 'proof',
+		now: NOW,
+		folders,
+		tagRedirects: new Map([['kitchen', 'bathroom'], ['zzz', 'yyy']]),
+		vocabulary: opts.vocabulary ?? null,
+		prefixLast: opts.prefixLast ?? false,
+	})
+	return { docs, folders, vocabulary, randomQueries, sweep, ctx, composition: { random: Math.round(150 * scale), boundary, malformed: malformedRows, folders: folderDefs.length } }
+}
+
+/* -------------------------------------------------------------------------- */
 /* The run                                                                    */
 /* -------------------------------------------------------------------------- */
 
-const client = new MongoClient(uri)
-await client.connect()
-const assetsCollection = client.db().collection(T.MEDIA_ASSETS)
+// The ids come first, so that a process killed from outside can still be cleaned up by hand.
+console.log(`NOTE  workspace ids for this run: library ${W}, fuzz library ${WF}. Everything this proof inserts carries one of them, in mediaAssets only.`)
+if (OFFLINE) console.log('NOTE  OFFLINE run (PROVE_PLAN_OFFLINE=1): no server is used. The invariant is checked against the model of Mongo only; it is NOT proven against a real MongoDB.')
+if (PLAN_SRC !== 'src/lib/media/query/plan.ts' || FUZZY_SRC !== 'src/lib/media/query/fuzzy.ts') console.log(`NOTE  testing a stand-in: plan from ${PLAN_SRC}, fuzzy from ${FUZZY_SRC}`)
+
+let client = null
+let assetsCollection = null
+if (!OFFLINE) {
+	try {
+		client = new MongoClient(uri, { serverSelectionTimeoutMS: 15_000, connectTimeoutMS: 15_000, socketTimeoutMS: 90_000, minPoolSize: Math.max(WIDTH, 8), maxPoolSize: Math.max(WIDTH, 8) + 4 })
+		await client.connect()
+		assetsCollection = client.db().collection(T.MEDIA_ASSETS)
+	} catch (error) {
+		console.log(`FAIL  could not reach MongoDB (${error && error.message ? error.message : error})`)
+		process.exit(1)
+	}
+}
+
+let cleanupRun = null
+/** Deletes everything this run inserted: idempotent, and safe to call from a signal handler or the watchdog. Resolves to what is left (-1: it could not tell). */
+function removeEverything() {
+	cleanupRun ??= (async () => {
+		if (!assetsCollection) return 0
+		try {
+			await assetsCollection.deleteMany({ workspaceId: { $in: [W, WF] } }, { maxTimeMS: 60_000 })
+			return await assetsCollection.countDocuments({ workspaceId: { $in: [W, WF] } }, { maxTimeMS: 60_000 })
+		} catch (error) {
+			console.log(`WARN  cleanup failed (${error && error.message ? error.message : error}). By hand: db.mediaAssets.deleteMany({ workspaceId: { $in: [ObjectId("${W}"), ObjectId("${WF}")] } })`)
+			return -1
+		}
+	})()
+	return cleanupRun
+}
+
+/** A dropped connection or a TLS alert (this is a shared, busy cluster). A refusal by the server carries a numeric code and is a result, not a hiccup. */
+const isTransient = (error) =>
+	!!error && typeof error.code !== 'number' && /network|socket|ssl|tls|econnreset|etimedout|epipe|server selection|pool|topology/i.test(`${error.name} ${error.message}`)
+/** Reads are idempotent, so a transient failure is retried a few times; anything else is thrown at once. */
+async function retrying(fn) {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			return await fn()
+		} catch (error) {
+			if (attempt >= 4 || !isTransient(error)) throw error
+			await new Promise((resolve) => setTimeout(resolve, 300 * attempt))
+		}
+	}
+}
+/** Inserts documents so that a hiccup half way leaves nothing missing and nothing doubled: on a retry only what is absent goes in. */
+async function insertAll(docs) {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			const workspaceId = docs[0].workspaceId
+			const have = new Set((await assetsCollection.find({ workspaceId, _id: { $in: docs.map((doc) => doc._id) } }, { projection: { _id: 1 }, maxTimeMS: 60_000 }).toArray()).map((doc) => String(doc._id)))
+			const missing = docs.filter((doc) => !have.has(String(doc._id)))
+			if (missing.length > 0) await assetsCollection.insertMany(missing)
+			return
+		} catch (error) {
+			if (attempt >= 4 || !isTransient(error)) throw error
+			await new Promise((resolve) => setTimeout(resolve, 300 * attempt))
+		}
+	}
+}
+
+function summary() {
+	endSection()
+	const parts = [`${passed}/${passed + failed} passed, ${failed} failed`]
+	if (skipped) parts.push(`${skipped} skipped`)
+	return `\n${parts.join(', ')} (${assertions} assertions)\n`
+}
+/** Exit only once the summary, which the aggregator reads from a pipe, has been written out. */
+function exitWith(code) {
+	process.stdout.write(summary(), () => process.exit(code))
+}
+/** Whatever stops the run early (a hang, a signal, a crash) still removes what it inserted. */
+function abort(why, code) {
+	failed++
+	console.log(`FAIL  ${why}; removing what this run inserted`)
+	setTimeout(() => process.exit(code), 20_000).unref()
+	removeEverything().finally(() => exitWith(code))
+}
+const watchdog = setTimeout(() => abort(`the watchdog: the proof was still running after ${Math.round(WATCHDOG_MS / 1000)} s (a stalled network?)`, 1), WATCHDOG_MS)
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => abort(`interrupted (${signal})`, 130))
+process.on('unhandledRejection', (error) => abort(`an unhandled rejection (${error && error.message ? error.message : error})`, 1))
+process.on('uncaughtException', (error) => abort(`an uncaught exception (${error && error.message ? error.message : error})`, 1))
 
 const idsOf = (docs) => new Set(docs.map((doc) => doc._id.toString()))
 const sample = (set) => [...set].slice(0, 4).map((id) => keyOfFixture.get(id) ?? nameOf(id) ?? id).join(', ')
@@ -1209,11 +1733,95 @@ async function pool(items, width, work) {
 	return out
 }
 
+let crossChecked = 0
+let modelMs = 0
+let serverMs = 0
+let findCalls = 0
+let batchCalls = 0
+/** Filters already put to the server against the main library: many queries plan to the same filter, and one answer serves them all. */
+const answered = new Map()
+/**
+ * The ids of `docs` that match `filter`. With a server this is Mongo's own `find` (an `_id`-only
+ * projection, so the cost is a round trip, not the documents), held against what the model
+ * `mongoMatches` says: the model earns its use in the large random runs only by never having
+ * disagreed with the server. Offline it is the model alone. The sets it returns are not to be changed.
+ */
+async function idsMatching(filter, docs = CORPUS, collection = assetsCollection) {
+	const key = docs === CORPUS && collection === assetsCollection ? JSON.stringify(filter) : null
+	if (key !== null && answered.has(key)) return answered.get(key)
+	const t0 = performance.now()
+	const modelled = idsOf(docs.filter((doc) => mongoMatches(doc, filter)))
+	modelMs += performance.now() - t0
+	if (!collection) {
+		if (key !== null) answered.set(key, modelled)
+		return modelled
+	}
+	const t1 = performance.now()
+	const found = idsOf(await retrying(() => collection.find(filter, { projection: { _id: 1 }, maxTimeMS: 60_000 }).toArray()))
+	serverMs += performance.now() - t1
+	findCalls++
+	crossChecked++
+	if (!sameSet(found, modelled)) throw new Error(`the model of Mongo disagrees with the server on ${shown(shapeOf(filter), 200)}: ${diffNote(found, modelled)} (the server's answer first)`)
+	if (key !== null) answered.set(key, found)
+	return found
+}
+
+const BATCH = 25
+/**
+ * Many filters over `docs`, for the bulk runs: one aggregate per BATCH filters, with a `$facet` branch
+ * for each. `$match` is the matcher `find` uses; what it skips is the index, which the main suite and the
+ * random checks (they call `find` itself, through idsMatching) already put to the test. Each answer is held
+ * against the model, as in idsMatching. Returns one Set of ids per filter, in order.
+ */
+async function idsMatchingMany(filters, docs, collection = assetsCollection) {
+	const t0 = performance.now()
+	const modelled = filters.map((filter) => idsOf(docs.filter((doc) => mongoMatches(doc, filter))))
+	modelMs += performance.now() - t0
+	if (!collection || filters.length === 0) return modelled
+	const workspaceId = filters[0].workspaceId
+	if (!filters.every((filter) => workspaceId.equals(filter.workspaceId))) throw new Error('one batch, one workspace')
+	const chunks = []
+	for (let at = 0; at < filters.length; at += BATCH) chunks.push(filters.slice(at, at + BATCH))
+	const t1 = performance.now()
+	const answers = await pool(chunks, Math.min(WIDTH, 4), async (chunk) => {
+		const branches = {}
+		chunk.forEach((filter, i) => (branches[`f${i}`] = [{ $match: filter }, { $project: { _id: 1 } }]))
+		try {
+			batchCalls++
+			const [row] = await retrying(() => collection.aggregate([{ $match: { workspaceId } }, { $facet: branches }], { maxTimeMS: 60_000 }).toArray())
+			return chunk.map((_, i) => new Set(row[`f${i}`].map((doc) => String(doc._id))))
+		} catch (error) {
+			// One bad filter fails the whole aggregate: name it.
+			for (const filter of chunk) {
+				try {
+					await retrying(() => collection.find(filter, { projection: { _id: 1 }, maxTimeMS: 60_000 }).toArray())
+				} catch (inner) {
+					throw new Error(`the server refused ${shown(shapeOf(filter), 200)}: ${inner && inner.message ? inner.message : inner}`)
+				}
+			}
+			throw error
+		}
+	})
+	serverMs += performance.now() - t1
+	const found = answers.flat()
+	crossChecked += filters.length
+	found.forEach((ids, i) => {
+		if (!sameSet(ids, modelled[i])) throw new Error(`the model of Mongo disagrees with the server on ${shown(shapeOf(filters[i]), 200)}: ${diffNote(ids, modelled[i])} (the server's answer first)`)
+	})
+	return found
+}
+
 try {
 	section(`library: ${CORPUS.length} documents (${fixtureDocs.length} fixtures, ${bulk.length} generated), ${FOLDER_DEFS.length} folders`)
-	await assetsCollection.insertMany(CORPUS)
-	const stored = await assetsCollection.countDocuments({ workspaceId: W })
-	await check('library inserted under a fresh workspace id', () => eq(stored, CORPUS.length))
+	if (assetsCollection) await insertAll(CORPUS)
+	await serverCheck('library inserted under a fresh workspace id', async () => eq(await retrying(() => assetsCollection.countDocuments({ workspaceId: W }, { maxTimeMS: 60_000 })), CORPUS.length))
+	await serverCheck('the stored library is the generated library, document for document (a BSON round trip changes nothing, so evaluating the generated objects is evaluating what Mongo holds)', async () => {
+		const back = await retrying(() => assetsCollection.find({ workspaceId: W }, { maxTimeMS: 60_000 }).toArray())
+		eq(back.length, CORPUS.length)
+		const byId = new Map(back.map((doc) => [String(doc._id), doc]))
+		for (const doc of CORPUS) assert.deepStrictEqual(byId.get(String(doc._id)), doc, doc.name)
+		assertions += CORPUS.length
+	})
 	await check('library: realistic spread (formats, tagging states, tag sources, folders, notes)', () => {
 		ok(CORPUS.length >= 300, 'at least 300 documents')
 		eq(new Set(bulk.map((d) => d.contentType)).size, 5, 'all five formats')
@@ -1231,22 +1839,22 @@ try {
 	const started = performance.now()
 	const RUNS = Q.map((entry) => {
 		const plan = planQuery(parsed(entry.text), ctxFor(entry.opts))
-		return { entry, plan, brute: null, found: null, viaMongo: null }
+		return { entry, plan, brute: null, foundIds: null, viaMongo: null }
 	})
 	const planned = performance.now()
 	for (const run of RUNS) run.brute = idsOf(CORPUS.filter((doc) => run.plan.evaluate(doc)))
 	const evaluated = performance.now()
-	await pool(RUNS, 8, async (run) => {
+	await pool(RUNS, WIDTH, async (run) => {
 		try {
-			run.found = await assetsCollection.find(run.plan.prefilter).toArray()
-			run.foundIds = idsOf(run.found)
-			run.viaMongo = idsOf(run.found.filter((doc) => run.plan.evaluate(doc)))
+			run.foundIds = await idsMatching(run.plan.prefilter)
+			// The candidates run through the evaluator, exactly as searchAssets does.
+			run.viaMongo = new Set([...run.foundIds].filter((id) => run.plan.evaluate(IDS.get(id))))
 		} catch (error) {
 			run.error = error && error.message ? error.message : String(error)
 		}
 	})
 	const queried = performance.now()
-	note(`${RUNS.length} queries: planned in ${Math.round(planned - started)} ms, evaluated over ${CORPUS.length} documents in ${Math.round(evaluated - planned)} ms, ${RUNS.length} Mongo finds in ${Math.round(queried - evaluated)} ms`)
+	note(`${RUNS.length} queries: planned in ${Math.round(planned - started)} ms, evaluated over ${CORPUS.length} documents in ${Math.round(evaluated - planned)} ms, ${RUNS.length} ${OFFLINE ? 'modelled' : 'Mongo'} finds in ${Math.round(queried - evaluated)} ms`)
 	const byText = new Map()
 	for (const run of RUNS) if (!byText.has(run.entry.text) || !run.entry.opts) byText.set(run.entry.text, run)
 
@@ -1254,7 +1862,7 @@ try {
 	for (const run of RUNS) {
 		const { entry, plan } = run
 		await check(`query ${labelOf(entry)}`, () => {
-			if (run.error) throw new Error(`MongoDB rejected the prefilter ${shown(shapeOf(plan.prefilter), 160)}: ${run.error}`)
+			if (run.error) throw new Error(`the prefilter ${shown(shapeOf(plan.prefilter), 160)} was refused or answered differently by the server: ${run.error}`)
 			// Plan hygiene.
 			ok(plan.prefilter.workspaceId.equals(W), 'the prefilter leads with the workspace')
 			eq(plan.needsEvaluation, plan.hasText, 'needsEvaluation is hasText')
@@ -1413,9 +2021,18 @@ try {
 		eq(run('tag:a7', chain).slugs, ['a7'], 'the end of a chain stays put')
 		eq(run('tag:a7', chain).plan.corrections, [])
 		const loop = new Map([['x', 'y'], ['y', 'z'], ['z', 'x']])
-		eq(run('tag:x', loop).slugs, ['z'], 'stops where the loop would close')
-		eq(run('tag:y', loop).slugs, ['x'])
-		eq(run('tag:z', loop).slugs, ['y'])
+		for (const slug of ['x', 'y', 'z']) {
+			eq(run(`tag:${slug}`, loop).slugs, [slug], `a cycle is ignored: ${slug} stays as typed`)
+			eq(run(`tag:${slug}`, loop).plan.corrections, [], 'and is not reported')
+		}
+		// A tail that leads into a cycle is just as corrupt: the whole chain is ignored.
+		const tail = new Map([['t', 'a'], ['a', 'b'], ['b', 'a']])
+		eq(run('tag:t', tail).slugs, ['t'])
+		eq(run('tag:a', tail).slugs, ['a'])
+		eq(run('tag:t', tail).plan.corrections, [])
+		// A chain that is too long to see the cycle within five hops simply stops at the fifth.
+		const late = new Map([['p0', 'p1'], ['p1', 'p2'], ['p2', 'p3'], ['p3', 'p4'], ['p4', 'p5'], ['p5', 'p3']])
+		eq(run('tag:p0', late).slugs, ['p5'], 'five hops from p0, before the loop closes')
 		eq(run('tag:s', new Map([['s', 's']])).slugs, ['s'])
 		eq(run('tag:s', new Map([['s', 's']])).plan.corrections, [], 'a self-redirect is not a correction')
 		eq(run('tag:j', new Map([['j', '']])).slugs, ['j'])
@@ -1516,7 +2133,7 @@ try {
 		ok(bsonDepth(deepest.prefilter) <= 24, `depth ${bsonDepth(deepest.prefilter)}`)
 		lintFilter(deepest.prefilter)
 		BSON.serialize(deepest.prefilter)
-		await assetsCollection.find(deepest.prefilter).limit(1).toArray()
+		await idsMatching(deepest.prefilter) // the server accepts it, and answers as the model does
 	})
 
 	await check('a hand-built tree deeper than twice the parser limit fails closed instead of throwing', async () => {
@@ -1531,9 +2148,9 @@ try {
 		const ok16 = built(chain(limit))
 		ok(bsonDepth(ok16.prefilter) <= 44, `depth ${bsonDepth(ok16.prefilter)}`)
 		lintFilter(ok16.prefilter)
-		const viaMongo = await assetsCollection.find(ok16.prefilter).toArray()
+		const viaMongo = await idsMatching(ok16.prefilter)
 		const brute = idsOf(CORPUS.filter((doc) => ok16.evaluate(doc)))
-		ok(sameSet(idsOf(viaMongo), brute), 'the deepest legal tree is exact in Mongo')
+		ok(sameSet(viaMongo, brute), 'the deepest legal tree is exact in Mongo')
 		for (const levels of [limit + 1, 40, 200, 100_000]) {
 			const closed = built(chain(levels))
 			eq(shapeOf(closed.prefilter), { _id: { $in: [] } }, `${levels} levels`)
@@ -1547,20 +2164,20 @@ try {
 		const kids = Array.from({ length: 60 }, () => new ObjectId())
 		const big = buildFolderIndex([{ _id: parent, parentId: null, name: 'Jobs' }, ...kids.map((id, i) => ({ _id: id, parentId: parent, name: `Kitchen ${i}` }))])
 		const extra = [makeDoc({ name: 'Plain 1', folderId: kids[7] }), makeDoc({ name: 'Plain 2', folderId: parent }), makeDoc({ name: 'Plain 3', folderId: null }), makeDoc({ name: 'Plain 4', folderId: FOLDER_ID.acme })]
-		await assetsCollection.insertMany(extra)
+		if (assetsCollection) await insertAll(extra)
 		try {
 			const plan = planQuery(parsed('kitchen'), { ...ctxFor(), folders: big })
 			eq(shapeOf(plan.prefilter), { $or: [term('kitchen'), { folderId: { $ne: null } }] })
-			const found = await assetsCollection.find(plan.prefilter).toArray()
 			const everyone = [...CORPUS, ...extra]
+			const found = await idsMatching(plan.prefilter, everyone)
 			const brute = idsOf(everyone.filter((doc) => plan.evaluate(doc)))
-			ok([...brute].every((id) => idsOf(found).has(id)), 'a superset still')
-			const hits = found.filter((doc) => plan.evaluate(doc)).map((doc) => doc.name)
+			ok([...brute].every((id) => found.has(id)), 'a superset still')
+			const hits = everyone.filter((doc) => found.has(String(doc._id)) && plan.evaluate(doc)).map((doc) => doc.name)
 			ok(hits.includes('Plain 1'), 'in a folder whose name has the word')
 			ok(!hits.includes('Plain 2') && !hits.includes('Plain 3') && !hits.includes('Plain 4'), 'and nothing else')
 		} finally {
 			// The rest of the proof compares Mongo with the library, so these rows must not outlive the check.
-			await assetsCollection.deleteMany({ _id: { $in: extra.map((doc) => doc._id) } })
+			if (assetsCollection) await assetsCollection.deleteMany({ _id: { $in: extra.map((doc) => doc._id) } })
 		}
 	})
 
@@ -1899,8 +2516,8 @@ try {
 		ok(expected.length > 0, 'the library holds such documents')
 		for (const doc of expected) ok(typo.evaluate(doc) !== null, `${doc.name} has both words`)
 		ok(hits.every((doc) => typo.evaluate(doc).score > 0))
-		const found = await assetsCollection.find(typo.prefilter).toArray()
-		ok(hits.every((doc) => idsOf(found).has(doc._id.toString())), 'the prefilter keeps every fuzzy match')
+		const found = await idsMatching(typo.prefilter)
+		ok(hits.every((doc) => found.has(doc._id.toString())), 'the prefilter keeps every fuzzy match')
 	})
 
 	/* ---------------------------------------------------------------------- */
@@ -1919,8 +2536,8 @@ try {
 		return out
 	}
 	for (const query of ['kitchen', 'kitchen bathroom', 'ki*', 'tag:kitchen', 'kitchen OR -tag:x', 'type:png', 'folder:Acme']) {
-		await check(`explain ${query}`, async () => {
-			const explained = await assetsCollection.find(planOf(query).prefilter).explain('queryPlanner')
+		await serverCheck(`explain ${query}`, async () => {
+			const explained = await retrying(() => assetsCollection.find(planOf(query).prefilter, { maxTimeMS: 60_000 }).explain('queryPlanner'))
 			const winning = explained?.queryPlanner?.winningPlan
 			ok(winning, 'the server explained a winning plan')
 			const names = [...new Set(stagesOf(winning))]
@@ -1984,50 +2601,12 @@ try {
 		note(`${evaluations} evaluations across 6,000 plans`)
 	})
 
-	await check('300 random queries: the invariant holds against Mongo (superset, and exact without text)', async () => {
-		const random = rng(99)
-		const batch = Array.from({ length: 300 }, () => ({
-			query: randomQuery(random),
-			opts: random() < 0.3 ? { prefixLast: true, vocabulary: VOCAB } : random() < 0.4 ? { prefixLast: true } : {},
-		}))
-		const problems = []
-		let withText = 0
-		await pool(batch, 8, async ({ query, opts }) => {
-			try {
-				const plan = planOf(query, opts)
-				if (plan.hasText) withText++
-				const brute = idsOf(CORPUS.filter((doc) => plan.evaluate(doc)))
-				const found = await assetsCollection.find(plan.prefilter).toArray()
-				const foundIds = idsOf(found)
-				const lost = new Set([...brute].filter((id) => !foundIds.has(id)))
-				if (lost.size) problems.push(`COUNTEREXAMPLE ${shown(query, 80)}: the prefilter lost ${lost.size} (${sample(lost)}); ${shown(shapeOf(plan.prefilter), 200)}`)
-				else if (!sameSet(idsOf(found.filter((doc) => plan.evaluate(doc))), brute)) problems.push(`${shown(query, 80)}: candidates then evaluate differs`)
-				else if (!plan.needsEvaluation && !sameSet(foundIds, brute)) problems.push(`${shown(query, 80)}: a text-free prefilter is not exact`)
-			} catch (error) {
-				problems.push(`${shown(query, 80)}: ${error.message}`)
-			}
-		})
-		if (problems.length) throw new Error(`${problems.length} problem(s): ${problems.slice(0, 3).join(' || ')}`)
-		ok(withText > 100 && withText < 300, `a mix of text and structured queries (${withText} with text)`)
-	})
-
-	await check('400 random well-formed nested queries (AND, OR, NOT and groups over every kind of clause): the invariant holds against Mongo', async () => {
-		const ATOMS = ['kitchen', 'bathroom', 'blue', 'deck', 'patio', 'the', 'ki*', 'bath*', 'acme', 'hero', 'kithcen', '"before and after"', '"kitchen remodel"', 'kitchen-remodel', '"the who"', 'tag:kitchen', 'tag:ki*', 'tag:old-name', 'type:png', 'type:jpg,webp', 'is:dark', 'is:untagged', 'is:unreviewed', 'is:captioned', 'color:blue', 'orientation:landscape', 'kind:logo', 'folder:Acme', 'folder:none', 'width:>1000', 'size:<1mb', 'added:month', 'name:the', 'name:kit*', 'caption:"for sale"', 'text:grand']
-		const random = rng(2026)
-		const grammar = (depth) => {
-			const atom = () => ATOMS[Math.floor(random() * ATOMS.length)]
-			const unary = (d) => {
-				const base = d > 0 && random() < 0.3 ? `(${expression(d - 1)})` : atom()
-				return random() < 0.25 ? `-${base}` : base
-			}
-			const conjunction = (d) => Array.from({ length: 1 + Math.floor(random() * 3) }, () => unary(d)).join(' ')
-			const expression = (d) => Array.from({ length: random() < 0.4 ? 2 + Math.floor(random() * 2) : 1 }, () => conjunction(d)).join(' OR ')
-			return expression(depth)
-		}
-		const batch = Array.from({ length: 400 }, () => ({
-			query: grammar(1 + Math.floor(random() * 4)),
-			opts: random() < 0.3 ? { prefixLast: true, vocabulary: VOCAB } : random() < 0.4 ? { prefixLast: true } : {},
-		}))
+	/**
+	 * THE INVARIANT for a batch of (query, plan options) against the main library, through the server
+	 * (and the model): Mongo's candidates hold every document the evaluator accepts, candidates run
+	 * through the evaluator equal the whole library run through it, and a text-free prefilter alone is exact.
+	 */
+	async function invariantBatch(batch) {
 		const problems = []
 		let withText = 0
 		let depthSeen = 0
@@ -2038,18 +2617,46 @@ try {
 				depthSeen = Math.max(depthSeen, bsonDepth(plan.prefilter))
 				lintFilter(plan.prefilter)
 				const brute = idsOf(CORPUS.filter((doc) => plan.evaluate(doc)))
-				const found = await assetsCollection.find(plan.prefilter).toArray()
-				const foundIds = idsOf(found)
+				const foundIds = await idsMatching(plan.prefilter)
 				const lost = new Set([...brute].filter((id) => !foundIds.has(id)))
 				if (lost.size) problems.push(`COUNTEREXAMPLE ${shown(query, 100)}: the prefilter lost ${lost.size} (${sample(lost)}); ${shown(shapeOf(plan.prefilter), 240)}`)
-				else if (!sameSet(idsOf(found.filter((doc) => plan.evaluate(doc))), brute)) problems.push(`${shown(query, 100)}: candidates then evaluate differs`)
+				else if (!sameSet(new Set([...foundIds].filter((id) => plan.evaluate(IDS.get(id)))), brute)) problems.push(`${shown(query, 100)}: candidates then evaluate differs`)
 				else if (!plan.needsEvaluation && !sameSet(foundIds, brute)) problems.push(`${shown(query, 100)}: a text-free prefilter is not exact`)
 			} catch (error) {
 				problems.push(`${shown(query, 100)}: ${error.message}`)
 			}
 		})
+		return { problems, withText, depthSeen }
+	}
+	const variantFor = (random) => (random() < 0.3 ? { prefixLast: true, vocabulary: VOCAB } : random() < 0.4 ? { prefixLast: true } : {})
+
+	const RANDOM_COUNT = Math.round(160 * SCALE)
+	await check(`${RANDOM_COUNT} random queries, hostile fragments included: the invariant holds against Mongo (superset, and exact without text)`, async () => {
+		const random = rng(99 + SEED)
+		const batch = Array.from({ length: RANDOM_COUNT }, () => ({ query: randomQuery(random), opts: variantFor(random) }))
+		const { problems, withText } = await invariantBatch(batch)
 		if (problems.length) throw new Error(`${problems.length} problem(s): ${problems.slice(0, 3).join(' || ')}`)
-		ok(withText > 150 && withText < 400, `a mix of text and structured queries (${withText} with text)`)
+		ok(withText > 0.3 * RANDOM_COUNT && withText < RANDOM_COUNT, `a mix of text and structured queries (${withText} with text)`)
+	})
+
+	const NESTED_COUNT = Math.round(240 * SCALE)
+	await check(`${NESTED_COUNT} random well-formed nested queries (AND, OR, NOT and groups over every kind of clause): the invariant holds against Mongo`, async () => {
+		const ATOMS = ['kitchen', 'bathroom', 'blue', 'deck', 'patio', 'the', 'ki*', 'bath*', 'acme', 'hero', 'kithcen', '"before and after"', '"kitchen remodel"', 'kitchen-remodel', '"the who"', 'tag:kitchen', 'tag:ki*', 'tag:old-name', 'type:png', 'type:jpg,webp', 'is:dark', 'is:untagged', 'is:unreviewed', 'is:captioned', 'color:blue', 'orientation:landscape', 'kind:logo', 'folder:Acme', 'folder:none', 'width:>1000', 'size:<1mb', 'added:month', 'name:the', 'name:kit*', 'caption:"for sale"', 'text:grand']
+		const random = rng(2026 + SEED)
+		const grammar = (depth) => {
+			const atom = () => ATOMS[Math.floor(random() * ATOMS.length)]
+			const unary = (d) => {
+				const base = d > 0 && random() < 0.3 ? `(${expression(d - 1)})` : atom()
+				return random() < 0.25 ? `-${base}` : base
+			}
+			const conjunction = (d) => Array.from({ length: 1 + Math.floor(random() * 3) }, () => unary(d)).join(' ')
+			const expression = (d) => Array.from({ length: random() < 0.4 ? 2 + Math.floor(random() * 2) : 1 }, () => conjunction(d)).join(' OR ')
+			return expression(depth)
+		}
+		const batch = Array.from({ length: NESTED_COUNT }, () => ({ query: grammar(1 + Math.floor(random() * 4)), opts: variantFor(random) }))
+		const { problems, withText, depthSeen } = await invariantBatch(batch)
+		if (problems.length) throw new Error(`${problems.length} problem(s): ${problems.slice(0, 3).join(' || ')}`)
+		ok(withText > 0.35 * NESTED_COUNT && withText < NESTED_COUNT, `a mix of text and structured queries (${withText} with text)`)
 		note(`${batch.length} nested queries (${withText} with text), deepest filter ${depthSeen} BSON levels`)
 	})
 
@@ -2082,7 +2689,8 @@ try {
 		const seen = new Set([slug])
 		for (let hop = 0; hop < 5; hop++) {
 			const next = REDIRECTS.get(current)
-			if (!next || seen.has(next)) break
+			if (!next) break
+			if (seen.has(next)) return slug // a cycle is ignored
 			seen.add(next)
 			current = next
 		}
@@ -2263,7 +2871,7 @@ try {
 		]
 		const variants = [{}, { prefixLast: true, vocabulary: VOCAB }]
 		const sampleDocs = [...CORPUS.filter((_, i) => i % 41 === 0), ...malformed]
-		let sent = 0
+		const jobs = []
 		for (const ast of nodes) {
 			for (const wrap of [(n) => n, (n) => ({ type: 'not', node: n, start: 0, end: 1 }), (n) => ({ type: 'and', nodes: [n, leaf('deck')] }), (n) => ({ type: 'or', nodes: [n, field('tag', ['kitchen'])] })]) {
 				for (const opts of variants) {
@@ -2271,18 +2879,96 @@ try {
 					lintFilter(plan.prefilter)
 					BSON.serialize(plan.prefilter)
 					for (const doc of sampleDocs) plan.evaluate(doc)
-					const found = await assetsCollection.find(plan.prefilter).toArray()
-					const brute = idsOf(CORPUS.filter((doc) => plan.evaluate(doc)))
-					ok([...brute].every((id) => idsOf(found).has(id)), `${JSON.stringify(ast).slice(0, 80)}: the prefilter lost a match`)
-					sent++
+					jobs.push({ plan, label: JSON.stringify(ast).slice(0, 80) })
 				}
 			}
 		}
+		const answers = await idsMatchingMany(jobs.map(({ plan }) => plan.prefilter), CORPUS)
+		jobs.forEach(({ plan, label }, i) => {
+			const brute = idsOf(CORPUS.filter((doc) => plan.evaluate(doc)))
+			ok([...brute].every((id) => answers[i].has(id)), `${label}: the prefilter lost a match`)
+		})
+		const sent = jobs.length
 		// And a plan made with no folder tree, no redirects and no vocabulary at all.
 		const bare = planQuery(parsed('acme tag:old-name kithcen folder:Acme "x y"'), { workspaceId: W, userId: 'p', now: NOW, prefixLast: true })
 		lintFilter(bare.prefilter)
 		for (const doc of sampleDocs) bare.evaluate(doc)
-		note(`${sent} hostile filters planned, evaluated and sent to Mongo`)
+		note(`${sent} hostile filters planned, evaluated and ${OFFLINE ? 'modelled' : 'sent to Mongo'}`)
+	})
+
+	/* ---------------------------------------------------------------------- */
+	section('the fuzz libraries: random, exotic, malformed and boundary documents')
+
+	/**
+	 * THE INVARIANT for one plan over a document set, given the ids its prefilter lets through (from
+	 * the model of Mongo, or from the server). Returns the ids the evaluator accepts.
+	 */
+	function judge(docs, plan, candidates, label) {
+		const accepted = idsOf(docs.filter((doc) => plan.evaluate(doc)))
+		const lost = new Set([...accepted].filter((id) => !candidates.has(id)))
+		if (lost.size) throw new Error(`COUNTEREXAMPLE ${label}: the prefilter lost ${lost.size} document(s) the evaluator accepts; prefilter ${shown(shapeOf(plan.prefilter), 240)}`)
+		if (!plan.needsEvaluation && !sameSet(candidates, accepted)) throw new Error(`${label}: a text-free prefilter must be exact (${candidates.size} candidates, ${accepted.size} accepted); prefilter ${shown(shapeOf(plan.prefilter), 240)}`)
+		return accepted
+	}
+
+	// Two libraries. The first lives under its own workspace id, so a sample of its filters can also go to the server.
+	const FUZZ_SEEDS = [20261003 + SEED, 424242 + SEED]
+	const fuzzLibraries = FUZZ_SEEDS.map((seed, index) => buildFuzz(seed, index === 0 ? WF : new ObjectId(), SCALE))
+	const fuzzVariants = (F) => [{}, { prefixLast: true }, { prefixLast: true, vocabulary: F.vocabulary }]
+
+	/** The plans of library 1 and what the evaluator accepts for each, kept for the server check below. */
+	const fuzzRecords = []
+	for (const [index, seed] of FUZZ_SEEDS.entries()) {
+		const F = fuzzLibraries[index]
+		const { random, boundary, malformed: bad, folders } = F.composition
+		await check(`fuzz library ${index + 1} (seed ${seed}: ${F.docs.length} documents, ${random} random, ${boundary} on number and date boundaries, ${bad} malformed, ${folders} folders): the invariant on ${F.randomQueries.length} random${index === 0 ? ` and ${F.sweep.length} swept` : ''} queries, against the model of Mongo`, () => {
+			let plans = 0
+			let informative = 0
+			let withText = 0
+			let exact = 0
+			const run = (text, list) => {
+				const ast = parseQuery(text, { now: NOW })
+				for (const opts of list) {
+					const plan = planQuery(ast, F.ctx(opts))
+					lintFilter(plan.prefilter)
+					BSON.serialize(plan.prefilter)
+					eq(plan.needsEvaluation, plan.hasText, 'needsEvaluation is hasText')
+					const candidates = idsOf(F.docs.filter((doc) => mongoMatches(doc, plan.prefilter)))
+					const accepted = judge(F.docs, plan, candidates, `seed ${seed} ${shown(text, 110)}`)
+					if (index === 0) fuzzRecords.push({ label: `seed ${seed} ${shown(text, 110)} (server)`, plan, accepted })
+					plans++
+					if (accepted.size > 0 && accepted.size < F.docs.length) informative++
+					if (plan.hasText) withText++
+					else exact++
+				}
+			}
+			for (const text of F.randomQueries) run(text, fuzzVariants(F))
+			// Every clause form, alone, negated, ORed with text and inside a NOT, on the library's own folder tree.
+			if (index === 0) for (const text of F.sweep) run(text, [{}])
+			ok(plans >= 3 * F.randomQueries.length, 'every query was planned')
+			ok(informative >= 0.4 * plans, `only ${informative} of ${plans} plans separated documents (neither none nor all)`)
+			ok(withText >= 0.4 * plans && exact >= 0.02 * plans, `a mix of text plans (${withText}) and exact ones (${exact})`)
+			note(`fuzz library ${index + 1}: ${plans} plans over ${F.docs.length} documents; ${informative} informative, ${withText} with text, ${exact} exact`)
+		})
+	}
+
+	await serverCheck('fuzz library 1 in the real server: it answers as the model does on every filter its plans made, and the invariant holds against it', async () => {
+		const F = fuzzLibraries[0]
+		await insertAll(F.docs)
+		eq(await retrying(() => assetsCollection.countDocuments({ workspaceId: WF }, { maxTimeMS: 60_000 })), F.docs.length)
+		ok(fuzzRecords.length >= 3 * F.randomQueries.length, 'the plans of the model run were kept')
+		const found = await idsMatchingMany(fuzzRecords.map(({ plan }) => plan.prefilter), F.docs)
+		fuzzRecords.forEach(({ label, plan, accepted }, i) => {
+			const lost = [...accepted].filter((id) => !found[i].has(id))
+			if (lost.length) throw new Error(`COUNTEREXAMPLE ${label}: the server's prefilter lost ${lost.length} document(s) the evaluator accepts; prefilter ${shown(shapeOf(plan.prefilter), 240)}`)
+			if (!plan.needsEvaluation && !sameSet(found[i], accepted)) throw new Error(`${label}: a text-free prefilter must be exact in the server too; prefilter ${shown(shapeOf(plan.prefilter), 240)}`)
+		})
+		note(`${fuzzRecords.length} filters from the fuzz library sent to the server in ${Math.ceil(fuzzRecords.length / BATCH)} aggregates`)
+	})
+
+	await serverCheck('the model of Mongo agreed with the server on every filter it was held against', () => {
+		ok(crossChecked >= 500, `the model was held against the server on only ${crossChecked} filters`)
+		note(`the model of Mongo and the server answered identically on ${crossChecked} filters: ${findCalls} by find, ${crossChecked - findCalls} in ${batchCalls} aggregates (the model took ${Math.round(modelMs)} ms of CPU in all, the server ${Math.round(serverMs)} ms summed over concurrent calls)`)
 	})
 
 	/* ---------------------------------------------------------------------- */
@@ -2353,11 +3039,13 @@ try {
 	const trace = (error && error.stack ? error.stack : String(error)).split('\n').slice(0, 4).join(' | ')
 	console.log(`FAIL  the proof itself crashed (${trace})`)
 } finally {
-	await assetsCollection.deleteMany({ workspaceId: W })
-	const left = await assetsCollection.countDocuments({ workspaceId: W })
-	if (left) console.log(`WARN  ${left} proof documents could not be cleaned up`)
-	await client.close()
+	clearTimeout(watchdog)
+	const left = await removeEverything()
+	if (left !== 0) {
+		failed++
+		console.log(left > 0 ? `FAIL  ${left} proof documents could not be cleaned up (the workspace ids are printed at the top)` : 'FAIL  the proof documents could not be cleaned up (the workspace ids are printed at the top)')
+	} else if (assetsCollection) console.log('NOTE  cleanup: every document this run inserted has been deleted')
+	if (client) await client.close()
 }
 
-console.log(`\n${passed}/${passed + failed} passed, ${failed} failed (${assertions} assertions)`)
-process.exit(failed ? 1 : 0)
+exitWith(failed ? 1 : 0)

@@ -471,7 +471,8 @@ export function activeKeyOf(
 	model: FolderTreeModel,
 ): string | null {
 	if (active === undefined) return 'all'
-	if (active === 'unfiled') return 'unfiled'
+	// There is no Unfiled row: an image with no folder is simply in All media.
+	if (active === 'unfiled') return 'all'
 	return model.byId.has(active) ? `f:${active}` : null
 }
 
@@ -699,7 +700,7 @@ const clip = (text: string, max = 60) =>
 	text.length > max ? `${text.slice(0, max - 1)}…` : text
 
 export function deleteExplanation(info: DeleteFolderInfo) {
-	const where = info.destination ? `"${clip(info.destination)}"` : 'the library root (Unfiled)'
+	const where = info.destination ? `"${clip(info.destination)}"` : 'All media'
 	const parts: string[] = []
 	if (info.images > 0) parts.push(pluralize(info.images, 'image'))
 	if (info.subfolders > 0) parts.push(pluralize(info.subfolders, 'subfolder'))

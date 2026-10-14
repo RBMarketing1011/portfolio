@@ -439,7 +439,7 @@ const ctx = (over = {}) => ({
 	folderId: null,
 	pathPrefix: PREFIX,
 	maxBytes: MAX,
-	destination: 'Upload to Unfiled',
+	destination: 'Upload',
 	...over,
 })
 
@@ -901,18 +901,18 @@ await check('register failures: with no message the status speaks, and says whet
 	assert.equal(describeRegisterFailure(500, null, MAX).hint, undefined)
 })
 
-await check('duplicate: the library location reads as a path, or "in Unfiled" at the root', () => {
+await check('duplicate: the library location reads as a path, or "in All media" at the root', () => {
 	assert.equal(duplicateLocation({ name: 'Logo', folderPath: 'Clients/Acme' }), 'Clients/Acme/Logo')
-	assert.equal(duplicateLocation({ name: 'Logo', folderPath: '' }), 'Logo in Unfiled')
+	assert.equal(duplicateLocation({ name: 'Logo', folderPath: '' }), 'Logo in All media')
 	assert.equal(duplicateLocation({ name: 'Logo', folderPath: '/Clients/Acme/' }), 'Clients/Acme/Logo')
-	assert.equal(duplicateLocation({ name: 'Logo', folderPath: '   ' }), 'Logo in Unfiled')
+	assert.equal(duplicateLocation({ name: 'Logo', folderPath: '   ' }), 'Logo in All media')
 	assert.equal(duplicateLocation({ name: '', folderPath: 'A' }), 'A/this image')
-	assert.equal(duplicateLocation({}), 'this image in Unfiled')
-	assert.equal(duplicateLocation({ name: 5, folderPath: 5 }), 'this image in Unfiled')
+	assert.equal(duplicateLocation({}), 'this image in All media')
+	assert.equal(duplicateLocation({ name: 5, folderPath: 5 }), 'this image in All media')
 	// What the server calls an image is shown, but never with controls or bidi tricks in it.
 	const rlo = String.fromCharCode(0x202e)
 	assert.equal(duplicateLocation({ name: `Lo${rlo}go\u0000`, folderPath: `Cli${rlo}ents/\nAcme` }), 'Clients/Acme/Logo')
-	assert.equal(duplicateLocation({ name: `  Two   words  `, folderPath: '' }), 'Two words in Unfiled')
+	assert.equal(duplicateLocation({ name: `  Two   words  `, folderPath: '' }), 'Two words in All media')
 	assert.equal(assetLabel({ name: `a${rlo}b` }), 'ab')
 	assert.equal(assetLabel({ name: '' }), 'this image')
 	assert.equal(assetLabel({}), 'this image')
@@ -1278,7 +1278,7 @@ await check('queue: a duplicate becomes its own row, reads where the image alrea
 	await tick()
 	env.fetches[2].duplicate({ name: 'Logo', folderPath: '' })
 	await tick()
-	assert.equal(describeItem(rowsOf(queue)[2]), 'Already in your library as Logo in Unfiled')
+	assert.equal(describeItem(rowsOf(queue)[2]), 'Already in your library as Logo in All media')
 })
 
 await check('queue: "N added" counts only what was created, across a mixed batch', async () => {
@@ -1385,7 +1385,7 @@ await check('queue: where a file goes is fixed when it is added, even if the pag
 	const queue = env.queue()
 	queue.add([fakeFile('a.png'), fakeFile('b.png'), fakeFile('c.png'), fakeFile('d.png')], ctx({ folderId: FOLDER, destination: 'Upload to Clients/Acme' }))
 	await tick()
-	queue.add([fakeFile('e.png')], ctx({ folderId: null, destination: 'Upload to Unfiled', workspaceId: OTHER_WS, pathPrefix: `workspaces/${OTHER_WS}/media/` }))
+	queue.add([fakeFile('e.png')], ctx({ folderId: null, destination: 'Upload', workspaceId: OTHER_WS, pathPrefix: `workspaces/${OTHER_WS}/media/` }))
 	await completeAll(env)
 	const forFile = (name) => env.uploads.find((c) => c.file.name === name)
 	assert.deepEqual(JSON.parse(forFile('d.png').options.clientPayload), { workspaceId: WS, folderId: FOLDER })
@@ -2129,7 +2129,7 @@ const item = (over = {}) => ({
 	name: 'a.png',
 	state: 'queued',
 	progress: 0,
-	destination: 'Upload to Unfiled',
+	destination: 'Upload',
 	...over,
 })
 const stateOf = (items, over = {}) => ({ items, batch: 1, consumed: 0, ...over })
@@ -2710,7 +2710,7 @@ await check('overlay: it says where the drop will go, is hidden from assistive t
 
 const managerProps = (over = {}) => ({
 	folderId: null,
-	destinationLabel: 'Upload to Unfiled',
+	destinationLabel: 'Upload',
 	disabled: false,
 	maxBytes: MAX,
 	workspaceId: WS,

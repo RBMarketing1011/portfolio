@@ -104,8 +104,8 @@ const firstOf = (text: string): number => text.codePointAt(0) ?? -1
  * Words from `vocabulary` that could be what a person meant by `word`: within
  * `allowedEdits` of `word`, sharing its first letter (typos rarely hit the first
  * character, and it cuts the search space), best (lowest distance, then most
- * documents) first, at most `limit`. Excludes `word` itself. [] if the word is too
- * short for tolerance or nothing is close.
+ * documents) first, at most `limit`. Excludes `word` itself and any word held by no
+ * asset. [] if the word is too short for tolerance or nothing is close.
  */
 export function fuzzyCandidates(
 	word: string,
@@ -121,13 +121,15 @@ export function fuzzyCandidates(
 	const found: { word: string; distance: number; count: number }[] = []
 	for (const [candidate, count] of vocabulary) {
 		if (candidate === query || typeof candidate !== 'string') continue
+		// A word with no asset behind it is not one a person could have meant: the rule `inVocabulary` has.
+		if (typeof count !== 'number' || !(count > 0)) continue
 		if (firstOf(candidate) !== first) continue
 		// Each edit moves the UTF-16 length by at most two (an astral letter), so a
 		// gap beyond twice the allowance cannot be within it. Cheap, and never wrong.
 		if (Math.abs(candidate.length - query.length) > 2 * allowed) continue
 		const distance = editDistance(query, candidate, allowed)
 		if (distance > allowed) continue
-		found.push({ word: candidate, distance, count: typeof count === 'number' ? count : 0 })
+		found.push({ word: candidate, distance, count })
 	}
 	found.sort(
 		(x, y) =>

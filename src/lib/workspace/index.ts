@@ -1,6 +1,7 @@
 import 'server-only'
 import { ObjectId, type Db } from 'mongodb'
 import { getDb } from '@/lib/mongo'
+import { isPlatformAdmin } from '@/lib/admin/role'
 import {
 	ADMIN_ROLE_NAME,
 	ALL_PERMISSIONS,
@@ -25,6 +26,8 @@ export type Membership = {
 	permissions: Set<Permission>
 	/** The account holder. Always has every permission and cannot be removed. */
 	isOwner: boolean
+	/** A platform admin working inside an account they are not a member of. */
+	viaAdmin: boolean
 }
 
 /**
@@ -139,6 +142,44 @@ export async function resolveMembership(
 
 	const members = db.collection<MemberDoc>(MEMBERS)
 
+	// Platform admins do not have an account of their own to fall back on: they
+	// act in whichever account they have switched into, or in none.
+	if (await isPlatformAdmin(userId)) {
+		if (!requested) return null
+		const workspace = await db
+			.collection<WorkspaceDoc>(WORKSPACES)
+			.findOne({ _id: requested })
+		if (!workspace) return null
+
+		const roles = db.collection<RoleDoc>(ROLES)
+		const role = (await roles.findOne({ workspaceId: workspace._id, system: true })) ?? {
+			_id: new ObjectId(),
+			workspaceId: workspace._id,
+			name: ADMIN_ROLE_NAME,
+			permissions: ALL_PERMISSIONS,
+			system: true,
+			createdAt: workspace.createdAt,
+		}
+		const real = await members.findOne({ workspaceId: workspace._id, userId })
+
+		return {
+			db,
+			userId,
+			workspace,
+			member: real ?? {
+				_id: new ObjectId(),
+				workspaceId: workspace._id,
+				userId,
+				roleId: role._id,
+				createdAt: new Date(),
+			},
+			role,
+			permissions: new Set(ALL_PERMISSIONS),
+			isOwner: workspace.ownerId === userId,
+			viaAdmin: true,
+		}
+	}
+
 	let member = requested
 		? await members.findOne({ workspaceId: requested, userId })
 		: null
@@ -174,6 +215,7 @@ export async function resolveMembership(
 			isOwner ? ALL_PERMISSIONS : sanitizePermissions(role.permissions),
 		),
 		isOwner,
+		viaAdmin: false,
 	}
 }
 
@@ -182,8 +224,16 @@ export const can = (membership: Membership, permission: Permission) =>
 
 /** Every account this user can act in, their own first. */
 export async function listMemberships(userId: string) {
-	await ensureOwnWorkspace(userId)
 	const db = await getDb()
+
+	// An admin can switch into any account that builds websites. Other admins'
+	// own workspaces are not among them.
+	if (await isPlatformAdmin(userId)) {
+		const all = await listClientAccounts()
+		return all.map((a) => ({ ...a, isOwner: false }))
+	}
+
+	await ensureOwnWorkspace(userId)
 
 	const members = await db
 		.collection<MemberDoc>(MEMBERS)
@@ -213,4 +263,23 @@ export async function adminRoleId(db: Db, workspaceId: ObjectId) {
 		.collection<RoleDoc>(ROLES)
 		.findOne({ workspaceId, system: true })
 	return role?._id ?? null
+}
+
+/** Every account that exists to build websites: all of them except those owned by
+ *  a platform admin, whose own login is not a place to build. */
+export async function listClientAccounts() {
+	const db = await getDb()
+	const admins = await db
+		.collection('users')
+		.find({ role: 'admin' }, { projection: { _id: 1 } })
+		.toArray()
+	const adminIds = admins.map((u) => u._id.toString())
+
+	const workspaces = await db
+		.collection<WorkspaceDoc>(WORKSPACES)
+		.find({ ownerId: { $nin: adminIds } })
+		.sort({ name: 1 })
+		.toArray()
+
+	return workspaces.map((w) => ({ id: w._id.toString(), name: w.name }))
 }
