@@ -34,8 +34,14 @@ function initials(value: string) {
 
 export function NavUser({
 	user,
+	admin = false,
 }: {
 	user: { name: string; email: string; avatar: string | null }
+	/**
+	 * A platform admin has no account of their own: the profile lives under /admin,
+	 * and account settings belong to whichever client account is open, not to them.
+	 */
+	admin?: boolean
 }) {
 	const { isMobile } = useSidebar()
 
@@ -79,17 +85,19 @@ export function NavUser({
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild>
-								<Link href='/account/profile'>
+								<Link href={admin ? '/admin/profile' : '/account/profile'}>
 									<User />
 									Your profile
 								</Link>
 							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
-								<Link href='/account/settings'>
-									<Settings />
-									Account settings
-								</Link>
-							</DropdownMenuItem>
+							{!admin && (
+								<DropdownMenuItem asChild>
+									<Link href='/account/settings'>
+										<Settings />
+										Account settings
+									</Link>
+								</DropdownMenuItem>
+							)}
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem onClick={() => signOut({ callbackUrl: '/' })}>

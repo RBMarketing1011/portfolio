@@ -45,7 +45,7 @@ export function AdminShell({
 					<AccountNav items={ITEMS} showLibrary={false} />
 				</SidebarContent>
 				<SidebarFooter>
-					<NavUser user={{ name: userName, email, avatar: null }} />
+					<NavUser user={{ name: userName, email, avatar: null }} admin />
 				</SidebarFooter>
 				<SidebarRail />
 			</Sidebar>

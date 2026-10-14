@@ -41,6 +41,7 @@ export function LibraryNav({
 	email = null,
 	userName = '',
 	userImage = null,
+	admin = false,
 }: {
 	groups: NavGroup[]
 	templates: Template[]
@@ -48,6 +49,8 @@ export function LibraryNav({
 	email?: string | null
 	userName?: string
 	userImage?: string | null
+	/** A platform admin: the user menu sends them to the admin profile. */
+	admin?: boolean
 }) {
 	const pathname = usePathname()
 	const router = useRouter()
@@ -166,6 +169,7 @@ export function LibraryNav({
 					email={email}
 					userName={userName}
 					userImage={userImage}
+					admin={admin}
 				/>
 
 				<BackgroundDrawer
@@ -226,7 +230,12 @@ export function LibraryNav({
 				)}
 			</Tabs>
 
-			<BuilderAccount email={email} userName={userName} userImage={userImage} />
+			<BuilderAccount
+				email={email}
+				userName={userName}
+				userImage={userImage}
+				admin={admin}
+			/>
 
 			<BackgroundDrawer
 				slug={settingsSlug ?? ''}
@@ -263,15 +272,20 @@ function BuilderAccount({
 	email,
 	userName,
 	userImage,
+	admin,
 }: {
 	email: string | null
 	userName: string
 	userImage: string | null
+	admin: boolean
 }) {
 	return (
 		<div className='shrink-0 border-t border-white/10 p-2'>
 			{email ? (
-				<NavUser user={{ name: userName || email, email, avatar: userImage }} />
+				<NavUser
+					user={{ name: userName || email, email, avatar: userImage }}
+					admin={admin}
+				/>
 			) : (
 				<SidebarMenu>
 					<SidebarMenuItem>

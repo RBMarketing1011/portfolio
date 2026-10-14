@@ -43,9 +43,16 @@ export function AccountNav({
 	showLibrary?: boolean
 }) {
 	const pathname = usePathname()
-	const bestMatch = items
-		.map((item) => item.href)
-		.filter((href) => pathname === href || pathname.startsWith(`${href}/`))
+	const hrefs = items.map((item) => item.href)
+	// The root item (Overview) is a prefix of every other route, so it only matches
+	// itself: on a page outside the nav, such as the profile, nothing is lit.
+	const isRoot = (href: string) =>
+		hrefs.some((other) => other !== href && other.startsWith(`${href}/`))
+	const bestMatch = hrefs
+		.filter(
+			(href) =>
+				pathname === href || (!isRoot(href) && pathname.startsWith(`${href}/`)),
+		)
 		.sort((a, b) => b.length - a.length)[0]
 
 	return (

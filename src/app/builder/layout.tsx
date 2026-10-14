@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { isPlatformAdmin } from '@/lib/admin'
 import { loadTemplates } from '@/lib/builder/load-templates'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { BuilderShell } from './builder-shell'
@@ -53,6 +54,7 @@ export default async function SectionsLayout({
 								session?.user?.name?.trim() || email?.replace(/@.*$/, '') || ''
 							}
 							userImage={session?.user?.image ?? null}
+							admin={await isPlatformAdmin(session.user.id)}
 						/>
 					</Suspense>
 				</aside>
