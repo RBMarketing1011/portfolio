@@ -18,7 +18,12 @@ export default async function InvitePage({
 	return (
 		<Section>
 			<div className='mx-auto w-full max-w-md py-20'>
-				<AcceptInvite token={token} signedIn={Boolean(session?.user?.id)} />
+				<AcceptInvite
+					token={token}
+					sessionEmail={
+						session?.user?.id ? (session.user.email?.toLowerCase() ?? '') : null
+					}
+				/>
 			</div>
 		</Section>
 	)

@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb'
+import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { getDb } from '@/lib/mongo'
 import type { SiteDoc } from '@/lib/builder/site-doc'
@@ -15,7 +16,32 @@ export class HttpError extends Error {
 	}
 }
 
+/**
+ * Authenticated API calls must come from the app's own pages. Customer sites
+ * are served on subdomains of the app, which makes them same-site: the session
+ * cookie (SameSite=Lax) still rides along on a request one of them sends to
+ * the API, so a page on a customer site could otherwise act as whoever is
+ * signed in. A browser names the page behind a request in `Origin`; anything
+ * other than this host is refused. A request with no `Origin` at all did not
+ * come from a browser page (scripts, curl) and the session alone decides.
+ */
+export async function requireTrustedOrigin() {
+	const incoming = await headers()
+	const origin = incoming.get('origin')
+	if (origin === null) return
+	const host = (incoming.get('host') ?? '').trim().toLowerCase()
+	let originHost: string | null = null
+	try {
+		originHost = new URL(origin).host.toLowerCase()
+	} catch {
+		// "null" or garbage: not a page of ours.
+	}
+	if (!host || originHost !== host)
+		throw new HttpError(403, 'This request did not come from the app.')
+}
+
 export async function requireUserId() {
+	await requireTrustedOrigin()
 	const session = await auth()
 	if (!session?.user?.id) throw new HttpError(401, 'Sign in to continue.')
 	return session.user.id

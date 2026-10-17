@@ -32,3 +32,22 @@ export const baseUrl = `${appProtocol}://${appHost}`
 
 /** Only the real production deployment may be indexed or claim canonicals. */
 export const isProductionHost = appHostname === PRODUCTION_HOST
+
+/**
+ * The origin for links the server puts in emails. `baseUrl` is frozen into the
+ * bundle at build time, while Auth.js builds its sign-in links from `AUTH_URL`
+ * at runtime; reading the same variable here means an invitation, a reset link
+ * and a magic link can never point at different hosts. Server only: on the
+ * client the variable is absent and this is simply `baseUrl`.
+ */
+export function linkOrigin() {
+	const configured = process.env.AUTH_URL?.trim()
+	if (configured) {
+		try {
+			return new URL(configured).origin
+		} catch {
+			// Fall through to the build-time value.
+		}
+	}
+	return baseUrl
+}

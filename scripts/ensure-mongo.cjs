@@ -18,7 +18,13 @@ function readEnv() {
 			.filter((line) => line && !line.startsWith('#'))
 			.map((line) => {
 				const eq = line.indexOf('=')
-				return [line.slice(0, eq).trim(), line.slice(eq + 1).trim()]
+				// Quoted values are common in .env files; the quotes are not part of
+				// the value, or a local URI never looks reachable.
+				const value = line
+					.slice(eq + 1)
+					.trim()
+					.replace(/^(['"`])([\s\S]*)\1$/, '$2')
+				return [line.slice(0, eq).trim(), value]
 			}),
 	)
 }

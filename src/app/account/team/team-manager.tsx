@@ -141,11 +141,14 @@ export function TeamManager({
 						<div className='flex justify-end'>
 							<InviteDialog
 								roles={roles}
-								onInvited={(email) => {
-									setNotice(`Invitation sent to ${email}.`)
+								onInvited={(email, hasLogin) => {
+									setNotice(
+										hasLogin
+											? `Invitation sent to ${email}.`
+											: `Invitation sent to ${email}. They will be asked to create a login when they open it.`,
+									)
 									void refresh()
 								}}
-								onError={setError}
 							/>
 						</div>
 					)}
@@ -290,39 +293,51 @@ export function TeamManager({
 function InviteDialog({
 	roles,
 	onInvited,
-	onError,
 }: {
 	roles: Role[]
-	onInvited: (email: string) => void
-	onError: (message: string) => void
+	onInvited: (email: string, hasLogin: boolean) => void
 }) {
 	const [open, setOpen] = useState(false)
 	const [email, setEmail] = useState('')
+	// No default on purpose: the first role in the list is the built-in Admin,
+	// and "every permission" must be a choice someone makes, not one they miss.
 	const [roleId, setRoleId] = useState('')
 	const [busy, setBusy] = useState(false)
+	const [error, setError] = useState<string | null>(null)
 
 	const submit = async (event: React.FormEvent) => {
 		event.preventDefault()
+		if (!roleId) {
+			setError('Pick a role first.')
+			return
+		}
 		setBusy(true)
+		setError(null)
 		const response = await fetch('/api/account/invites', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ email, roleId: roleId || roles[0]?.id }),
-		})
+			body: JSON.stringify({ email, roleId }),
+		}).catch(() => null)
 		setBusy(false)
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({}))
-			onError(body.error ?? 'That invitation could not be sent.')
+		const body = await response?.json().catch(() => ({}))
+		if (!response?.ok) {
+			// Shown inside the dialog: an alert behind the overlay goes unseen.
+			setError(body?.error ?? 'That invitation could not be sent.')
 			return
 		}
 		setOpen(false)
 		setEmail('')
-		onInvited(email)
+		setRoleId('')
+		onInvited(email, Boolean(body?.hasLogin))
 	}
 
 	return (
 		<>
-			<Button onClick={() => setOpen(true)}>
+			<Button
+				onClick={() => {
+					setError(null)
+					setOpen(true)
+				}}>
 				<Plus /> Invite someone
 			</Button>
 
@@ -332,7 +347,7 @@ function InviteDialog({
 						<DialogTitle>Invite someone to this account</DialogTitle>
 						<DialogDescription>
 							They get an emailed link that works once and expires in seven
-							days.
+							days. If they have no login yet, the link lets them create one.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -350,7 +365,7 @@ function InviteDialog({
 
 						<div className='space-y-2'>
 							<Label htmlFor='invite-role'>Role</Label>
-							<Select value={roleId || roles[0]?.id} onValueChange={setRoleId}>
+							<Select value={roleId} onValueChange={setRoleId}>
 								<SelectTrigger id='invite-role' className='w-full'>
 									<SelectValue placeholder='Pick a role' />
 								</SelectTrigger>
@@ -358,11 +373,14 @@ function InviteDialog({
 									{roles.map((role) => (
 										<SelectItem key={role.id} value={role.id}>
 											{role.name}
+											{role.system ? ' (every permission)' : ''}
 										</SelectItem>
 									))}
 								</SelectContent>
 							</Select>
 						</div>
+
+						{error && <FormAlert>{error}</FormAlert>}
 
 						<DialogFooter>
 							<Button
@@ -373,7 +391,7 @@ function InviteDialog({
 							</Button>
 							<Button
 								type='submit'
-								disabled={busy || roles.length === 0}>
+								disabled={busy || roles.length === 0 || !roleId}>
 								{busy && <Loader2 className='animate-spin' />} Send invitation
 							</Button>
 						</DialogFooter>

@@ -14,8 +14,16 @@ export function getMongoClient(): Promise<MongoClient> {
 			'MONGODB_URI is not set. Run `pnpm db:up` to start the local database.',
 		)
 	}
+	// A connect that fails (Atlas cold start, DNS blip) must not stay cached: on a
+	// serverless instance that promise would be handed to every later request and
+	// turn one transient error into an instance that fails until it is recycled.
 	globalForMongo._mongoClient ??= new MongoClient(uri, {
 		serverSelectionTimeoutMS: 5000,
-	}).connect()
+	})
+		.connect()
+		.catch((error: unknown) => {
+			globalForMongo._mongoClient = undefined
+			throw error
+		})
 	return globalForMongo._mongoClient
 }

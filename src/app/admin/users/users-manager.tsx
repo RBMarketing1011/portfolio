@@ -303,7 +303,11 @@ function InviteForm({ role, onSent }: { role: Role; onSent: () => void }) {
 			setError(body.error ?? 'That invitation could not be sent.')
 			return
 		}
-		setNotice(`Invitation sent to ${body.email}.`)
+		setNotice(
+			body.replaced
+				? `Invitation sent to ${body.email}. It replaces the earlier one, which no longer works.`
+				: `Invitation sent to ${body.email}.`,
+		)
 		setEmail('')
 		setAccountName('')
 		onSent()

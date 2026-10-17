@@ -1,88 +1,43 @@
 /**
  * Proves the credentials endpoint throttles. A rate limiter that has never been
- * seen to trip is not evidence of anything. Run against the dev server.
+ * seen to trip is not evidence of anything. Run against the dev server with a
+ * local database (see lib/auth-harness.mjs).
  */
-const BASE = process.env.BASE_URL ?? 'http://localhost:3000'
+import {
+	cleanup,
+	connect,
+	jar,
+	rand,
+	recorder,
+	seedUser,
+	signIn,
+} from './lib/auth-harness.mjs'
 
-const rand = () => Math.random().toString(36).slice(2, 10)
-
-async function jar() {
-	const cookies = new Map()
-	return {
-		async call(path, init = {}) {
-			const headers = new Headers(init.headers ?? {})
-			if (cookies.size)
-				headers.set(
-					'cookie',
-					[...cookies].map(([k, v]) => `${k}=${v}`).join('; '),
-				)
-			const response = await fetch(`${BASE}${path}`, {
-				...init,
-				headers,
-				redirect: 'manual',
-			})
-			for (const raw of response.headers.getSetCookie?.() ?? []) {
-				const [pair] = raw.split(';')
-				const index = pair.indexOf('=')
-				cookies.set(pair.slice(0, index), pair.slice(index + 1))
-			}
-			return response
-		},
-	}
-}
-
-/** The callback answers 302 either way; the outcome is in the `code` query param. */
-async function attempt(session, email, password) {
-	const { csrfToken } = await (await session.call('/api/auth/csrf')).json()
-	const response = await session.call('/api/auth/callback/credentials', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-			'X-Auth-Return-Redirect': '1',
-		},
-		body: new URLSearchParams({ email, password, csrfToken }),
-	})
-	const body = await response.json().catch(() => ({}))
-	const url = new URL(body.url ?? `${BASE}/`)
-	return {
-		error: url.searchParams.get('error'),
-		code: url.searchParams.get('code'),
-	}
-}
-
-const results = []
-const record = (name, pass, detail = '') => results.push({ name, pass, detail })
+const { client, db } = await connect()
+const { record, finish } = recorder()
 
 const email = `rl_${rand()}@example.test`
 const password = 'password-rate-limit-1'
+await seedUser(db, { email, password })
 
-const session = await jar()
-const registered = await session.call('/api/auth/register', {
-	method: 'POST',
-	headers: { 'Content-Type': 'application/json' },
-	body: JSON.stringify({ email, password }),
-})
-record('account created', registered.ok, `${registered.status}`)
-
-const first = await attempt(session, email, password)
+const session = jar()
+const first = await signIn(session, email, password)
 record('correct password is accepted', first.error === null, `${first.code}`)
 
 let lockedAt = null
 for (let i = 1; i <= 12 && lockedAt === null; i += 1) {
-	const result = await attempt(session, email, 'definitely-not-the-password')
+	const result = await signIn(session, email, 'definitely-not-the-password')
 	if (result.code === 'too_many_attempts') lockedAt = i
 }
 record(
 	'wrong passwords eventually lock the account out',
 	lockedAt !== null,
-	lockedAt === null
-		? 'never locked in 12 tries'
-		: `locked on attempt ${lockedAt}`,
+	lockedAt === null ? 'never locked in 12 tries' : `locked on attempt ${lockedAt}`,
 )
 
 // The real test: once locked, the RIGHT password must be refused too, or the
 // limiter is only an inconvenience and stuffing still succeeds.
-const whileLocked = await attempt(session, email, password)
+const whileLocked = await signIn(session, email, password)
 record(
 	'the correct password is refused while locked out',
 	whileLocked.code === 'too_many_attempts',
@@ -91,35 +46,39 @@ record(
 
 // A successful sign-in must reset the counter, or one typo streak a fortnight
 // ago would keep locking a legitimate user out.
-const { MongoClient } = await import('mongodb')
-const client = new MongoClient(process.env.MONGODB_URI)
-await client.connect()
-await client
-	.db()
-	.collection('authAttempts')
-	.deleteMany({ _id: `email:${email}` })
+await db.collection('authAttempts').deleteMany({ _id: `email:${email}` })
+const afterClear = await signIn(session, email, password)
+record('signing in again works once the window is gone', afterClear.error === null, `${afterClear.code}`)
+// Two fresh failures, then a success: the counter must be gone afterwards.
+await signIn(session, email, 'wrong-again-1')
+await signIn(session, email, 'wrong-again-2')
+const counted = (await db.collection('authAttempts').findOne({ _id: `email:${email}` }))?.count ?? 0
+await signIn(session, email, password)
+const counters = await db.collection('authAttempts').countDocuments({ _id: `email:${email}` })
+record('a successful sign-in clears the counter', counted === 2 && counters === 0, `${counted} then ${counters}`)
 
-const afterClear = await attempt(session, email, password)
+// One source spraying a password across many addresses trips the per-IP cap,
+// which the dev server reads from the forwarded header the proxy would set.
+const sprayIp = `203.0.113.${Math.floor(Math.random() * 200) + 1}`
+let sprayed = null
+for (let i = 1; i <= 40 && sprayed === null; i += 1) {
+	const result = await signIn(jar(), `spray${i}_${rand()}@example.test`, 'nope-nope-nope', {
+		'X-Forwarded-For': sprayIp,
+	})
+	if (result.code === 'too_many_attempts') sprayed = i
+}
 record(
-	'signing in again works once the window is gone',
-	afterClear.error === null,
-	`${afterClear.code}`,
+	'spraying from one address is cut off',
+	sprayed !== null && sprayed > 8,
+	sprayed === null ? 'never locked in 40 tries' : `locked on attempt ${sprayed}`,
 )
+const otherIp = await signIn(jar(), `elsewhere_${rand()}@example.test`, 'nope-nope-nope', {
+	'X-Forwarded-For': '203.0.113.250',
+})
+record('a different source is unaffected', otherIp.code === 'credentials', `${otherIp.code}`)
 
-const counters = await client
-	.db()
-	.collection('authAttempts')
-	.countDocuments({ _id: `email:${email}` })
-record('a successful sign-in clears the counter', counters === 0, `${counters}`)
-
-await client.db().collection('users').deleteOne({ email })
+await db.collection('authAttempts').deleteMany({ _id: { $in: [`ip:${sprayIp}`, 'ip:203.0.113.250'] } })
+await db.collection('authAttempts').deleteMany({ _id: /^email:(spray|elsewhere)/ })
+await cleanup(db, [email])
 await client.close()
-
-for (const { name, pass, detail } of results)
-	console.log(
-		`${pass ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`,
-	)
-
-const passed = results.filter((r) => r.pass).length
-console.log(`\n${passed}/${results.length} passed`)
-process.exit(passed === results.length ? 0 : 1)
+finish()

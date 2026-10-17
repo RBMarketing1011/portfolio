@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { errorResponse, requirePermission } from '@/lib/auth/guards'
+import { sendFailureMessage } from '@/lib/email/send'
 import {
 	hashInviteToken,
 	INVITE_TTL_MS,
@@ -20,6 +21,9 @@ import {
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+// The SMTP timeouts must fire before the platform limit does, so a stalled
+// send ends in the error path above and not in a killed function.
+export const maxDuration = 30
 
 const inviteSchema = z.object({
 	email: z.string().email().max(254),
@@ -69,9 +73,6 @@ export async function POST(request: Request) {
 		const now = new Date()
 		const invites = db.collection<InviteDoc>(INVITES)
 
-		// Re-inviting replaces the outstanding invitation rather than stacking a
-		// second live token for the same address.
-		await invites.deleteMany({ workspaceId: workspace._id, email })
 		const result = await invites.insertOne({
 			workspaceId: workspace._id,
 			email,
@@ -88,23 +89,33 @@ export async function POST(request: Request) {
 				to: email,
 				token,
 				accountName: workspace.name,
-				invitedBy: session?.user?.email ?? 'Someone',
+				invitedBy:
+					session?.user?.name?.trim() || session?.user?.email || 'Someone',
 				roleName: role.name,
+				hasLogin: Boolean(existingUser),
 			})
 		} catch (cause) {
 			await invites.deleteOne({ _id: result.insertedId })
+			console.error('[account/invites] could not send', cause)
 			return NextResponse.json(
-				{
-					error:
-						cause instanceof Error && cause.message === 'mail-not-configured'
-							? 'Email is not configured, so invitations cannot be sent yet.'
-							: 'That invitation could not be sent.',
-				},
+				{ error: sendFailureMessage(cause) },
 				{ status: 503 },
 			)
 		}
 
-		return NextResponse.json({ ok: true, email }, { status: 201 })
+		// Re-inviting replaces the outstanding invitation rather than stacking a
+		// second live token for the same address. Only once the new one is in
+		// their inbox: a failed send must not take away a link that still works.
+		await invites.deleteMany({
+			workspaceId: workspace._id,
+			email,
+			_id: { $ne: result.insertedId },
+		})
+
+		return NextResponse.json(
+			{ ok: true, email, hasLogin: Boolean(existingUser) },
+			{ status: 201 },
+		)
 	} catch (error) {
 		return errorResponse(error)
 	}

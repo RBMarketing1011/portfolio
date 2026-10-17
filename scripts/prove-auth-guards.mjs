@@ -2,62 +2,21 @@
  * Proves the authorization boundary rather than assuming it: user B must never be
  * able to read or change user A's site. Run against the dev server.
  */
-const BASE = process.env.BASE_URL ?? 'http://localhost:3000'
+import {
+	BASE,
+	cleanup,
+	connect,
+	jar as makeJar,
+	rand,
+	signUpAndIn as seedAndSignIn,
+} from './lib/auth-harness.mjs'
 
-const rand = () => Math.random().toString(36).slice(2, 10)
+const { client: harnessClient, db: harnessDb } = await connect()
 
-async function jar(fetchImpl = fetch) {
-	const cookies = new Map()
-	return {
-		cookies,
-		async call(path, init = {}) {
-			const headers = new Headers(init.headers ?? {})
-			if (cookies.size)
-				headers.set(
-					'cookie',
-					[...cookies].map(([k, v]) => `${k}=${v}`).join('; '),
-				)
-			const response = await fetchImpl(`${BASE}${path}`, {
-				...init,
-				headers,
-				redirect: 'manual',
-			})
-			for (const raw of response.headers.getSetCookie?.() ?? []) {
-				const [pair] = raw.split(';')
-				const index = pair.indexOf('=')
-				cookies.set(pair.slice(0, index), pair.slice(index + 1))
-			}
-			return response
-		},
-	}
-}
-
-async function signUpAndIn(email, password) {
-	const session = await jar()
-
-	const registered = await session.call('/api/auth/register', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ email, password }),
-	})
-	if (!registered.ok) throw new Error(`register failed: ${registered.status}`)
-
-	const csrfResponse = await session.call('/api/auth/csrf')
-	const { csrfToken } = await csrfResponse.json()
-
-	const signedIn = await session.call('/api/auth/callback/credentials', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-		body: new URLSearchParams({ email, password, csrfToken }),
-	})
-	if (signedIn.status >= 400)
-		throw new Error(`signin failed: ${signedIn.status}`)
-
-	const check = await session.call('/api/auth/session')
-	const body = await check.json()
-	if (!body?.user?.id) throw new Error('no session established')
-	return session
-}
+// Registration is by invitation only, so logins are seeded the way the app
+// creates them; what is proved here is the authorization around them.
+const jar = async () => makeJar()
+const signUpAndIn = (email, password) => seedAndSignIn(harnessDb, email, password)
 
 const results = []
 const record = (name, pass, detail = '') => results.push({ name, pass, detail })
@@ -81,6 +40,52 @@ record('owner can create a site', created.status === 201, `${created.status}`)
 
 const ownRead = await a.call(`/api/sites/${site.id}`)
 record('owner can read own site', ownRead.status === 200, `${ownRead.status}`)
+
+// A page on another origin (a customer site on a subdomain is same-site, so
+// the session cookie goes along) must not be able to act as the signed-in user.
+const foreignOrigin = await a.call(`/api/sites/${site.id}`, {
+	method: 'PATCH',
+	headers: {
+		'Content-Type': 'application/json',
+		Origin: 'https://someone-else.example',
+	},
+	body: JSON.stringify({ name: 'csrf', rev: site.rev }),
+})
+record(
+	'a write from a foreign origin is refused even with a session',
+	foreignOrigin.status === 403,
+	`got ${foreignOrigin.status}`,
+)
+const subdomainOrigin = await a.call(`/api/sites/${site.id}`, {
+	method: 'PATCH',
+	headers: {
+		'Content-Type': 'application/json',
+		Origin: BASE.replace('://', '://customer.'),
+	},
+	body: JSON.stringify({ name: 'csrf', rev: site.rev }),
+})
+record(
+	'a write from a customer subdomain is refused too',
+	subdomainOrigin.status === 403,
+	`got ${subdomainOrigin.status}`,
+)
+const nullOrigin = await a.call('/api/account/workspace', {
+	method: 'GET',
+	headers: { Origin: 'null' },
+})
+record(
+	'an opaque origin is refused too',
+	nullOrigin.status === 403,
+	`got ${nullOrigin.status}`,
+)
+const ownOrigin = await a.call(`/api/sites/${site.id}`, {
+	headers: { Origin: BASE },
+})
+record(
+	"the app's own origin is accepted",
+	ownOrigin.status === 200,
+	`got ${ownOrigin.status}`,
+)
 
 // The whole point of the exercise.
 for (const [method, init] of [
@@ -355,6 +360,8 @@ await client.close()
 
 await a.call(`/api/sites/${site.id}`, { method: 'DELETE' })
 await a.call(`/api/sites/${sharedSite.id}`, { method: 'DELETE' })
+await cleanup(harnessDb, [aEmail, bEmail])
+await harnessClient.close()
 
 const failed = results.filter((r) => !r.pass)
 for (const r of results)

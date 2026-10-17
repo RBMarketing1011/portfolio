@@ -1,8 +1,8 @@
 import 'server-only'
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { mailFrom, mailConfigured, mailTransport } from '@/lib/mail'
-import { site } from '@/lib/site'
-import { baseUrl } from '@/lib/seo'
+import { linkOrigin } from '@/lib/app-url'
+import { sendEmail } from '@/lib/email/send'
+import { teamInviteEmail } from '@/lib/email/templates'
 
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -25,39 +25,18 @@ export async function sendInviteEmail(input: {
 	accountName: string
 	invitedBy: string
 	roleName: string
+	/** Whether the address already has a login; the copy tells them what the link does. */
+	hasLogin: boolean
 }) {
-	if (!mailConfigured()) throw new Error('mail-not-configured')
-
-	const link = `${baseUrl}/invite/${input.token}`
-
-	await mailTransport().sendMail({
-		from: mailFrom(),
+	await sendEmail({
 		to: input.to,
-		subject: `${input.invitedBy} invited you to ${input.accountName} on ${site.name}`,
-		text: [
-			`${input.invitedBy} added you to the ${input.accountName} account on ${site.name} as ${input.roleName}.`,
-			'',
-			`Accept the invitation: ${link}`,
-			'',
-			'The link works once and expires in seven days.',
-		].join('\n'),
-		html: `
-			<p>${escapeHtml(input.invitedBy)} added you to the <strong>${escapeHtml(input.accountName)}</strong> account on ${escapeHtml(site.name)} as <strong>${escapeHtml(input.roleName)}</strong>.</p>
-			<p><a href="${link}">Accept the invitation</a></p>
-			<p>The link works once and expires in seven days.</p>
-		`,
+		...teamInviteEmail({
+			to: input.to,
+			link: `${linkOrigin()}/invite/${input.token}`,
+			invitedBy: input.invitedBy,
+			accountName: input.accountName,
+			roleName: input.roleName,
+			hasLogin: input.hasLogin,
+		}),
 	})
 }
-
-const escapeHtml = (value: string) =>
-	value.replace(
-		/[&<>"']/g,
-		(char) =>
-			({
-				'&': '&amp;',
-				'<': '&lt;',
-				'>': '&gt;',
-				'"': '&quot;',
-				"'": '&#39;',
-			})[char] as string,
-	)

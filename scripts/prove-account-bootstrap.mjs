@@ -5,61 +5,25 @@
  * row had not landed yet, /account bounced to /sign-in and the two redirected at
  * each other forever. Every request below must see a usable account.
  */
-import { MongoClient } from 'mongodb'
+import {
+	cleanup,
+	connect,
+	rand,
+	signUpAndIn as seedAndSignIn,
+} from './lib/auth-harness.mjs'
 
-const BASE = process.env.BASE_URL ?? 'http://localhost:3000'
-const rand = () => Math.random().toString(36).slice(2, 10)
+const { client, db } = await connect()
+const created = []
 
-function jar() {
-	const cookies = new Map()
-	return {
-		async call(path, init = {}) {
-			const headers = new Headers(init.headers ?? {})
-			if (cookies.size)
-				headers.set(
-					'cookie',
-					[...cookies].map(([k, v]) => `${k}=${v}`).join('; '),
-				)
-			const response = await fetch(`${BASE}${path}`, {
-				...init,
-				headers,
-				redirect: 'manual',
-			})
-			for (const raw of response.headers.getSetCookie?.() ?? []) {
-				const [pair] = raw.split(';')
-				const i = pair.indexOf('=')
-				cookies.set(pair.slice(0, i), pair.slice(i + 1))
-			}
-			return response
-		},
-		set: (name, value) => cookies.set(name, value),
-	}
-}
-
-async function signUpAndIn(email, password) {
-	const session = jar()
-	const registered = await session.call('/api/auth/register', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ email, password }),
-	})
-	if (!registered.ok) throw new Error(`register failed: ${registered.status}`)
-
-	const { csrfToken } = await (await session.call('/api/auth/csrf')).json()
-	await session.call('/api/auth/callback/credentials', {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-		body: new URLSearchParams({ email, password, csrfToken }),
-	})
-	return session
+// Registration is by invitation only, so the login is seeded the way the app
+// creates one; the account rows are what this proof is about, so none are.
+const signUpAndIn = async (email, password) => {
+	created.push(email)
+	return seedAndSignIn(db, email, password)
 }
 
 const results = []
 const record = (name, pass, detail = '') => results.push({ name, pass, detail })
-
-const client = new MongoClient(process.env.MONGODB_URI)
-await client.connect()
-const db = client.db()
 
 // The real shape of the bug: the very first authenticated page load, hit by
 // several concurrent requests before any account exists.
@@ -125,6 +89,7 @@ record(
 	`got ${signIn.status}`,
 )
 
+await cleanup(db, created)
 await client.close()
 
 for (const { name, pass, detail } of results)

@@ -60,6 +60,23 @@ await db
 	.collection('platformInvites')
 	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
+// Password reset links. Looked up by hash; expiry is enforced in the query too.
+await db
+	.collection('passwordResets')
+	.createIndex({ tokenHash: 1 }, { unique: true })
+await db.collection('passwordResets').createIndex({ userId: 1 })
+await db
+	.collection('passwordResets')
+	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+// Magic-link tokens: looked up by identifier and hash on redemption, single use
+// (the adapter deletes them), and the TTL only clears the ones nobody opened.
+await db
+	.collection('verification_tokens')
+	.createIndex({ identifier: 1, token: 1 }, { unique: true })
+await db
+	.collection('verification_tokens')
+	.createIndex({ expires: 1 }, { expireAfterSeconds: 0 })
+
 await db
 	.collection('sessions')
 	.createIndex({ sessionToken: 1 }, { unique: true })

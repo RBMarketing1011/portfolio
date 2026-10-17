@@ -55,6 +55,7 @@ export default async function AccountLayout({
 	return (
 		<AccountShell
 			items={items}
+			accountId={membership.workspace._id.toString()}
 			accountName={membership.workspace.name}
 			email={email}
 			userName={session.user.name?.trim() || email.replace(/@.*$/, '')}

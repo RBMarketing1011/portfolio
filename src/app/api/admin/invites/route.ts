@@ -8,6 +8,7 @@ import {
 } from '@/lib/admin'
 import { sendWelcomeEmail } from '@/lib/admin/invites'
 import { errorResponse } from '@/lib/auth/guards'
+import { sendFailureMessage } from '@/lib/email/send'
 import { getDb } from '@/lib/mongo'
 import {
 	hashInviteToken,
@@ -17,12 +18,16 @@ import {
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+// The SMTP timeouts must fire before the platform limit does, so a stalled
+// send ends in the error path and not in a killed function with a phantom invite.
+export const maxDuration = 30
 
 const schema = z.object({
 	email: z.string().email().max(254),
 	accountName: z.string().trim().max(80).nullish(),
 	role: z.enum(['member', 'admin']).default('member'),
 })
+
 
 export async function GET() {
 	try {
@@ -49,7 +54,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
 	try {
-		const { userId, email: adminEmail } = await requireAdmin()
+		const { userId, email: adminEmail, name: adminName } = await requireAdmin()
 		const parsed = schema.safeParse(await request.json().catch(() => null))
 		if (!parsed.success)
 			return NextResponse.json(
@@ -72,7 +77,6 @@ export async function POST(request: Request) {
 		const now = new Date()
 		const invites = db.collection<PlatformInviteDoc>(PLATFORM_INVITES)
 
-		await invites.deleteMany({ email })
 		const result = await invites.insertOne({
 			email,
 			accountName: parsed.data.accountName || null,
@@ -87,22 +91,30 @@ export async function POST(request: Request) {
 			await sendWelcomeEmail({
 				to: email,
 				token,
-				invitedBy: adminEmail || 'An administrator',
+				invitedBy: adminName || adminEmail || 'An administrator',
+				accountName: parsed.data.accountName || null,
+				role: parsed.data.role,
 			})
 		} catch (cause) {
 			await invites.deleteOne({ _id: result.insertedId })
+			console.error('[admin/invites] could not send', cause)
 			return NextResponse.json(
-				{
-					error:
-						cause instanceof Error && cause.message === 'mail-not-configured'
-							? 'Email is not configured, so invitations cannot be sent yet.'
-							: 'That invitation could not be sent.',
-				},
+				{ error: sendFailureMessage(cause) },
 				{ status: 503 },
 			)
 		}
 
-		return NextResponse.json({ ok: true, email }, { status: 201 })
+		// Re-inviting replaces the outstanding invitation. Only once the new one
+		// is in their inbox: a failed send must not take away a link that works.
+		const replaced = await invites.deleteMany({
+			email,
+			_id: { $ne: result.insertedId },
+		})
+
+		return NextResponse.json(
+			{ ok: true, email, replaced: replaced.deletedCount > 0 },
+			{ status: 201 },
+		)
 	} catch (error) {
 		return errorResponse(error)
 	}

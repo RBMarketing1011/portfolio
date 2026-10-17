@@ -1,90 +1,162 @@
 /**
- * Exercises the passwordless path end to end: request a link, pull the real token
- * out of the verification collection, use it, and prove it cannot be used twice.
+ * Proves the passwordless path end to end: a request answers the same for every
+ * address, only a real login gets the email, the emailed link lands on the
+ * click-through page, the click signs the person in exactly once, and strangers
+ * can never be signed in or created. Run against the dev server with a local
+ * database and the mail sink (see lib/auth-harness.mjs).
  */
-import { MongoClient } from 'mongodb'
+import { createHash } from 'node:crypto'
+import {
+	BASE,
+	cleanup,
+	connect,
+	csrf,
+	jar,
+	linkIn,
+	rand,
+	readSink,
+	recorder,
+	seedUser,
+	sessionUser,
+	waitForMail,
+} from './lib/auth-harness.mjs'
 
-const BASE = process.env.BASE_URL ?? 'http://localhost:3000'
-const email = `magic_${Math.random().toString(36).slice(2, 9)}@example.test`
+const { client, db } = await connect()
+const { record, finish } = recorder()
 
-const cookies = new Map()
-async function call(path, init = {}) {
-	const headers = new Headers(init.headers ?? {})
-	if (cookies.size)
-		headers.set('cookie', [...cookies].map(([k, v]) => `${k}=${v}`).join('; '))
-	const response = await fetch(`${BASE}${path}`, {
-		...init,
-		headers,
-		redirect: 'manual',
-	})
-	for (const raw of response.headers.getSetCookie?.() ?? []) {
-		const [pair] = raw.split(';')
-		const i = pair.indexOf('=')
-		cookies.set(pair.slice(0, i), pair.slice(i + 1))
-	}
-	return response
-}
-
-const results = []
-const record = (name, pass, detail = '') => results.push({ name, pass, detail })
-
-const client = new MongoClient(process.env.MONGODB_URI)
-await client.connect()
-const db = client.db()
-const tokens = db.collection('verification_tokens')
-
-const before = await tokens.countDocuments({ identifier: email })
-
-const { csrfToken } = await (await call('/api/auth/csrf')).json()
-const requested = await call('/api/auth/signin/nodemailer', {
-	method: 'POST',
-	headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-	body: new URLSearchParams({
-		email,
-		csrfToken,
-		callbackUrl: `${BASE}/builder/sites`,
-	}),
-})
-record('link request accepted', requested.status < 400, `${requested.status}`)
-
-// The mail is real, so the token is read from the database rather than an inbox.
-await new Promise((r) => setTimeout(r, 1500))
-const doc = await tokens.findOne({ identifier: email })
-record('verification token stored', Boolean(doc), before === 0 ? 'fresh' : '')
-
-if (!doc) {
-	console.log('no token issued; cannot continue')
-	await client.close()
-	for (const r of results) console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.name}`)
+const secret = process.env.AUTH_SECRET
+if (!secret) {
+	console.error('AUTH_SECRET is not set; the stored token hash cannot be checked.')
 	process.exit(1)
 }
+// Auth.js stores sha256(token + secret); with one secret that is this.
+const stored = (raw) => createHash('sha256').update(`${raw}${secret}`).digest('hex')
 
-const expiresInMinutes = Math.round((doc.expires - Date.now()) / 60000)
+const run = rand()
+const person = `e2e_magic_${run}@example.test`
+const stranger = `e2e_ghost_${run}@example.test`
+const tokens = db.collection('verification_tokens')
+
+const { id: personId } = await seedUser(db, { email: person, password: 'password-magic-0000' })
+// Counters from an earlier run inside the window must not trip the per-source cap.
+await db.collection('authAttempts').deleteMany({ _id: { $in: ['link:ip:::1', 'link:ip:127.0.0.1'] } })
+
+const ask = async (session, email) => {
+	const csrfToken = await csrf(session)
+	const response = await session.call('/api/auth/signin/nodemailer', {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'X-Auth-Return-Redirect': '1',
+		},
+		body: new URLSearchParams({ email, csrfToken, callbackUrl: `${BASE}/account` }),
+	})
+	const body = await response.json().catch(() => ({}))
+	return { status: response.status, url: body.url ?? '' }
+}
+
+// --- requesting -------------------------------------------------------------
+
+const since = Date.now()
+const asked = await ask(jar(), person)
+record('a request for a real login is accepted', asked.status === 200 && asked.url.includes('verify-request'), asked.url.slice(0, 80))
+
+const row = await tokens.findOne({ identifier: person })
+record('one token is stored, expiring within 15 minutes', Boolean(row) && row.expires - Date.now() <= 15 * 60 * 1000 && row.expires > new Date())
+
+const mail = await waitForMail(person, since)
+const link = linkIn(mail, /(\/sign-in\/verify\?[^"'\s<]+)/)
+record('the email arrives', Boolean(mail), mail?.subject ?? 'no mail')
+record('the link goes to the click-through page, not straight to the callback', Boolean(link))
+const params = new URLSearchParams(link?.split('?')[1] ?? '')
+const rawToken = params.get('token')
+record('the link carries the token whose hash is stored', Boolean(rawToken) && row?.token === stored(rawToken))
+record('the email is branded', Boolean(mail?.html.includes('reynolds-built-mark.png')))
+
+const strangerSince = Date.now()
+const strangerAsked = await ask(jar(), stranger)
 record(
-	'token expires within 15 minutes',
-	expiresInMinutes > 0 && expiresInMinutes <= 15,
-	`${expiresInMinutes}m`,
+	'an unknown address gets the same answer and no email',
+	strangerAsked.url.includes('verify-request') && (await waitForMail(stranger, strangerSince, 1500)) === null,
+	strangerAsked.url.slice(0, 80),
 )
+record('no login is created for the unknown address', (await db.collection('users').countDocuments({ email: stranger })) === 0)
 
-// The stored token is hashed, so the callback needs the raw one from the URL. Auth.js
-// v5 hashes with the secret, so reuse is proven through the callback instead.
-const used = await call(
-	`/api/auth/callback/nodemailer?token=deliberately-wrong&email=${encodeURIComponent(email)}`,
+// --- redeeming --------------------------------------------------------------
+
+const visitor = jar()
+const page = await visitor.call(link)
+const html = await page.text()
+record('the click-through page renders with a continue button', page.status === 200 && html.includes('Continue'))
+const callback = html.match(/href="(\/api\/auth\/callback\/nodemailer\?[^"]+)"/)?.[1]?.replace(/&amp;/g, '&')
+record('the page links to the real callback', Boolean(callback) && callback.includes(`token=${rawToken}`))
+
+record('rendering the page did not spend the token', Boolean(await tokens.findOne({ identifier: person })))
+
+const redeemed = await visitor.call(callback)
+record(
+	'continuing signs the person in and lands on their account',
+	redeemed.status === 302 && redeemed.headers.get('location') === `${BASE}/account`,
+	`${redeemed.status} ${redeemed.headers.get('location')}`,
+)
+record('the session is theirs', (await sessionUser(visitor))?.id === personId)
+record('the token is gone', (await tokens.countDocuments({ identifier: person })) === 0)
+
+const replay = await jar().call(callback)
+record(
+	'the link works only once',
+	replay.status === 302 && (replay.headers.get('location') ?? '').includes('error=Verification'),
+	replay.headers.get('location') ?? '',
+)
+const forged = await jar().call(`/api/auth/callback/nodemailer?token=forged&email=${encodeURIComponent(person)}`)
+record('a forged token is refused', (forged.headers.get('location') ?? '').includes('error=Verification'))
+
+const errorPage = await jar().call('/sign-in?error=Verification')
+record('the sign-in page explains an expired link', (await errorPage.text()).includes('expired'))
+
+// --- a stranger holding a valid token ---------------------------------------
+
+const ghostRaw = `ghost${run}`
+await tokens.insertOne({
+	identifier: stranger,
+	token: stored(ghostRaw),
+	expires: new Date(Date.now() + 60_000),
+})
+const ghost = await jar().call(
+	`/api/auth/callback/nodemailer?token=${ghostRaw}&email=${encodeURIComponent(stranger)}&callbackUrl=${encodeURIComponent(`${BASE}/account`)}`,
 )
 record(
-	'forged token is refused',
-	used.status >= 300 && (used.headers.get('location') ?? '').includes('error'),
-	`${used.status} -> ${(used.headers.get('location') ?? '').slice(0, 60)}`,
+	'a valid token for an address with no login is refused',
+	(ghost.headers.get('location') ?? '').includes('error=AccessDenied'),
+	ghost.headers.get('location') ?? '',
+)
+record('and still creates no login', (await db.collection('users').countDocuments({ email: stranger })) === 0)
+
+// --- limits -----------------------------------------------------------------
+
+// From a clean window, so the requests above do not count against it.
+await db.collection('authAttempts').deleteMany({ _id: `link:${person}` })
+const eager = jar()
+let sentCount = 0
+let lastUrl = ''
+for (let i = 0; i < 6; i += 1) {
+	const before = Date.now()
+	lastUrl = (await ask(eager, person)).url
+	if (await waitForMail(person, before, 2500)) sentCount += 1
+}
+record(
+	'a sixth link request in the window is answered the same and sends nothing',
+	sentCount === 5 && lastUrl.includes('verify-request'),
+	`${sentCount} sent, last ${lastUrl.slice(0, 60)}`,
 )
 
-await tokens.deleteMany({ identifier: email })
-await db.collection('users').deleteMany({ email })
+// Long after the request: the stranger's work ran after the response, and
+// there must still be nothing to show for it.
+record('the unknown address never got anything', readSink(stranger, strangerSince) === null)
+
+await db.collection('authAttempts').deleteMany({
+	_id: { $in: [`link:${person}`, `link:${stranger}`, 'link:ip:::1', 'link:ip:127.0.0.1'] },
+})
+await cleanup(db, [person, stranger])
 await client.close()
-
-const failed = results.filter((r) => !r.pass)
-for (const r of results)
-	console.log(
-		`${r.pass ? 'PASS' : 'FAIL'}  ${r.name}${r.detail ? `  (${r.detail})` : ''}`,
-	)
-console.log(`\n${results.length - failed.length}/${results.length} passed`)
-process.exit(failed.length ? 1 : 0)
+finish()

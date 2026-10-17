@@ -55,9 +55,13 @@ const CASES = [
 
 const suitePasses = () => {
 	try {
-		execFileSync('node', ['scripts/prove-auth-guards.mjs'], {
-			stdio: 'pipe',
-		})
+		// Same flags this process was started with (`--env-file`), and the same
+		// environment (the local MONGODB_URI / MAIL_SINK_DIR overrides).
+		execFileSync(
+			process.execPath,
+			[...process.execArgv, 'scripts/prove-auth-guards.mjs'],
+			{ stdio: 'pipe', env: process.env },
+		)
 		return true
 	} catch {
 		return false

@@ -50,6 +50,7 @@ function CloseSheetOnNavigate() {
 
 export function AccountShell({
 	items,
+	accountId,
 	accountName,
 	email,
 	userName,
@@ -58,6 +59,7 @@ export function AccountShell({
 	children,
 }: {
 	items: NavItem[]
+	accountId: string
 	accountName: string
 	email: string
 	userName: string
@@ -78,7 +80,11 @@ export function AccountShell({
 					<AccountNav items={items} />
 				</SidebarContent>
 				<SidebarFooter>
-					<NavUser user={{ name: userName, email, avatar: userImage }} admin={viaAdmin} />
+					<NavUser
+						user={{ name: userName, email, avatar: userImage }}
+						admin={viaAdmin}
+						accountId={accountId}
+					/>
 				</SidebarFooter>
 				<SidebarRail />
 			</Sidebar>

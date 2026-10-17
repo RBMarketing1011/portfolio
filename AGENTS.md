@@ -66,3 +66,29 @@ elements.
 - Builder templates: `node scripts/prove-builder-templates.cjs`
 - Header menu: `node scripts/prove-builder-menu.cjs`
 - Site SEO: `node scripts/prove-site-seo.cjs`
+- Authentication: `pnpm prove:auth` (see below)
+
+### Authentication proofs
+
+`pnpm prove:auth` runs every auth proof (invitations, welcome, magic link,
+forgot password, rate limits, account bootstrap, authorization) against the dev
+server. They create and delete people, so they refuse anything but a local
+database, and they read emailed links from a mail sink instead of a mailbox.
+The `.env` in this repo points at the hosted cluster, so override both:
+
+```
+# Git Bash
+export MONGODB_URI=mongodb://127.0.0.1:27017/reynoldsbuilt_proof MAIL_SINK_DIR=/tmp/rb-mail
+pnpm dev            # in one terminal
+pnpm prove:auth     # in another, with the same two variables exported
+
+# PowerShell
+$env:MONGODB_URI='mongodb://127.0.0.1:27017/reynoldsbuilt_proof'; $env:MAIL_SINK_DIR="$env:TEMP\rb-mail"
+pnpm dev
+pnpm prove:auth
+```
+
+Never run `scripts/clean-test-data.mjs` or the proofs against the hosted
+cluster. After deploying, run `node --env-file=.env scripts/ensure-indexes.mjs`
+once against production so the unique and TTL indexes the auth flows rely on
+exist there.

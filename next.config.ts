@@ -12,12 +12,28 @@ const internal = [
 	'/preview/:path*',
 ]
 
+// The production apex, as in src/lib/site.ts (kept literal here: this file is
+// loaded before the app's own modules are). Auth cookies are host-only and the
+// emailed links always use the apex, so a visitor on www. would sign in on one
+// host and look signed out on the other unless www. is folded into the apex.
+const PRODUCTION_HOST = 'reynoldsbuilt.dev'
+
 const nextConfig: NextConfig = {
 	// Uploads live on Vercel Blob, whose subdomain is per store.
 	images: {
 		remotePatterns: [
 			{ protocol: 'https', hostname: '**.public.blob.vercel-storage.com' },
 		],
+	},
+	async redirects() {
+		return [
+			{
+				source: '/:path*',
+				has: [{ type: 'host', value: `www.${PRODUCTION_HOST}` }],
+				destination: `https://${PRODUCTION_HOST}/:path*`,
+				permanent: true,
+			},
+		]
 	},
 	async headers() {
 		return internal.map((source) => ({

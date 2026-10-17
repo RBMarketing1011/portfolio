@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Section } from '@/components/sections'
 import { auth } from '@/lib/auth'
 import { isPlatformAdmin } from '@/lib/admin/role'
+import { safeNext } from '@/lib/auth/safe-next'
 import { buildMetadata } from '@/lib/seo'
 import { currentMembership } from '@/lib/workspace/current'
 import { SignInForm } from './sign-in-form'
@@ -14,13 +15,22 @@ export const metadata = buildMetadata({
 	path: '/sign-in',
 })
 
-export default async function SignInPage() {
+export default async function SignInPage({
+	searchParams,
+}: {
+	searchParams: Promise<{ next?: string | string[] }>
+}) {
+	const { next: rawNext } = await searchParams
+	// Someone already signed in who arrives with a destination (an invitation
+	// they opened in another tab) should go there, not be bounced to /account.
+	const next = safeNext(Array.isArray(rawNext) ? rawNext[0] : rawNext, '')
+
 	// Membership, not just a session: a token that outlived its account would
 	// bounce here from /account and back forever.
 	const session = await auth()
 	if (session?.user?.id && (await isPlatformAdmin(session.user.id)))
-		redirect('/admin')
-	if (await currentMembership()) redirect('/account')
+		redirect(next || '/admin')
+	if (await currentMembership()) redirect(next || '/account')
 
 	return (
 		<Section>

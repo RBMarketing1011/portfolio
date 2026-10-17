@@ -15,10 +15,25 @@ const limitFor = (key: string) =>
 const attempts = async (): Promise<Collection<Attempt>> =>
 	(await getDb()).collection<Attempt>('authAttempts')
 
+/**
+ * The caller's address, as the platform saw it. Vercel writes `x-real-ip` and
+ * `x-forwarded-for` from the connection itself and discards anything the client
+ * sent, so they cannot be forged. Cloudflare's header is only honest behind
+ * Cloudflare's proxy, so it is trusted only when the deployment says it is
+ * there; otherwise anyone could pick a fresh "IP" per request and never trip
+ * the per-source cap.
+ */
 export function clientIp(request: Request | undefined) {
+	const headers = request?.headers
+	if (!headers) return null
+	const cloudflare =
+		process.env.TRUST_CF_HEADERS === 'true'
+			? headers.get('cf-connecting-ip')
+			: null
 	return (
-		request?.headers.get('cf-connecting-ip') ??
-		request?.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+		cloudflare ??
+		headers.get('x-real-ip') ??
+		headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
 		null
 	)
 }
@@ -60,4 +75,26 @@ export async function recordFailure(keys: string[]) {
 
 export async function clearFailures(keys: string[]) {
 	await (await attempts()).deleteMany({ _id: { $in: keys } })
+}
+
+/**
+ * General throttle for the flows that send email: whether `key` may fire again
+ * within the window, counting this call. Shares the collection and the
+ * query-time expiry, so a missing TTL index cannot extend a window either.
+ */
+export async function throttle(key: string, max: number) {
+	const collection = await attempts()
+	const now = new Date()
+
+	await collection.deleteOne({ _id: key, expiresAt: { $lte: now } })
+	const doc = await collection.findOneAndUpdate(
+		{ _id: key },
+		{
+			$inc: { count: 1 },
+			$setOnInsert: { expiresAt: new Date(now.getTime() + WINDOW_MS) },
+		},
+		{ upsert: true, returnDocument: 'after' },
+	)
+
+	return (doc?.count ?? 1) <= max
 }

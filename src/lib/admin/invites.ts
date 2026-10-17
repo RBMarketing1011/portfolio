@@ -1,7 +1,7 @@
 import 'server-only'
-import { mailFrom, mailConfigured, mailTransport } from '@/lib/mail'
-import { site } from '@/lib/site'
-import { baseUrl } from '@/lib/seo'
+import { linkOrigin } from '@/lib/app-url'
+import { sendEmail } from '@/lib/email/send'
+import { welcomeEmail } from '@/lib/email/templates'
 
 /** Same hashing and single-use rules as account invitations; only the landing
  *  page differs, because this person has no account to sign in to yet. */
@@ -9,35 +9,17 @@ export async function sendWelcomeEmail(input: {
 	to: string
 	token: string
 	invitedBy: string
+	accountName?: string | null
+	role: 'member' | 'admin'
 }) {
-	if (!mailConfigured()) throw new Error('mail-not-configured')
-
-	const link = `${baseUrl}/welcome/${input.token}`
-
-	await mailTransport().sendMail({
-		from: mailFrom(),
+	await sendEmail({
 		to: input.to,
-		subject: `You have been invited to ${site.name}`,
-		text: [
-			`${input.invitedBy} invited you to build websites on ${site.name}.`,
-			'',
-			`Create your login: ${link}`,
-			'',
-			'The link works once and expires in seven days.',
-		].join('\n'),
-		html: `
-			<p>${esc(input.invitedBy)} invited you to build websites on ${esc(site.name)}.</p>
-			<p><a href="${link}">Create your login</a></p>
-			<p>The link works once and expires in seven days.</p>
-		`,
+		...welcomeEmail({
+			to: input.to,
+			link: `${linkOrigin()}/welcome/${input.token}`,
+			invitedBy: input.invitedBy,
+			accountName: input.accountName,
+			role: input.role,
+		}),
 	})
 }
-
-const esc = (value: string) =>
-	value.replace(
-		/[&<>"']/g,
-		(c) =>
-			({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
-				c
-			] as string,
-	)
