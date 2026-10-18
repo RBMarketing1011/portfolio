@@ -14,20 +14,23 @@ import {
 	SectionHeading,
 } from '@/components/sections'
 import { Highlight } from '@/components/ui/highlight'
+import { getPublishedPosts } from '@/lib/blog/posts'
 import { JsonLd, faqSchema, pageSchema } from '@/lib/seo'
 import {
 	deliverySteps,
 	faqs,
 	featuredProjects,
 	industries,
-	insights,
 	principles,
 	services,
 	signals,
 	solutions,
 } from '@/lib/site-content'
 
-export default function Home() {
+export const revalidate = 60
+
+export default async function Home() {
+	const insights = await getPublishedPosts()
 	return (
 		<>
 			<JsonLd

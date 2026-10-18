@@ -5,7 +5,8 @@ import {
 	buildMetadata,
 	collectionSchema,
 } from '@/lib/seo'
-import { insightTopics, insights } from '@/lib/site-content'
+import { getPublishedPosts } from '@/lib/blog/posts'
+import { topicsOf } from '@/lib/blog/types'
 
 export const metadata = buildMetadata({
 	title: 'Blog Topics',
@@ -14,7 +15,11 @@ export const metadata = buildMetadata({
 	path: '/blog/topics',
 })
 
-export default function BlogTopicsPage() {
+export const revalidate = 60
+
+export default async function BlogTopicsPage() {
+	const insights = await getPublishedPosts()
+	const insightTopics = topicsOf(insights)
 	return (
 		<>
 			<JsonLd

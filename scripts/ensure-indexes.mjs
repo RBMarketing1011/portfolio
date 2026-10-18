@@ -60,6 +60,10 @@ await db
 	.collection('platformInvites')
 	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
+// Blog posts. The app also creates these itself on first use.
+await db.collection('blogPosts').createIndex({ slug: 1 }, { unique: true })
+await db.collection('blogPosts').createIndex({ status: 1, publishAt: -1 })
+
 // Password reset links. Looked up by hash; expiry is enforced in the query too.
 await db
 	.collection('passwordResets')

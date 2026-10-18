@@ -9,12 +9,12 @@ import {
 } from 'lucide-react'
 import {
 	industries,
-	insightTopics,
-	insights,
 	projects,
 	services,
 	solutions,
 } from '@/lib/site-content'
+import { getPublishedPosts } from '@/lib/blog/posts'
+import { topicsOf, type BlogPost } from '@/lib/blog/types'
 
 export type SitemapLink = {
 	path: string
@@ -38,7 +38,7 @@ export type SitemapSection = {
  * The single source of truth for /sitemap.xml, its /sitemap.xsl presentation
  * layer, and llms.txt. Adding a route here publishes it everywhere at once.
  */
-export const sitemapSections: SitemapSection[] = [
+const sectionsFor = (insights: BlogPost[]): SitemapSection[] => [
 	{
 		id: 'main',
 		title: 'Main Pages',
@@ -208,7 +208,7 @@ export const sitemapSections: SitemapSection[] = [
 				changeFrequency: 'monthly',
 				priority: 0.6,
 			},
-			...insightTopics.map(
+			...topicsOf(insights).map(
 				(topic): SitemapLink => ({
 					path: `/blog/topics/${topic.slug}`,
 					title: `${topic.category} articles`,
@@ -231,6 +231,11 @@ export const sitemapSections: SitemapSection[] = [
 	},
 ]
 
-export const sitemapLinks: SitemapLink[] = sitemapSections.flatMap(
-	(section) => section.links,
-)
+/** Every section, with the blog's topics and articles read from the database. */
+export async function getSitemapSections() {
+	return sectionsFor(await getPublishedPosts())
+}
+
+export async function getSitemapLinks(): Promise<SitemapLink[]> {
+	return (await getSitemapSections()).flatMap((section) => section.links)
+}

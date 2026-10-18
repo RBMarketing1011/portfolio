@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import SiteFooter from '@/components/site-footer'
 import { isProductionHost } from '@/lib/app-url'
+import { getBlogNav } from '@/lib/blog/posts'
 import SiteHeader from '@/components/site-header'
 import { site } from '@/lib/site'
 import { baseUrl, JsonLd, organizationSchema, websiteSchema } from '@/lib/seo'
@@ -79,12 +80,16 @@ gtag('config', '${GA_ID}');`}
 	)
 }
 
+// The header's blog menu lists the newest posts, so every public page is
+// refreshed at least once a minute (and at once when the blog API writes).
+export const revalidate = 60
+
 /**
  * The public marketing site. The backend, the builder, the previews and any
  * customer's own hosted site all live outside this group, so none of them can
  * end up wearing ReynoldsBuilt's header or its organisation schema.
  */
-export default function SiteLayout({
+export default async function SiteLayout({
 	children,
 }: {
 	children: React.ReactNode
@@ -99,7 +104,7 @@ export default function SiteLayout({
 				className='sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-60 focus:rounded-md focus:bg-brand focus:px-4 focus:py-2 focus:font-bold focus:text-ink'>
 				Skip to main content
 			</a>
-			<SiteHeader />
+			<SiteHeader blog={await getBlogNav()} />
 			<main id='main'>{children}</main>
 			<SiteFooter />
 		</>

@@ -12,11 +12,11 @@ import {
 	buildMetadata,
 	collectionSchema,
 } from '@/lib/seo'
-import { insightTopics } from '@/lib/site-content'
+import { getTopics } from '@/lib/blog/posts'
 
-export function generateStaticParams() {
-	return insightTopics.map((topic) => ({ topic: topic.slug }))
-}
+// Per request for the same reason as the article page: a topic that does not
+// exist yet must not be cached as a 404 before its first post goes live.
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({
 	params,
@@ -24,7 +24,7 @@ export async function generateMetadata({
 	params: Promise<{ topic: string }>
 }) {
 	const { topic } = await params
-	const found = insightTopics.find((item) => item.slug === topic)
+	const found = (await getTopics()).find((item) => item.slug === topic)
 	if (!found) return {}
 
 	return buildMetadata({
@@ -40,6 +40,7 @@ export default async function BlogTopicPage({
 	params: Promise<{ topic: string }>
 }) {
 	const { topic } = await params
+	const insightTopics = await getTopics()
 	const found = insightTopics.find((item) => item.slug === topic)
 	if (!found) notFound()
 

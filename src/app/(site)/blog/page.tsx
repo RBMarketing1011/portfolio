@@ -13,7 +13,8 @@ import {
 	buildMetadata,
 	collectionSchema,
 } from '@/lib/seo'
-import { insightCategories, insights } from '@/lib/site-content'
+import { getPublishedPosts } from '@/lib/blog/posts'
+import { categoriesOf } from '@/lib/blog/types'
 import { ArticleFilter } from './article-filter'
 
 export const metadata = buildMetadata({
@@ -23,7 +24,10 @@ export const metadata = buildMetadata({
 	path: '/blog',
 })
 
-export default function BlogPage() {
+export const revalidate = 60
+
+export default async function BlogPage() {
+	const insights = await getPublishedPosts()
 	const [latest] = insights
 	const formatter = new Intl.DateTimeFormat('en-US', {
 		year: 'numeric',
@@ -62,6 +66,7 @@ export default function BlogPage() {
 				]}
 			/>
 
+			{latest && (
 			<Section>
 				<SectionHeading
 					eyebrow='Latest'
@@ -83,6 +88,7 @@ export default function BlogPage() {
 					</Link>
 				</Button>
 			</Section>
+			)}
 
 			<Section className='pb-0 lg:pb-0'>
 				<SectionHeading
@@ -93,7 +99,7 @@ export default function BlogPage() {
 			</Section>
 
 			<ArticleFilter
-				filters={['All', ...insightCategories]}
+				filters={['All', ...categoriesOf(insights)]}
 				items={insights.map((insight) => ({
 					slug: insight.slug,
 					title: insight.title,

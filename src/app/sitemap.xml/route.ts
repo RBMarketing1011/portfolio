@@ -1,16 +1,18 @@
 import { absoluteUrl } from '@/lib/seo'
-import { sitemapLinks } from '@/lib/sitemap'
+import { getSitemapLinks } from '@/lib/sitemap'
 
 // A route handler rather than Next's sitemap.ts convention, so the xml-stylesheet
 // instruction can be emitted. Browsers render it through /sitemap.xsl; crawlers
 // ignore the instruction and read this exact XML.
-export const dynamic = 'force-static'
+// Rendered on request (one small query), so a post published through the
+// blog API is listed at once.
+export const dynamic = 'force-dynamic'
 
 const escape = (value: string) =>
 	value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-export function GET() {
-	const urls = sitemapLinks
+export async function GET() {
+	const urls = (await getSitemapLinks())
 		.map((link) => {
 			// lastmod is omitted unless the date is real. Stamping every URL with the
 			// build time makes Google distrust and drop lastmod for the whole site.

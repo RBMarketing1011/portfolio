@@ -1,10 +1,12 @@
 import { absoluteUrl } from '@/lib/seo'
 import { site } from '@/lib/site'
-import { sitemapSections } from '@/lib/sitemap'
+import { getSitemapSections, type SitemapSection } from '@/lib/sitemap'
 
 // Browsers render /sitemap.xml through this stylesheet; crawlers ignore the
 // xml-stylesheet instruction and read the raw XML. One URL, both audiences.
-export const dynamic = 'force-static'
+// Rendered on request (one small query), so a post published through the
+// blog API is listed at once.
+export const dynamic = 'force-dynamic'
 
 const xml = (value: string) =>
 	value
@@ -16,7 +18,7 @@ const xml = (value: string) =>
 const cell = (loc: string, field: string) =>
 	`/s:urlset/s:url[s:loc='${loc}']/s:${field}`
 
-const rows = (links: (typeof sitemapSections)[number]['links']) =>
+const rows = (links: SitemapSection['links']) =>
 	links
 		.map((link) => {
 			const loc = absoluteUrl(link.path)
@@ -38,6 +40,8 @@ const rows = (links: (typeof sitemapSections)[number]['links']) =>
 		})
 		.join('\n')
 
+/** The stylesheet for a given set of sections. */
+function render(sitemapSections: SitemapSection[]) {
 const dated = sitemapSections
 	.flatMap((section) => section.links)
 	.map((link) => link.lastModified)
@@ -304,8 +308,11 @@ ${groups}
 </xsl:stylesheet>
 `
 
-export function GET() {
-	return new Response(stylesheet, {
+	return stylesheet
+}
+
+export async function GET() {
+	return new Response(render(await getSitemapSections()), {
 		headers: {
 			'Content-Type': 'text/xsl; charset=utf-8',
 			'Cache-Control': 'public, max-age=3600',

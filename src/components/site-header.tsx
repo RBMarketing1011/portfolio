@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { ArrowRight, ChevronDown, Menu } from 'lucide-react'
 import { Wordmark } from '@/components/brand'
 import { AccountLink } from '@/components/account-link'
@@ -40,13 +40,15 @@ import {
 	caseStudyHighlights,
 	featuredProjects,
 	industries,
-	insightTopics,
-	insights,
 	serviceName,
 	services,
 	solutions,
 } from '@/lib/site-content'
+import type { BlogNav } from '@/lib/blog/types'
 import { cn } from '@/lib/utils'
+
+/** The blog menu's topics and latest posts, read from the database by the layout. */
+const BlogNavContext = createContext<BlogNav>({ topics: [], latest: [] })
 
 const panelClass = 'w-full p-3 md:w-full'
 
@@ -136,7 +138,7 @@ function PromoPanel({
 }
 
 // Same destinations as the mega menu, flattened into plain dropdown lists.
-const simpleMenus = [
+const simpleMenusFor = (blog: BlogNav) => [
 	{
 		label: 'Industries',
 		links: industries.map((item) => ({
@@ -171,7 +173,7 @@ const simpleMenus = [
 	{
 		label: 'Blog',
 		links: [
-			...insightTopics.map((topic) => ({
+			...blog.topics.map((topic) => ({
 				href: `/blog/topics/${topic.slug}`,
 				label: topic.category,
 			})),
@@ -239,6 +241,8 @@ function HoverDropdown({
 
 function DesktopNav() {
 	const { megaMenu } = useHeaderOptions()
+	const blog = useContext(BlogNavContext)
+	const insights = blog.latest
 
 	if (!megaMenu) {
 		return (
@@ -247,7 +251,7 @@ function DesktopNav() {
 					About Us
 				</Link>
 
-				{simpleMenus.map((menu) => (
+				{simpleMenusFor(blog).map((menu) => (
 					<HoverDropdown
 						key={menu.label}
 						label={menu.label}
@@ -453,7 +457,7 @@ function DesktopNav() {
 							<div className='p-3'>
 								<p className='eyebrow'>Topics</p>
 								<ul className='mt-4 space-y-1'>
-									{insightTopics.map((topic) => (
+									{blog.topics.map((topic) => (
 										<li key={topic.slug}>
 											<NavigationMenuLink asChild>
 												<Link
@@ -461,7 +465,7 @@ function DesktopNav() {
 													className='flex w-full flex-row items-center justify-between gap-3 rounded-md px-2 py-2 text-sm text-slate-400 hover:bg-white/5 hover:text-white'>
 													{topic.category}
 													<span className='text-xs tabular-nums text-slate-600'>
-														{topic.posts.length}
+														{topic.count}
 													</span>
 												</Link>
 											</NavigationMenuLink>
@@ -511,6 +515,7 @@ function DesktopNav() {
 }
 
 function MobileNav() {
+	const blog = useContext(BlogNavContext)
 	const [open, setOpen] = useState(false)
 	const close = () => setOpen(false)
 
@@ -549,9 +554,9 @@ function MobileNav() {
 		{
 			label: 'Blog',
 			items: [
-				...insightTopics.map((topic) => ({
+				...blog.topics.map((topic) => ({
 					href: `/blog/topics/${topic.slug}`,
-					label: `${topic.category} (${topic.posts.length})`,
+					label: `${topic.category} (${topic.count})`,
 				})),
 				{ href: '/blog', label: 'All articles' },
 			],
@@ -657,10 +662,21 @@ function Surface({ className }: { className?: string }) {
 
 export default function SiteHeader({
 	design = 'bar',
+	blog = { topics: [], latest: [] },
 }: {
 	/** How the fixed bar is shaped. */
 	design?: 'bar' | 'floating' | 'stacked'
+	/** The blog menu. Left out (the builder's header preview), the menu lists no posts. */
+	blog?: BlogNav
 }) {
+	return (
+		<BlogNavContext.Provider value={blog}>
+			<HeaderBar design={design} />
+		</BlogNavContext.Provider>
+	)
+}
+
+function HeaderBar({ design }: { design: 'bar' | 'floating' | 'stacked' }) {
 	// Both sit in the same slot, so every header design picks them up together.
 	const cta = (
 		<>

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { baseUrl } from '@/lib/app-url'
 import { site } from '@/lib/site'
-import { faqs, insights, projects, services } from '@/lib/site-content'
+import type { BlogPost } from '@/lib/blog/types'
+import { faqs, projects, services } from '@/lib/site-content'
 
 export { baseUrl }
 
@@ -235,7 +236,7 @@ export function serviceSchema({
 	}
 }
 
-export function articleSchema(insight: (typeof insights)[number]) {
+export function articleSchema(insight: BlogPost) {
 	const url = absoluteUrl(`/blog/${insight.slug}`)
 
 	return {

@@ -1,10 +1,14 @@
 import { baseUrl } from '@/lib/seo'
 import { site } from '@/lib/site'
-import { faqs, insights, projects, services } from '@/lib/site-content'
+import { getPublishedPosts } from '@/lib/blog/posts'
+import { faqs, projects, services } from '@/lib/site-content'
 
-export const dynamic = 'force-static'
+// Rendered on request (one small query), so a post published through the
+// blog API is listed at once.
+export const dynamic = 'force-dynamic'
 
-export function GET() {
+export async function GET() {
+	const insights = await getPublishedPosts()
 	const body = `# ${site.name}
 
 > ${site.description}

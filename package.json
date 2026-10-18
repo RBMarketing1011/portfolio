@@ -13,7 +13,8 @@
 		"db:indexes": "node --env-file=.env scripts/ensure-indexes.mjs",
 		"admin:grant": "node --env-file=.env scripts/make-admin.mjs",
 		"prove:media": "node scripts/prove-media-all.mjs",
-		"prove:auth": "node --env-file=.env scripts/prove-auth-all.mjs"
+		"prove:auth": "node --env-file=.env scripts/prove-auth-all.mjs",
+		"prove:blog": "node --env-file=.env scripts/prove-blog.mjs"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.131.0",

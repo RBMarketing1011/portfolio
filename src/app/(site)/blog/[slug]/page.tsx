@@ -17,11 +17,12 @@ import {
 	buildMetadata,
 } from '@/lib/seo'
 import { site } from '@/lib/site'
-import { insights } from '@/lib/site-content'
+import { getPost, getPublishedPosts } from '@/lib/blog/posts'
 
-export function generateStaticParams() {
-	return insights.map((insight) => ({ slug: insight.slug }))
-}
+// Rendered per request (one small query). A cached page would also cache the
+// 404 for a post requested before its scheduled time, and Next never refreshes
+// a cached 404, so the post would stay missing after it went live.
+export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({
 	params,
@@ -29,7 +30,7 @@ export async function generateMetadata({
 	params: Promise<{ slug: string }>
 }) {
 	const { slug } = await params
-	const insight = insights.find((item) => item.slug === slug)
+	const insight = await getPost(slug)
 	if (!insight) return {}
 
 	return buildMetadata({
@@ -59,10 +60,10 @@ export default async function BlogArticle({
 	params: Promise<{ slug: string }>
 }) {
 	const { slug } = await params
-	const insight = insights.find((item) => item.slug === slug)
+	const insight = await getPost(slug)
 	if (!insight) notFound()
 
-	const more = insights.filter((item) => item.slug !== insight.slug).slice(0, 3)
+	const more = (await getPublishedPosts()).filter((item) => item.slug !== insight.slug).slice(0, 3)
 
 	return (
 		<>
@@ -98,19 +99,23 @@ export default async function BlogArticle({
 			<Section>
 				<div className='grid gap-14 lg:grid-cols-[16rem_1fr]'>
 					<TableOfContents
-						items={insight.body.map((block) => ({
-							id: headingId(block.heading),
-							label: block.heading,
-						}))}
+						items={insight.body
+							.filter((block) => block.heading)
+							.map((block) => ({
+								id: headingId(block.heading),
+								label: block.heading,
+							}))}
 					/>
 					<div className='min-w-0 max-w-3xl'>
 						<ProseBlock>
-							{insight.body.map((block) => (
+							{insight.body.map((block, blockIndex) => (
 								/* Flat children: ProseBlock styles direct descendants only. */
-								<Fragment key={block.heading}>
-									<h2 id={headingId(block.heading)}>{block.heading}</h2>
-									{block.paragraphs.map((paragraph) => (
-										<p key={paragraph}>{paragraph}</p>
+								<Fragment key={`${blockIndex}-${block.heading}`}>
+									{block.heading && (
+										<h2 id={headingId(block.heading)}>{block.heading}</h2>
+									)}
+									{block.paragraphs.map((paragraph, index) => (
+										<p key={index}>{paragraph}</p>
 									))}
 								</Fragment>
 							))}

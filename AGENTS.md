@@ -67,6 +67,19 @@ elements.
 - Header menu: `node scripts/prove-builder-menu.cjs`
 - Site SEO: `node scripts/prove-site-seo.cjs`
 - Authentication: `pnpm prove:auth` (see below)
+- Blog and its API: `pnpm prove:blog` (same local setup as the auth proofs,
+  plus `BLOG_API_KEY`)
+
+## Blog
+
+Posts live in MongoDB (`blogPosts`), not in code. `src/lib/blog/seed-posts.ts`
+holds the original articles: they are copied into the database automatically
+the first time the blog is read, and served from there if the database is
+unreachable. Editing that file does not change the live site.
+
+Posts are created, scheduled, edited and deleted through `/api/blog/posts`,
+authenticated with `Authorization: Bearer $BLOG_API_KEY`. A post with a future
+`publishAt` goes live on its own within about a minute of that time.
 
 ### Authentication proofs
 
