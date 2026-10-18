@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import SiteFooter from '@/components/site-footer'
+import { isProductionHost } from '@/lib/app-url'
 import SiteHeader from '@/components/site-header'
 import { site } from '@/lib/site'
 import { baseUrl, JsonLd, organizationSchema, websiteSchema } from '@/lib/seo'
@@ -51,6 +53,32 @@ export const metadata: Metadata = {
 	category: 'technology',
 }
 
+const GA_ID = 'G-NV73ES0S0L'
+
+/**
+ * Google Analytics, on the public site only: this layout is not used by the
+ * account, admin, builder or customer sites. Only the production deployment
+ * reports, so local and staging traffic never lands in the numbers. Page
+ * changes inside the app are picked up by GA4's history-based page views.
+ */
+function GoogleAnalytics() {
+	if (!isProductionHost) return null
+	return (
+		<>
+			<Script
+				src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+				strategy='afterInteractive'
+			/>
+			<Script id='google-analytics' strategy='afterInteractive'>
+				{`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${GA_ID}');`}
+			</Script>
+		</>
+	)
+}
+
 /**
  * The public marketing site. The backend, the builder, the previews and any
  * customer's own hosted site all live outside this group, so none of them can
@@ -63,6 +91,7 @@ export default function SiteLayout({
 }) {
 	return (
 		<>
+			<GoogleAnalytics />
 			<JsonLd schema={[organizationSchema, websiteSchema]} />
 			<div aria-hidden className='site-backdrop' />
 			<a
