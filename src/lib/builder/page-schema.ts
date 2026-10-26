@@ -18,6 +18,15 @@ export type BlockInput = {
 	children?: BlockInput[]
 }
 
+/**
+ * What search engines and link previews show for one page. Optional, and an unreadable
+ * value is dropped rather than failing the page: a site that fails to parse loads empty.
+ */
+const pageSeoSchema = z.object({
+	title: z.string().max(70).catch(''),
+	description: z.string().max(160).catch(''),
+})
+
 export const pageSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1).max(120),
@@ -25,6 +34,8 @@ export const pageSchema = z.object({
 	/** Shows in the site header navigation. */
 	inHeader: z.boolean().default(true),
 	blocks: z.array(blockSchema),
+	/** The page's own search title and description; the site's apply when empty. */
+	seo: pageSeoSchema.optional().catch(undefined),
 	createdAt: z.string(),
 	updatedAt: z.string(),
 })
@@ -146,6 +157,8 @@ export const chromeSchema = z.object({
 	 * the header", which is what every site did before menus existed.
 	 */
 	menu: z.array(menuItemSchema).max(MENU_LIMITS.items).catch([]).default([]),
+	/** A Contact column in the footer: phone, email, address, hours and areas from the business details. */
+	footerDetails: z.boolean().catch(false).default(false),
 })
 
 export const defaultChrome: Chrome = {
@@ -154,6 +167,7 @@ export const defaultChrome: Chrome = {
 	ctaLabel: '',
 	ctaHref: '',
 	menu: [],
+	footerDetails: false,
 }
 
 export const siteSchema = z.object({
@@ -195,11 +209,18 @@ export function slugify(name: string) {
 	return slug || 'page'
 }
 
+/**
+ * `slug`, or the first of `slug-2`, `slug-3`… that is free. Slugs are flat, so leading
+ * slashes are dropped first; the home slug is the one exception, kept while it is free
+ * and never suffixed (`/-2` is no address), so a second claim on it gets `home`.
+ */
 export function uniqueSlug(slug: string, taken: string[]) {
-	if (!taken.includes(slug)) return slug
+	if (slug === HOME_SLUG && !taken.includes(HOME_SLUG)) return HOME_SLUG
+	const base = slug.replace(/^\/+/, '') || (slug ? 'home' : 'page')
+	if (!taken.includes(base)) return base
 	let n = 2
-	while (taken.includes(`${slug}-${n}`)) n++
-	return `${slug}-${n}`
+	while (taken.includes(`${base}-${n}`)) n++
+	return `${base}-${n}`
 }
 
 /** Builds a link to a page, keeping the home page on the bare base path. */

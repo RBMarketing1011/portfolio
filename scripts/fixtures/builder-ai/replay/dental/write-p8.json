@@ -1,0 +1,174 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Pediatric Dental Clinic in Tampa",
+			"description": "A bright, friendly dental clinic for Tampa kids, with most insurance plans accepted."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "About us"
+			},
+			{
+				"id": "s1.title",
+				"value": "A dental clinic made for [[kids]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "A bright, friendly clinic in Tampa where children feel at ease and parents get plain answers."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See treatments"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "How we work"
+			},
+			{
+				"id": "s2.title",
+				"value": "Visits that feel [[easy]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "What makes a visit calm for children."
+			},
+			{
+				"id": "s2.tiles.0.title",
+				"value": "A friendly room"
+			},
+			{
+				"id": "s2.tiles.0.blurb",
+				"value": "A bright space where children can settle in."
+			},
+			{
+				"id": "s2.tiles.0.icon",
+				"value": "Smile"
+			},
+			{
+				"id": "s2.tiles.1.title",
+				"value": "Time to adjust"
+			},
+			{
+				"id": "s2.tiles.1.blurb",
+				"value": "We go at your child's pace."
+			},
+			{
+				"id": "s2.tiles.1.icon",
+				"value": "Clock"
+			},
+			{
+				"id": "s2.tiles.2.title",
+				"value": "Plain answers"
+			},
+			{
+				"id": "s2.tiles.2.blurb",
+				"value": "We explain everything to parents and kids."
+			},
+			{
+				"id": "s2.tiles.2.icon",
+				"value": "MessageCircle"
+			},
+			{
+				"id": "s2.tiles.3.title",
+				"value": "Insurance help"
+			},
+			{
+				"id": "s2.tiles.3.blurb",
+				"value": "We take most insurance plans."
+			},
+			{
+				"id": "s2.tiles.3.icon",
+				"value": "ShieldCheck"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "A first visit"
+			},
+			{
+				"id": "s3.title",
+				"value": "Your first visit, [[step by step]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "What happens when you bring your child in."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Meet the team"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "Your child says hello and sees the room."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "A gentle check"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "We look at teeth and gums and explain as we go."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "A cleaning"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "A gentle cleaning, with breaks whenever needed."
+			},
+			{
+				"id": "s3.steps.3.title",
+				"value": "A plan"
+			},
+			{
+				"id": "s3.steps.3.summary",
+				"value": "You leave with clear next steps."
+			},
+			{
+				"id": "s4.paths.0.eyebrow",
+				"value": "Ready now"
+			},
+			{
+				"id": "s4.paths.0.title",
+				"value": "Book a first visit"
+			},
+			{
+				"id": "s4.paths.0.body",
+				"value": "A calm visit that makes check-ups easy."
+			},
+			{
+				"id": "s4.paths.0.cta",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s4.paths.1.eyebrow",
+				"value": "Have questions"
+			},
+			{
+				"id": "s4.paths.1.title",
+				"value": "Read about treatments"
+			},
+			{
+				"id": "s4.paths.1.body",
+				"value": "See what we offer before you book."
+			},
+			{
+				"id": "s4.paths.1.cta",
+				"value": "See treatments"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

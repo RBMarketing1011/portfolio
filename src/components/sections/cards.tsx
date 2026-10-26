@@ -20,26 +20,42 @@ export type Testimonial = {
 	company: string
 }
 
-export function TestimonialCard({
-	quote = 'This is a testimonial quote. It runs two or three lines and carries more weight than anything else on the page, so it is set large and given room to breathe.',
-	name = 'Client Name',
-	role = 'Role Or Title',
-	company = 'Company Name',
-	featured = false,
-	variant = 'card',
-	className,
-}: Partial<Testimonial> & {
-	featured?: boolean
-	variant?: 'card' | 'bare' | 'aside'
-	className?: string
-}) {
+export function TestimonialCard(
+	props: Partial<Testimonial> & {
+		featured?: boolean
+		variant?: 'card' | 'bare' | 'aside'
+		className?: string
+	},
+) {
+	// Sample attribution belongs to the library's untouched card only. A placed card shows
+	// the role and company it was given, never a made-up title or employer.
+	const unset =
+		props.quote === undefined &&
+		props.name === undefined &&
+		props.role === undefined &&
+		props.company === undefined
+	const {
+		quote = 'This is a testimonial quote. It runs two or three lines and carries more weight than anything else on the page, so it is set large and given room to breathe.',
+		name = 'Client Name',
+		role = unset ? 'Role Or Title' : undefined,
+		company = unset ? 'Company Name' : undefined,
+		featured = false,
+		variant = 'card',
+		className,
+	} = props
+
 	const attribution = (
 		<>
 			<span className='block font-semibold text-white'>{name}</span>
-			<span className='mt-1 block text-slate-400'>{role}</span>
-			<span className='mt-0.5 block text-slate-500'>{company}</span>
+			{role && <span className='mt-1 block text-slate-400'>{role}</span>}
+			{company && (
+				<span className={cn('block text-slate-500', role ? 'mt-0.5' : 'mt-1')}>
+					{company}
+				</span>
+			)}
 		</>
 	)
+	const byline = [role, company].filter(Boolean).join(' · ')
 
 	// No card at all: an oversized quote mark and centered copy.
 	if (variant === 'bare') {
@@ -60,9 +76,9 @@ export function TestimonialCard({
 				</blockquote>
 				<figcaption className='mt-7 text-sm'>
 					<span className='block font-semibold text-white'>{name}</span>
-					<span className='mt-1 block text-slate-500'>
-						{role} &middot; {company}
-					</span>
+					{byline && (
+						<span className='mt-1 block text-slate-500'>{byline}</span>
+					)}
 				</figcaption>
 			</figure>
 		)

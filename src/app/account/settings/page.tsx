@@ -1,5 +1,4 @@
-import { notFound } from 'next/navigation'
-import { currentMembership } from '@/lib/workspace/current'
+import { requireAccountMembership } from '@/lib/workspace/current'
 import { MEMBERS, type MemberDoc } from '@/lib/workspace/types'
 import type { SiteDoc } from '@/lib/builder/site-doc'
 import { AccountSettings } from './account-settings'
@@ -8,8 +7,7 @@ export const metadata = { title: 'Settings' }
 export const dynamic = 'force-dynamic'
 
 export default async function AccountSettingsPage() {
-	const membership = await currentMembership()
-	if (!membership) notFound()
+	const membership = await requireAccountMembership()
 
 	const { db, workspace } = membership
 	const [projects, people] = await Promise.all([

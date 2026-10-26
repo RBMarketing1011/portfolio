@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, RotateCcw, SlidersHorizontal } from 'lucide-react'
+import { Check, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -11,17 +11,23 @@ import {
 	SheetDescription,
 	SheetHeader,
 	SheetTitle,
-	SheetTrigger,
 } from '@/components/ui/sheet'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useBuilder } from '@/lib/builder/builder-context'
+import { deriveScheme } from '@/lib/builder/design/scheme'
 import { cn } from '@/lib/utils'
 import {
 	defaultBackground,
+	globalBackground,
 	glowModes,
 	glowSizes,
+	isSurfaceScheme,
 	patterns,
 	type BackgroundSettings,
 	type GlowSettings,
+	type SurfaceScheme,
 	type SurfaceSettings,
 } from './background-settings'
 import {
@@ -38,8 +44,97 @@ const fills = [
 	{ id: 'transparent', label: 'Transparent' },
 ] as const
 
+type Fill = (typeof fills)[number]
+
+// The site backdrop is what every page sits on: without a fill of its own the live site
+// would show the browser's white canvas, so only real fills are offered for it.
+const backdropFills = fills.filter(
+	(fill) => fill.id === 'solid' || fill.id === 'gradient',
+)
+
+/** What a drawer edits on a built site. */
+export type SurfaceScope = 'page' | 'header' | 'footer' | 'block'
+
+const schemes = [
+	{
+		id: 'base',
+		label: 'Site',
+		hint: 'Text and buttons use the site’s own colors.',
+	},
+	{
+		id: 'inverse',
+		label: 'Inverted',
+		hint: 'The palette flips: a dark band on a light site, a light band on a dark one.',
+	},
+	{
+		id: 'brand',
+		label: 'Accent',
+		hint: 'The band is filled with the accent, with text that reads on it.',
+	},
+] as const satisfies readonly { id: SurfaceScheme; label: string; hint: string }[]
+
+/**
+ * The same settings drawn in another scheme. A band that paints nothing would set its
+ * flipped text on whatever is behind it, so it gets its scheme's own background.
+ */
+function withScheme(
+	settings: BackgroundSettings,
+	scheme: SurfaceScheme,
+): BackgroundSettings {
+	const next: BackgroundSettings = { ...settings }
+	delete next.scheme
+	if (scheme === 'base') return next
+	const painted =
+		next.page.fill === 'solid' || next.page.fill === 'gradient'
+			? next.page
+			: {
+					...next.page,
+					fill: 'solid' as const,
+					color: { token: 'background' as const, lightness: 0 },
+				}
+	return { ...next, page: painted, scheme }
+}
+
+function SchemeField({
+	value,
+	onChange,
+}: {
+	value: BackgroundSettings
+	onChange: (next: BackgroundSettings) => void
+}) {
+	const current = value.scheme ?? 'base'
+	return (
+		<div className='mb-6 space-y-2 border-b border-white/10 pb-6'>
+			<Label className='text-xs text-slate-300'>Colors</Label>
+			<ToggleGroup
+				type='single'
+				spacing={1}
+				aria-label='Colors'
+				value={current}
+				onValueChange={(next) => {
+					// Radix lets the pressed item be pressed off (''); there is always a scheme.
+					if (isSurfaceScheme(next)) onChange(withScheme(value, next))
+				}}
+				className='grid w-full grid-cols-3 gap-1.5'>
+				{schemes.map((scheme) => (
+					<ToggleGroupItem key={scheme.id} value={scheme.id} className={choiceItem}>
+						{scheme.label}
+					</ToggleGroupItem>
+				))}
+			</ToggleGroup>
+			<p className='text-xs leading-5 text-slate-500'>
+				{schemes.find((scheme) => scheme.id === current)?.hint}
+			</p>
+		</div>
+	)
+}
+
 const tabClass =
 	'relative rounded-none border-0 border-b-2 border-transparent bg-transparent px-1 pb-2.5 text-sm font-medium text-slate-400 data-[state=active]:border-brand data-[state=active]:bg-transparent data-[state=active]:text-white data-[state=active]:shadow-none'
+
+// A toggle item drawn like the drawer's other choices.
+const choiceItem =
+	'h-auto min-w-0 rounded-md border border-white/10 bg-white/3 px-2 py-1.5 text-xs font-medium text-slate-400 hover:border-white/25 hover:bg-white/3 hover:text-white data-[state=on]:border-brand/40 data-[state=on]:bg-brand/12 data-[state=on]:text-white'
 
 function Choices<T extends string>({
 	label,
@@ -141,11 +236,13 @@ function SurfaceFields({
 	idPrefix,
 	value,
 	theme,
+	fillOptions = fills,
 	onChange,
 }: {
 	idPrefix: string
 	value: SurfaceSettings
 	theme: ThemeSettings
+	fillOptions?: readonly Fill[]
 	onChange: (next: SurfaceSettings) => void
 }) {
 	const set = <K extends keyof SurfaceSettings>(
@@ -158,7 +255,7 @@ function SurfaceFields({
 			<div>
 				<Choices
 					label='Fill'
-					options={fills}
+					options={fillOptions}
 					value={value.fill}
 					columns={2}
 					onChange={(fill) => set('fill', fill)}
@@ -373,6 +470,7 @@ export function BackgroundDrawer({
 	open,
 	onOpenChange,
 	extra,
+	scope,
 }: {
 	slug: string
 	settings: BackgroundSettings
@@ -382,25 +480,61 @@ export function BackgroundDrawer({
 	onOpenChange: (open: boolean) => void
 	/** Extra controls shown above the surface fields. */
 	extra?: React.ReactNode
+	/**
+	 * What the settings paint on a built site. It decides what Reset returns to (the
+	 * header, the footer and a block have nothing of their own by default) and whether
+	 * the colors can flip (blocks and the footer). Left out, it is read from the slug
+	 * when the drawer is handed the site's own theme, and the section library (a theme
+	 * from its URL) keeps its tabs by slug and Reset to the library's default.
+	 */
+	scope?: SurfaceScope
 }) {
 	// Edits are staged so dragging an angle slider does not thrash the preview.
 	const [draft, setDraft] = useState<BackgroundSettings>(settings)
 
-	const isHeader = slug === 'site-header'
+	// The parent opens the sheet by prop, which Radix does not report, so the draft is
+	// seeded here: on every open, and whenever the surface it edits changes underneath
+	// it (another block, the footer after the header). Set during render, not in an
+	// effect, so the previous surface's values never flash.
+	const target = open
+		? `${scope ?? ''}\n${slug}\n${JSON.stringify(settings)}`
+		: null
+	const [seeded, setSeeded] = useState<string | null>(null)
+	if (target !== seeded) {
+		setSeeded(target)
+		if (target !== null) setDraft(settings)
+	}
+
+	// Without a scope, a drawer handed this site's own theme is editing this site, so
+	// anything but the header or the footer is a block. The section library hands it a
+	// theme from its URL, and keeps the library's defaults.
+	const site = useBuilder()
+	const chromeSlug =
+		slug === 'site-header' ? 'header' : slug === 'site-footer' ? 'footer' : null
+	const kind: SurfaceScope | 'library' =
+		scope ?? (theme === site.look.theme ? (chromeSlug ?? 'block') : 'library')
+	const isHeader =
+		kind === 'header' || (kind === 'library' && chromeSlug === 'header')
 	const surfaceLabel = isHeader
 		? 'Header'
-		: slug === 'site-footer'
+		: kind === 'footer' || (kind === 'library' && chromeSlug === 'footer')
 			? 'Footer'
 			: 'Page'
+	const resetTo =
+		kind === 'header' || kind === 'footer' || kind === 'block'
+			? globalBackground
+			: defaultBackground
+	const flips = kind === 'block' || kind === 'footer'
+	const fillOptions = kind === 'page' ? backdropFills : fills
+	// Inside a flipped band every token resolves to the band's colors, so the swatches do too.
+	const shown =
+		flips && (draft.scheme === 'inverse' || draft.scheme === 'brand')
+			? { ...theme, ...deriveScheme(theme, draft.scheme) }
+			: theme
 	const dirty = JSON.stringify(draft) !== JSON.stringify(settings)
 
 	return (
-		<Sheet
-			open={open}
-			onOpenChange={(next) => {
-				if (next) setDraft(settings)
-				onOpenChange(next)
-			}}>
+		<Sheet open={open} onOpenChange={onOpenChange}>
 			<SheetContent
 				side='right'
 				className='flex w-full flex-col gap-0 border-white/10 bg-panel p-0 sm:max-w-md'>
@@ -439,31 +573,24 @@ export function BackgroundDrawer({
 
 							<TabsContent value='menu' className='space-y-5'>
 								<div className='flex items-center justify-between gap-4'>
-									<div>
-										<p className='text-sm font-medium text-white'>Mega menu</p>
-										<p className='mt-0.5 text-xs text-slate-500'>
+									<div className='space-y-0.5'>
+										<Label
+											htmlFor='background-mega-menu'
+											className='text-sm font-medium text-white'>
+											Mega menu
+										</Label>
+										<p className='text-xs text-slate-500'>
 											Off swaps each panel for a plain dropdown list.
 										</p>
 									</div>
-									<button
-										type='button'
-										role='switch'
-										aria-checked={draft.megaMenu}
-										onClick={() =>
-											setDraft({ ...draft, megaMenu: !draft.megaMenu })
+									<Switch
+										id='background-mega-menu'
+										checked={draft.megaMenu}
+										onCheckedChange={(megaMenu) =>
+											setDraft({ ...draft, megaMenu })
 										}
-										className={cn(
-											'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-											draft.megaMenu ? 'bg-brand' : 'bg-white/15',
-										)}>
-										<span
-											className={cn(
-												'absolute top-0.5 size-4 rounded-full bg-white transition-[left]',
-												draft.megaMenu ? 'left-4.5' : 'left-0.5',
-											)}
-										/>
-										<span className='sr-only'>Toggle mega menu</span>
-									</button>
+										className='data-[state=checked]:bg-brand data-[state=unchecked]:bg-white/15'
+									/>
 								</div>
 
 								<SurfaceFields
@@ -497,10 +624,12 @@ export function BackgroundDrawer({
 				) : (
 					<div className='min-h-0 flex-1 overflow-y-auto px-6 py-5'>
 						{extra}
+						{flips && <SchemeField value={draft} onChange={setDraft} />}
 						<SurfaceFields
 							idPrefix='page'
 							value={draft.page}
-							theme={theme}
+							theme={shown}
+							fillOptions={fillOptions}
 							onChange={(page) => setDraft({ ...draft, page })}
 						/>
 					</div>
@@ -524,7 +653,7 @@ export function BackgroundDrawer({
 					<Button
 						type='button'
 						variant='outline'
-						onClick={() => setDraft(defaultBackground)}
+						onClick={() => setDraft(resetTo)}
 						className='border-white/20 bg-transparent text-slate-200 hover:bg-white/5 hover:text-white'>
 						<RotateCcw /> Reset
 					</Button>

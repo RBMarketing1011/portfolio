@@ -93,6 +93,9 @@
 	--sidebar-accent-foreground: #ffffff;
 	--sidebar-border: #1b2b3f;
 	--sidebar-ring: #0197f6;
+	/* What every kit shadow is mixed from. A built site sets it per polarity (theme.ts):
+	   black on dark themes, a soft slate on light ones. */
+	--shadow-ink: rgb(0 0 0);
 }
 
 .dark {
@@ -177,18 +180,23 @@
 	filter: none;
 }
 
+/* In-page links land clear of a built site's sticky header (--header-h comes with the
+   header variant); with no header height set, the offset is the 2rem it always was. */
 * {
 	scroll-behavior: smooth;
-	scroll-margin-top: 2rem;
+	scroll-margin-top: calc(var(--header-h, 0.5rem) + 1.5rem);
 }
 
 /* Match the native scrollbar to the ScrollArea thumb. Radix cannot reach inside
    the builder's preview iframe, so this has to be plain CSS. Layered as base so
-   opt-out utilities like scrollbar-none still win the cascade. */
+   opt-out utilities like scrollbar-none still win the cascade. The thumb is mixed
+   from --color-white, which a built site points at its heading colour, so it stays
+   visible on a light theme; everywhere else it is white, as it always was. */
 @layer base {
 	* {
 		scrollbar-width: thin;
-		scrollbar-color: color-mix(in srgb, white 16%, transparent) transparent;
+		scrollbar-color: color-mix(in srgb, var(--color-white, white) 16%, transparent)
+			transparent;
 	}
 
 	*::-webkit-scrollbar {
@@ -202,11 +210,11 @@
 
 	*::-webkit-scrollbar-thumb {
 		border-radius: 9999px;
-		background: color-mix(in srgb, white 16%, transparent);
+		background: color-mix(in srgb, var(--color-white, white) 16%, transparent);
 	}
 
 	*::-webkit-scrollbar-thumb:hover {
-		background: color-mix(in srgb, white 28%, transparent);
+		background: color-mix(in srgb, var(--color-white, white) 28%, transparent);
 	}
 
 	*::-webkit-scrollbar-corner {

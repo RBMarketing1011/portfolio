@@ -1,0 +1,218 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Roof Repair in Austin | Summit Roofing Co.",
+			"description": "Leaks, lifted shingles and failed flashing fixed by an Austin crew working since 2004. Book a repair visit."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Roof repair"
+			},
+			{
+				"id": "s1.title",
+				"value": "Leaks [[fixed]] before they spread"
+			},
+			{
+				"id": "s1.description",
+				"value": "Lifted shingles, failed flashing and leaks found and repaired by the crew Austin homeowners have called since 2004."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a repair visit"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See all services"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "What we repair"
+			},
+			{
+				"id": "s2.title",
+				"value": "The [[usual suspects]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "The problems we fix most on Austin roofs."
+			},
+			{
+				"id": "s2.tiles.0.title",
+				"value": "Leaks"
+			},
+			{
+				"id": "s2.tiles.0.blurb",
+				"value": "We trace the water to its source and fix the cause, not just the stain."
+			},
+			{
+				"id": "s2.tiles.0.icon",
+				"value": "Droplets"
+			},
+			{
+				"id": "s2.tiles.1.title",
+				"value": "Lifted shingles"
+			},
+			{
+				"id": "s2.tiles.1.blurb",
+				"value": "Loose and missing shingles replaced to match the roof."
+			},
+			{
+				"id": "s2.tiles.1.icon",
+				"value": "House"
+			},
+			{
+				"id": "s2.tiles.2.title",
+				"value": "Flashing"
+			},
+			{
+				"id": "s2.tiles.2.blurb",
+				"value": "Failed flashing around chimneys and vents resealed."
+			},
+			{
+				"id": "s2.tiles.2.icon",
+				"value": "Wrench"
+			},
+			{
+				"id": "s2.tiles.3.title",
+				"value": "Storm wear"
+			},
+			{
+				"id": "s2.tiles.3.blurb",
+				"value": "Small storm damage patched before the next rain."
+			},
+			{
+				"id": "s2.tiles.3.icon",
+				"value": "CloudRain"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "A repair visit"
+			},
+			{
+				"id": "s3.title",
+				"value": "From leak to [[dry]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "Three steps, explained as we go."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Find the cause"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "We inspect the roof and find where the water gets in."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "Agree the fix"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "You get a written estimate before any work starts."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "Make it sound"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "The crew repairs the damage and checks the area around it."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s4.title",
+				"value": "When the roof [[leaks]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "What to do and what to expect."
+			},
+			{
+				"id": "s4.faqs.0.question",
+				"value": "What should I do when I find a leak?"
+			},
+			{
+				"id": "s4.faqs.0.answer",
+				"value": "Move valuables away from the drip, put down a bucket and call us. We will book an inspection to find the cause."
+			},
+			{
+				"id": "s4.faqs.1.question",
+				"value": "Can a leak be fixed without a new roof?"
+			},
+			{
+				"id": "s4.faqs.1.answer",
+				"value": "Usually. Most leaks come from one failed spot, and a repair solves it when the rest of the roof is sound."
+			},
+			{
+				"id": "s4.faqs.2.question",
+				"value": "Will the repair match my roof?"
+			},
+			{
+				"id": "s4.faqs.2.answer",
+				"value": "We match the shingles as closely as we can and show you the options before we start."
+			},
+			{
+				"id": "s4.faqs.3.question",
+				"value": "Do you repair storm damage?"
+			},
+			{
+				"id": "s4.faqs.3.answer",
+				"value": "Yes. Small storm damage is a repair, and for bigger damage we help you with the insurance claim."
+			},
+			{
+				"id": "s4.faqs.4.question",
+				"value": "How do I book a repair?"
+			},
+			{
+				"id": "s4.faqs.4.answer",
+				"value": "Call (512) 555-0142 or book on the contact page and we will arrange the inspection."
+			},
+			{
+				"id": "s5.paths.0.eyebrow",
+				"value": "A leak now"
+			},
+			{
+				"id": "s5.paths.0.title",
+				"value": "Water is coming in"
+			},
+			{
+				"id": "s5.paths.0.body",
+				"value": "Book the first available inspection and we will find the cause and fix it."
+			},
+			{
+				"id": "s5.paths.0.cta",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s5.paths.1.eyebrow",
+				"value": "Planning ahead"
+			},
+			{
+				"id": "s5.paths.1.title",
+				"value": "Worn but holding"
+			},
+			{
+				"id": "s5.paths.1.body",
+				"value": "Call us to talk through repairs before small problems grow."
+			},
+			{
+				"id": "s5.paths.1.cta",
+				"value": "Call the crew"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

@@ -1,0 +1,39 @@
+{
+	"about": "Layouts the kit does not offer to the AI: a made-up type, the never-types (forms, logos, pricing tables), an excluded variant, and unknown variants of known types (which read as the type's first layout).",
+	"request": {
+		"prompt": "Accounting firm in Denver for small businesses: bookkeeping, payroll and tax returns.",
+		"business": { "name": "Ledger & Co", "type": "AccountingService", "phone": "", "email": "hello@ledgerco.example", "city": "Denver", "region": "CO", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Ledger & Co", "language": "en", "businessType": "AccountingService", "tagline": "Books that close on time.",
+			"description": "Bookkeeping, payroll and tax returns for Denver small businesses.", "audience": "Denver small business owners",
+			"offer": "Bookkeeping, payroll and tax returns.", "voice": "Precise, calm, plain.", "personality": "refined",
+			"services": ["Bookkeeping", "Payroll", "Tax returns"], "areas": ["Denver"],
+			"primaryAction": { "label": "Email us", "target": "email" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L1", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "caslon-franklin", "shape": "soft", "buttons": "solid", "width": "6xl", "backdrop": "clean", "footerTone": "match" },
+		"pages": [
+			{
+				"name": "Home", "slug": "/", "archetype": "home", "purpose": "Win the first call.", "keyword": "accountant Denver", "inMenu": true,
+				"opener": "page-hero:centered", "closer": "cta-band:split", "photos": [],
+				"sections": [
+					{ "layout": "hero-banner:big", "job": "A big banner.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "page-hero:centered", "job": "Promise books that close on time.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "logo-strip:bare", "job": "Show client logos.", "items": 6, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "pricing-tiers:cards", "job": "Three plans.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "bento-grid:sparkly", "job": "Show the three services and why they matter.", "items": 6, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "announcement-bar:floating", "job": "Announce tax season.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "contact-split:split", "job": "A contact form.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "process-steps:columns", "job": "How onboarding works.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "faq-accordion:split", "job": "Answer common questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "cta-band:split", "job": "Ask for the first email.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+				]
+			}
+		],
+		"chrome": { "header": "stacked", "footer": "columns", "cta": { "label": "Email us", "target": "email" }, "menu": [] }
+	}
+}

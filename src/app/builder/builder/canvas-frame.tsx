@@ -4,12 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
 	ExternalLink,
 	Laptop,
+	Loader2,
 	Monitor,
 	Redo2,
 	Smartphone,
+	Sparkles,
 	Tablet,
 	Undo2,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
 	Tooltip,
 	TooltipContent,
@@ -17,23 +21,18 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import {
-	defaultBackground,
-	writeBackground,
-	type BackgroundSettings,
-} from '@/app/builder/background-settings'
+import { writeBackground } from '@/app/builder/background-settings'
 import { SettingsDialog } from '@/app/builder/settings-dialog'
 import { SaveButton } from '@/app/builder/save-button'
-import { backgroundCss } from '@/app/section-preview/theme'
+import { lookCss } from '@/app/section-preview/theme'
 import { useBuilder } from '@/lib/builder/builder-context'
-import {
-	defaultSettings,
-	writeSettings,
-	type ThemeSettings,
-} from '@/app/builder/theme-settings'
+import { builtSiteVars, cssText } from '@/lib/builder/look'
+import { writeSettings, type ThemeSettings } from '@/app/builder/theme-settings'
 import type { NavPage } from '@/components/built-chrome'
 import type { Chrome } from '@/lib/builder/page-schema'
 import type { Block } from '@/lib/builder/types'
+import { useAiBuild } from './ai-build-host'
+import { writtenCount } from './ai-build-runner'
 import { useBuilderAi } from './builder-ai'
 import { SectionAiDialog } from './section-ai-dialog'
 
@@ -76,11 +75,64 @@ const HANDLE_WIDTH = 12
 const clampWidth = (value: number, max = MAX_WIDTH) =>
 	Math.min(Math.max(Math.round(value), MIN_WIDTH), max)
 
+/**
+ * "Build with AI" in the toolbar. While a build runs it is the chip that reopens it
+ * ("Building · 3 of 8"); a build that finished while minimized waits here for Apply; an
+ * unfinished one from an earlier visit offers Resume; after a landing it counts the
+ * placeholders left to fill in.
+ */
+function BuildWithAiButton({ hasPages }: { hasPages: boolean }) {
+	const ai = useAiBuild()
+	if (!ai.enabled) return null
+	const state = ai.state
+	const pages = 'pages' in state ? state.pages : []
+	const progress = `${writtenCount(pages)} of ${pages.length}`
+
+	if (state.phase === 'planning' || state.phase === 'running' || state.phase === 'landing')
+		return (
+			<Button variant='outline' size='sm' className='h-8 text-xs' onClick={() => ai.open()}>
+				<Loader2 className='animate-spin' />
+				{state.phase === 'planning' ? 'Building · planning' : `Building · ${progress}`}
+			</Button>
+		)
+	if (state.phase === 'ready' && pages.every((page) => page.status === 'written'))
+		return (
+			<Button size='sm' className='h-8 text-xs' onClick={() => void ai.apply()}>
+				<Sparkles /> Site ready · Apply
+			</Button>
+		)
+	if (state.phase === 'ready' || state.phase === 'stopped')
+		return (
+			<Button variant='outline' size='sm' className='h-8 text-xs' onClick={() => ai.open()}>
+				<Sparkles /> Building · {progress}
+			</Button>
+		)
+	if (ai.resumable && state.phase !== 'landed')
+		return (
+			<Button variant='outline' size='sm' className='h-8 text-xs' onClick={ai.resume}>
+				<Sparkles /> Unfinished build · Resume
+			</Button>
+		)
+	const count = ai.needsInputCount
+	return (
+		<Button
+			variant='ghost'
+			size='sm'
+			className='h-8 text-xs text-brand hover:text-brand'
+			onClick={() => (count > 0 ? ai.open() : ai.open({ mode: hasPages ? 'page' : 'site' }))}>
+			<Sparkles /> Build with AI
+			{count > 0 && <Badge variant='secondary'>{count} to fill in</Badge>}
+		</Button>
+	)
+}
+
 export function CanvasFrame({
 	blocks,
+	pageId,
 	selectedId,
 	viewHref,
 	nav,
+	footerPages,
 	chrome,
 	currentSlug,
 	signedIn,
@@ -89,9 +141,13 @@ export function CanvasFrame({
 	onRedo,
 }: {
 	blocks: Block[]
+	/** The page on the canvas, which "Build this page with AI" rebuilds. */
+	pageId: string
 	selectedId: string | null
 	viewHref: string
 	nav: NavPage[]
+	/** Every page, which the footer lists as the live site's does. */
+	footerPages: NavPage[]
 	chrome: Chrome
 	currentSlug: string
 	signedIn: boolean
@@ -102,6 +158,7 @@ export function CanvasFrame({
 	const stageRef = useRef<HTMLDivElement>(null)
 	const frameRef = useRef<HTMLIFrameElement>(null)
 	const store = useBuilder()
+	const ai = useAiBuild()
 	const [stage, setStage] = useState({ width: 0, height: 0 })
 	const [width, setWidth] = useState<number | null>(null)
 	const [draftWidth, setDraftWidth] = useState<string | null>(null)
@@ -111,6 +168,9 @@ export function CanvasFrame({
 	const [frameReady, setFrameReady] = useState(false)
 	const aiEnabled = useBuilderAi(store.siteId, store.remote)
 	const [aiBlockId, setAiBlockId] = useState<string | null>(null)
+	// Section links resolve under the preview, so a button never sends the canvas to an
+	// app route (clicks are caught in the canvas anyway; this is what hovering shows).
+	const linkBase = `/preview/${store.siteId}`
 	const [drag, setDrag] = useState<{
 		side: 'left' | 'right'
 		startX: number
@@ -131,13 +191,12 @@ export function CanvasFrame({
 		return () => observer.disconnect()
 	}, [])
 
-	// The chrome and per-block surfaces cannot ride the URL without key collisions.
+	// The theme and page backdrop ride the URL; the chrome and block surfaces cannot
+	// without key collisions, so the whole look comes by message, through the same
+	// stylesheet the hosted site uses, with the variables a built site sets for its header.
 	const surfaceCss = [
-		backgroundCss(store.look.header, 'header', false),
-		backgroundCss(store.look.footer, 'footer', false),
-		...Object.entries(store.look.blocks).map(([id, surface]) =>
-			backgroundCss(surface, 'page', false, `[data-block-id='${id}'] > *`),
-		),
+		cssText(builtSiteVars(chrome.header)),
+		lookCss(store.look, { blockIds: blocks.map((block) => block.id) }),
 	].join('\n')
 
 	const post = useCallback(() => {
@@ -147,11 +206,14 @@ export function CanvasFrame({
 				blocks,
 				selectedId,
 				nav,
+				footerPages,
 				chrome,
 				currentSlug,
 				surfaceCss,
+				linkBase,
 				brand: store.brand ?? null,
 				ai: aiEnabled,
+				aiBuild: ai.enabled,
 				// The iframe is its own document, so a signed-in library cannot be read
 				// from localStorage there.
 				mediaIndex: store.remote
@@ -164,15 +226,19 @@ export function CanvasFrame({
 		blocks,
 		selectedId,
 		nav,
+		footerPages,
 		chrome,
 		currentSlug,
 		surfaceCss,
+		linkBase,
 		store.remote,
 		store.media,
 		store.brand,
 		aiEnabled,
+		ai.enabled,
 	])
 
+	const openPageAi = ai.open
 	useEffect(() => {
 		function onMessage(event: MessageEvent) {
 			if (event.origin !== window.location.origin) return
@@ -184,14 +250,32 @@ export function CanvasFrame({
 				store.removeSection(event.data.id)
 			if (event.data?.kind === 'builder:ai' && event.data.id)
 				setAiBlockId(event.data.id)
+			// "Build this page with AI" on the empty canvas.
+			if (event.data?.kind === 'builder:ai-page')
+				openPageAi({ mode: 'page', placement: 'replace-page', targetPageId: pageId })
 		}
 		window.addEventListener('message', onMessage)
 		return () => window.removeEventListener('message', onMessage)
-	}, [onSelect, store])
+	}, [onSelect, store, openPageAi, pageId])
 
 	useEffect(() => {
 		if (frameReady) post()
 	}, [frameReady, post])
+
+	// A block asked for from elsewhere ("Show me") scrolls into view once this page shows it.
+	const { scrollTarget, clearScrollTarget } = store
+	useEffect(() => {
+		if (!frameReady || !scrollTarget) return
+		if (!blocks.some((block) => block.id === scrollTarget)) return
+		const target = scrollTarget
+		clearScrollTarget()
+		requestAnimationFrame(() =>
+			frameRef.current?.contentWindow?.postMessage(
+				{ kind: 'builder:scroll-to', id: target },
+				window.location.origin,
+			),
+		)
+	}, [frameReady, scrollTarget, clearScrollTarget, blocks])
 
 	const query = (() => {
 		const params = writeBackground(
@@ -360,6 +444,7 @@ export function CanvasFrame({
 					</div>
 
 					<div className='ml-2 flex shrink-0 items-center gap-1 border-l border-white/10 pl-2'>
+						<BuildWithAiButton hasPages={store.pages.length > 0} />
 						<SettingsDialog settings={settings} onChange={setSettings} />
 						<Tooltip>
 							<TooltipTrigger asChild>

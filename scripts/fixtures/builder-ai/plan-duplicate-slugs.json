@@ -1,0 +1,36 @@
+{
+	"about": "Two pages share a slug and two share a name; a slug is written with a leading slash and another is a phrase. Every slug comes out flat, lowercase and unique.",
+	"request": {
+		"prompt": "Plumbing company in Phoenix: drain cleaning, water heaters and leak repair.",
+		"business": { "name": "Desert Flow Plumbing", "type": "Plumber", "phone": "602-555-0133", "email": "", "city": "Phoenix", "region": "AZ", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Desert Flow Plumbing", "language": "en-US", "businessType": "Plumber", "tagline": "Plumbing fixed the first time.",
+			"description": "Drain cleaning, water heaters and leak repair in Phoenix.", "audience": "Phoenix homeowners",
+			"offer": "Drain cleaning, water heaters and leak repair.", "voice": "Direct and friendly.", "personality": "friendly",
+			"services": ["Drain cleaning", "Water heaters", "Leak repair"], "areas": ["Phoenix"],
+			"primaryAction": { "label": "Call now", "target": "tel" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L8", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "jakarta", "shape": "round", "buttons": "solid", "width": "6xl", "backdrop": "paper", "footerTone": "match" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "Get the call.", "keyword": "plumber Phoenix", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Promise plumbing fixed the first time.", "items": 0, "child": "none", "surface": "wash", "tweaks": [], "images": [] },
+				{ "layout": "grid:beside", "job": "The three services.", "items": 4, "child": "feature-card:inline", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "How a visit goes.", "items": 3, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "Guesswork versus a clear quote.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Call now.", "items": 0, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Drain Cleaning", "slug": "services", "archetype": "service", "purpose": "Clear a drain.", "keyword": "drain cleaning Phoenix", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [] },
+			{ "name": "Water Heaters", "slug": "services", "archetype": "service", "purpose": "Repair or replace a water heater.", "keyword": "water heater repair Phoenix", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [] },
+			{ "name": "Leak Repair", "slug": "/leak-repair", "archetype": "service", "purpose": "Fix a leak.", "keyword": "leak repair Phoenix", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:card", "photos": [], "sections": [] },
+			{ "name": "Leak Repair", "slug": "Leak Repair & Detection!", "archetype": "service", "purpose": "Find hidden leaks.", "keyword": "leak detection Phoenix", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [] },
+			{ "name": "Contact", "slug": "contact", "archetype": "contact", "purpose": "Reach the plumber.", "keyword": "plumber near me Phoenix", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [] }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "cta": { "label": "Call now", "target": "tel" }, "menu": [] }
+	}
+}

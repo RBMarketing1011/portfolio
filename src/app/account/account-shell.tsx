@@ -15,12 +15,12 @@ import {
 } from '@/components/ui/sidebar'
 import { NavUser } from '@/components/nav-user'
 import { AccountBrand } from '@/components/account-brand'
-import Link from 'next/link'
 import { ShieldCheck } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { AccountNav, type NavItem } from './account-nav'
+import { LeaveAccountButton } from './leave-account-button'
 
 /**
  * The media library is a working surface (a rail, a grid, a detail sheet), not a page of
@@ -102,9 +102,7 @@ export function AccountShell({
 							<span>
 								Viewing <strong>{accountName}</strong> as an administrator.
 							</span>
-							<Button asChild size='sm' variant='outline'>
-								<Link href='/admin/accounts'>Back to admin</Link>
-							</Button>
+							<LeaveAccountButton />
 						</AlertDescription>
 					</Alert>
 				)}

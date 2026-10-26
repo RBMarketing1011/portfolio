@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["seo", "slots"],
+  "properties": {
+    "seo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "description"],
+      "properties": { "title": { "type": "string" }, "description": { "type": "string" } }
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "value"],
+        "properties": { "id": { "type": "string" }, "value": { "type": "string" } }
+      }
+    }
+  }
+}

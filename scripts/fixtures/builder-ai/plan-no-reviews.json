@@ -1,0 +1,46 @@
+{
+	"about": "Testimonial layouts planned although the owner gave no reviews: every one must go, and the plan says why (section 7.9).",
+	"request": {
+		"prompt": "Mobile dog grooming van serving Raleigh. Baths, haircuts and nail trims at your door.",
+		"business": { "name": "Suds on Wheels", "type": "PetStore", "phone": "919-555-0187", "email": "", "city": "Raleigh", "region": "NC", "areas": ["Raleigh", "Cary", "Durham", "Apex"] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Suds on Wheels", "language": "en-US", "businessType": "PetStore", "tagline": "Grooming that comes to you.",
+			"description": "Mobile dog grooming in Raleigh: baths, haircuts and nail trims at your door.", "audience": "Busy Raleigh dog owners",
+			"offer": "Baths, haircuts and nail trims at your door.", "voice": "Cheerful and practical.", "personality": "playful",
+			"services": ["Baths", "Haircuts", "Nail trims"], "areas": ["Raleigh", "Cary", "Durham", "Apex"],
+			"primaryAction": { "label": "Call to book", "target": "tel" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "D10", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "outfit-figtree", "shape": "round", "buttons": "gradient", "width": "6xl", "backdrop": "paper", "footerTone": "match" },
+		"pages": [
+			{
+				"name": "Home", "slug": "/", "archetype": "home", "purpose": "Book a grooming visit.", "keyword": "mobile dog grooming Raleigh", "inMenu": true,
+				"opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [],
+				"sections": [
+					{ "layout": "page-hero:centered", "job": "Promise a groomed dog without leaving home.", "items": 0, "child": "none", "surface": "inverse-glow", "tweaks": [], "images": [] },
+					{ "layout": "chips:solid", "job": "List the areas served.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "bento-grid:accent", "job": "Show the three services.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "carousel:bars", "job": "Owners on their dogs' visits.", "items": 4, "child": "testimonial-card:card", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "process-steps:timeline", "job": "How a van visit goes.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+					{ "layout": "masonry:centered", "job": "More happy owners.", "items": 6, "child": "testimonial-card:card", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "faq-accordion:split", "job": "Answer booking questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "cta-band:centered", "job": "Call to book.", "items": 0, "child": "none", "surface": "brand", "tweaks": [], "images": [] }
+				]
+			},
+			{
+				"name": "Reviews", "slug": "reviews", "archetype": "reviews", "purpose": "Show what owners say.", "keyword": "dog grooming reviews Raleigh", "inMenu": true,
+				"opener": "page-hero:centered", "closer": "cta-band:split", "photos": [],
+				"sections": [
+					{ "layout": "page-hero:compact", "job": "Introduce the reviews.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "grid:centered", "job": "Every review.", "items": 6, "child": "testimonial-card:card", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "cta-band:split", "job": "Book a visit.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+				]
+			}
+		],
+		"chrome": { "header": "floating", "footer": "centered", "cta": { "label": "Call to book", "target": "tel" }, "menu": [] }
+	}
+}

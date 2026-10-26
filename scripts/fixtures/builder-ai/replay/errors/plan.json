@@ -1,0 +1,8 @@
+{
+	"about": "The roofer with failures: the plan call with photos is rejected (400, an image the API cannot open), so the route retries without images (plan-noimages.json); the outline fails (500) so Contact is laid out from its recipe; Roof Replacement (p3) is overloaded (529) and Roof Repair (p4) is rate-limited (429, retry-after 2 s). A replay fixture answers the same way every time, so both fail on every attempt; the other pages answer as in the default set.",
+	"error": {
+		"status": 400,
+		"type": "invalid_request_error",
+		"message": "Could not process image (replayed)"
+	}
+}

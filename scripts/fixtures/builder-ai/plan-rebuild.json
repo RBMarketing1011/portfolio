@@ -1,0 +1,51 @@
+{
+	"about": "Replace my site on a project that already has pages (section 11.3): the planner was told today's pages with replacing: true, and a planned page may reuse an existing slug, which keeps inbound links working.",
+	"request": {
+		"mode": "site",
+		"placement": "replace-site",
+		"prompt": "Rebuild our site: an electrician in Denver doing panel upgrades, EV chargers and lighting.",
+		"business": { "name": "Mile High Electric", "type": "Electrician", "phone": "303-555-0177", "email": "", "city": "Denver", "region": "CO", "areas": [] }
+	},
+	"existing": {
+		"pages": [
+			{ "id": "pg_home000001", "name": "Home", "slug": "/", "archetype": "home" },
+			{ "id": "pg_serv000001", "name": "Services", "slug": "services", "archetype": "services" },
+			{ "id": "pg_cont000001", "name": "Contact", "slug": "contact", "archetype": "contact" }
+		]
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Mile High Electric", "language": "en-US", "businessType": "Electrician", "tagline": "Wiring done properly.",
+			"description": "Panel upgrades, EV chargers and lighting in Denver.", "audience": "Denver homeowners",
+			"offer": "Panel upgrades, EV chargers and lighting.", "voice": "Straightforward.", "personality": "friendly",
+			"services": ["Panel upgrades", "EV chargers", "Lighting"], "areas": ["Denver"],
+			"primaryAction": { "label": "Call an electrician", "target": "tel" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L11", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "figtree", "shape": "round", "buttons": "solid", "width": "6xl", "backdrop": "paper", "footerTone": "match" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "Get the call.", "keyword": "electrician Denver", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Promise wiring done properly.", "items": 0, "child": "none", "surface": "wash", "tweaks": [], "images": [] },
+				{ "layout": "grid:beside", "job": "The three services.", "items": 4, "child": "feature-card:inline", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "How a job goes.", "items": 3, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "Handyman wiring versus a licensed-feeling job.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Call.", "items": 0, "child": "none", "surface": "brand", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Services", "slug": "services", "archetype": "services", "purpose": "Every service.", "keyword": "electrical services Denver", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Introduce the services.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "Panels, chargers, lighting.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "From call to finished job.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:boxed", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Call.", "items": 0, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Contact", "slug": "contact", "archetype": "contact", "purpose": "Reach the electrician.", "keyword": "electrician Denver contact", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [
+				{ "layout": "page-hero:compact", "job": "Invite the call.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "What happens after you call.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "cta": { "label": "Call now", "target": "tel" }, "menu": [] }
+	}
+}

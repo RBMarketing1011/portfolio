@@ -1,0 +1,238 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Pediatric Dentist in Tampa",
+			"description": "Gentle cleanings, sealants and emergency visits for Tampa kids. We take most insurance plans. Book a first visit."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Pediatric dentistry"
+			},
+			{
+				"id": "s1.title",
+				"value": "Dental visits your kids can [[enjoy]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "A bright, friendly clinic in Tampa for cleanings, sealants and emergency visits, with most insurance plans accepted."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See treatments"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "What we offer"
+			},
+			{
+				"id": "s2.title",
+				"value": "Care for every [[smile]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "The treatments families come to us for."
+			},
+			{
+				"id": "s2.tiles.0.title",
+				"value": "Cleanings"
+			},
+			{
+				"id": "s2.tiles.0.blurb",
+				"value": "Gentle cleanings that keep check-ups easy."
+			},
+			{
+				"id": "s2.tiles.0.icon",
+				"value": "Sparkles"
+			},
+			{
+				"id": "s2.tiles.1.title",
+				"value": "Sealants"
+			},
+			{
+				"id": "s2.tiles.1.blurb",
+				"value": "A thin coating that protects back teeth."
+			},
+			{
+				"id": "s2.tiles.1.icon",
+				"value": "Shield"
+			},
+			{
+				"id": "s2.tiles.2.title",
+				"value": "Emergency visits"
+			},
+			{
+				"id": "s2.tiles.2.blurb",
+				"value": "Help when a tooth is chipped or knocked out."
+			},
+			{
+				"id": "s2.tiles.2.icon",
+				"value": "Siren"
+			},
+			{
+				"id": "s2.tiles.3.title",
+				"value": "Whitening"
+			},
+			{
+				"id": "s2.tiles.3.blurb",
+				"value": "Whitening options for teens, explained plainly."
+			},
+			{
+				"id": "s2.tiles.3.icon",
+				"value": "Smile"
+			},
+			{
+				"id": "s2.tiles.4.title",
+				"value": "Clear aligners"
+			},
+			{
+				"id": "s2.tiles.4.blurb",
+				"value": "Aligner treatment planned for teenagers."
+			},
+			{
+				"id": "s2.tiles.4.icon",
+				"value": "Gem"
+			},
+			{
+				"id": "s2.tiles.5.title",
+				"value": "Implant advice"
+			},
+			{
+				"id": "s2.tiles.5.blurb",
+				"value": "Consultations for older teens who need them."
+			},
+			{
+				"id": "s2.tiles.5.icon",
+				"value": "Stethoscope"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "A first visit"
+			},
+			{
+				"id": "s3.title",
+				"value": "How the first visit [[goes]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "What to expect when you bring your child in."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Say hello"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "Your child meets the team and sees the room before anything starts."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "A gentle look"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "We check teeth and gums and explain what we see as we go."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "A clean smile"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "A gentle cleaning, with breaks whenever your child needs one."
+			},
+			{
+				"id": "s3.steps.3.title",
+				"value": "A plan together"
+			},
+			{
+				"id": "s3.steps.3.summary",
+				"value": "You leave with clear next steps and any questions answered."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Treatments"
+			},
+			{
+				"id": "s5.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s5.title",
+				"value": "Before your [[visit]]"
+			},
+			{
+				"id": "s5.description",
+				"value": "What parents ask most."
+			},
+			{
+				"id": "s5.faqs.0.question",
+				"value": "Do you take my insurance?"
+			},
+			{
+				"id": "s5.faqs.0.answer",
+				"value": "We take most insurance plans. Bring your card to the first visit and we will check your cover."
+			},
+			{
+				"id": "s5.faqs.1.question",
+				"value": "How do I prepare my child?"
+			},
+			{
+				"id": "s5.faqs.1.answer",
+				"value": "Keep it simple and positive. Tell them a friendly team will count and clean their teeth."
+			},
+			{
+				"id": "s5.faqs.2.question",
+				"value": "What if my child is nervous?"
+			},
+			{
+				"id": "s5.faqs.2.answer",
+				"value": "We go at your child's pace, explain each step and stop for breaks whenever they need one."
+			},
+			{
+				"id": "s5.faqs.3.question",
+				"value": "What counts as a dental emergency?"
+			},
+			{
+				"id": "s5.faqs.3.answer",
+				"value": "A knocked-out or broken tooth, a bad toothache or swelling. Get in touch right away."
+			},
+			{
+				"id": "s5.faqs.4.question",
+				"value": "How do I book?"
+			},
+			{
+				"id": "s5.faqs.4.answer",
+				"value": "Use the contact page and we will find a time that suits your family."
+			},
+			{
+				"id": "s6.title",
+				"value": "Book your child's first visit"
+			},
+			{
+				"id": "s6.description",
+				"value": "A calm, friendly visit that makes check-ups easy."
+			},
+			{
+				"id": "s6.actions.0.label",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s6.actions.1.label",
+				"value": "See treatments"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 0,
+		"cache_creation_input_tokens": 3900
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

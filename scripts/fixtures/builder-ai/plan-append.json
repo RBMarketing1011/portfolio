@@ -1,0 +1,63 @@
+{
+	"about": "Adding pages to a site that has Home, Services and Contact (section 9.6): a planned page that collides with an existing slug gets a free one (never '-2' when a better one exists), a planned home page is not a second home, and the menu covers old and new pages because Update the header menu is on.",
+	"request": {
+		"mode": "site",
+		"placement": "append",
+		"prompt": "Add pages for our gutter installation and roof inspection services, and a page about our team.",
+		"pins": { "pages": { "kind": "ai" }, "palette": { "kind": "ai", "polarity": "any" }, "fonts": { "kind": "ai" }, "shape": "ai", "header": "ai", "footer": "ai", "menu": "ai", "ctaLabel": "", "keepDesign": true, "updateMenu": true },
+		"business": { "name": "Summit Roofing Co.", "type": "RoofingContractor", "phone": "(512) 555-0142", "email": "", "city": "Austin", "region": "TX", "areas": ["Austin"] }
+	},
+	"existing": {
+		"pages": [
+			{ "id": "pg_home000001", "name": "Home", "slug": "/", "archetype": "home" },
+			{ "id": "pg_serv000001", "name": "Services", "slug": "services", "archetype": "services" },
+			{ "id": "pg_cont000001", "name": "Contact", "slug": "contact", "archetype": "contact" }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "ctaLabel": "Free inspection", "ctaHref": "contact", "menu": [], "footerDetails": false }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Summit Roofing Co.", "language": "en-US", "businessType": "RoofingContractor", "tagline": "Austin roofs, done right.",
+			"description": "Gutters, inspections and the team behind Summit Roofing.", "audience": "Austin homeowners",
+			"offer": "Gutter installation and roof inspections.", "voice": "Plain-spoken.", "personality": "rugged",
+			"services": ["Gutter installation", "Roof inspections"], "areas": ["Austin"],
+			"primaryAction": { "label": "Free inspection", "target": "page:contact" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L5", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "oswald-barlow", "shape": "sharp", "buttons": "solid", "width": "6xl", "backdrop": "blueprint", "footerTone": "match" },
+		"pages": [
+			{ "name": "Gutters", "slug": "services", "archetype": "service", "purpose": "Install new gutters.", "keyword": "gutter installation Austin", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Promise gutters that carry the water away.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:numbered", "job": "What an install includes.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "Install day in three steps.", "items": 3, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "check-list:columns", "job": "What comes with every install.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:boxed", "job": "Gutter questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:split", "job": "Book an install.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Roof Inspections", "slug": "roof-inspections", "archetype": "service", "purpose": "Book an inspection.", "keyword": "roof inspection Austin", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Promise a clear report on your roof.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "What the inspection covers.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "How an inspection visit goes.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:rows", "job": "Guessing versus knowing.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:stacked", "job": "Inspection questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "split-cta:cards", "job": "Book or call.", "items": 2, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "A second home.", "keyword": "roofing Austin", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [] },
+			{ "name": "About", "slug": "about", "archetype": "about", "purpose": "Meet the team.", "keyword": "roofing team Austin", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [] }
+		],
+		"chrome": {
+			"header": "bar", "footer": "columns", "cta": { "label": "Free inspection", "target": "page:contact" },
+			"menu": [
+				{ "label": "Services", "kind": "group", "target": "", "style": "dropdown", "links": [
+					{ "label": "All services", "target": "page:services", "description": "", "icon": "" },
+					{ "label": "Gutters", "target": "page:gutters", "description": "Gutters that carry water away", "icon": "" },
+					{ "label": "Roof Inspections", "target": "page:roof-inspections", "description": "A clear report on your roof", "icon": "" }
+				], "promo": { "show": false, "eyebrow": "", "title": "", "body": "", "ctaLabel": "", "target": "", "image": "" } },
+				{ "label": "About", "kind": "page", "target": "page:about", "style": "mega", "links": [], "promo": { "show": false, "eyebrow": "", "title": "", "body": "", "ctaLabel": "", "target": "", "image": "" } },
+				{ "label": "Contact", "kind": "page", "target": "page:contact", "style": "mega", "links": [], "promo": { "show": false, "eyebrow": "", "title": "", "body": "", "ctaLabel": "", "target": "", "image": "" } }
+			]
+		}
+	}
+}

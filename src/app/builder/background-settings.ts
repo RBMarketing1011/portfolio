@@ -55,12 +55,25 @@ export type GlowSettings = {
 	size: GlowSize
 }
 
+/**
+ * Which colours a surface's content is drawn in: the site's own, the palette flipped
+ * (a dark band on a light site, a light band on a dark site), or the accent as the fill.
+ */
+export const SURFACE_SCHEMES = ['base', 'inverse', 'brand'] as const
+
+export type SurfaceScheme = (typeof SURFACE_SCHEMES)[number]
+
+export const isSurfaceScheme = (value: unknown): value is SurfaceScheme =>
+	SURFACE_SCHEMES.some((item) => item === value)
+
 export type BackgroundSettings = {
 	page: SurfaceSettings
 	megaMenu: boolean
 	menu: SurfaceSettings
 	panelGlow: GlowSettings
 	featureGlow: GlowSettings
+	/** Honoured on blocks and the footer only; absent means `base`. Not carried in the URL. */
+	scheme?: SurfaceScheme
 }
 
 // The page default reproduces the background the sections used to carry themselves;

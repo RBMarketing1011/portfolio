@@ -4,9 +4,12 @@ import Nodemailer from 'next-auth/providers/nodemailer'
 import { MongoDBAdapter } from '@auth/mongodb-adapter'
 import { verify } from '@node-rs/argon2'
 import { ObjectId } from 'mongodb'
+import { cookies } from 'next/headers'
 import { after } from 'next/server'
 import { z } from 'zod'
+import { isPlatformAdmin } from '@/lib/admin/role'
 import { linkOrigin } from '@/lib/app-url'
+import { ADMIN_VIEW_COOKIE, WORKSPACE_COOKIE } from '@/lib/workspace/cookie'
 import { getMongoClient } from '@/lib/mongo-client'
 import { getDb } from '@/lib/mongo'
 import { mailFrom, smtpOptions } from '@/lib/mail'
@@ -173,4 +176,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 			},
 		}),
 	],
+	events: {
+		// Viewing an account as an admin is a choice made in the admin area each
+		// time, never something a fresh sign-in resumes. Members keep theirs: an
+		// invitation selects the account it is for just before signing them in.
+		async signIn({ user }) {
+			const jar = await cookies()
+			jar.delete(ADMIN_VIEW_COOKIE)
+			if (user.id && (await isPlatformAdmin(user.id))) jar.delete(WORKSPACE_COOKIE)
+		},
+		// The next person on this browser must not inherit either selection.
+		async signOut() {
+			const jar = await cookies()
+			jar.delete(ADMIN_VIEW_COOKIE)
+			jar.delete(WORKSPACE_COOKIE)
+		},
+	},
 })

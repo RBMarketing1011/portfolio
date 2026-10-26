@@ -1,0 +1,134 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Family Roofing Company in Austin | Summit Roofing",
+			"description": "Meet the family-owned crew that has looked after Austin roofs since 2004."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "About us"
+			},
+			{
+				"id": "s1.title",
+				"value": "A [[family crew]] in Austin since 2004"
+			},
+			{
+				"id": "s1.description",
+				"value": "Summit Roofing Co. is a family-owned roofing company that has looked after Austin roofs since 2004."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See our services"
+			},
+			{
+				"id": "s2.body",
+				"value": "<h2>A family business</h2><p>Summit Roofing Co. is family-owned and has worked on Austin roofs since 2004. More than 2,000 roofs have been replaced by the crew in that time.</p><h2>How we work</h2><p>Every job starts with a free inspection. We photograph what we find, explain it plainly and put the estimate in writing before any work begins.</p><ul><li>Repairs and full replacements</li><li>Storm damage and insurance claims</li><li>Free inspections</li></ul>"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "How we work"
+			},
+			{
+				"id": "s3.title",
+				"value": "What you can [[count on]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "The habits behind every job."
+			},
+			{
+				"id": "s3.tiles.0.title",
+				"value": "Plain answers"
+			},
+			{
+				"id": "s3.tiles.0.blurb",
+				"value": "We explain what we find without jargon."
+			},
+			{
+				"id": "s3.tiles.0.icon",
+				"value": "MessageCircle"
+			},
+			{
+				"id": "s3.tiles.1.title",
+				"value": "Written estimates"
+			},
+			{
+				"id": "s3.tiles.1.blurb",
+				"value": "Every price is on paper before work starts."
+			},
+			{
+				"id": "s3.tiles.1.icon",
+				"value": "FileText"
+			},
+			{
+				"id": "s3.tiles.2.title",
+				"value": "Tidy sites"
+			},
+			{
+				"id": "s3.tiles.2.blurb",
+				"value": "We clear the yard before we leave."
+			},
+			{
+				"id": "s3.tiles.2.icon",
+				"value": "Sparkles"
+			},
+			{
+				"id": "s3.tiles.3.title",
+				"value": "Your choice"
+			},
+			{
+				"id": "s3.tiles.3.blurb",
+				"value": "We show you the options and let you decide."
+			},
+			{
+				"id": "s3.tiles.3.icon",
+				"value": "ThumbsUp"
+			},
+			{
+				"id": "s4.paths.0.eyebrow",
+				"value": "Ready now"
+			},
+			{
+				"id": "s4.paths.0.title",
+				"value": "Book a free inspection"
+			},
+			{
+				"id": "s4.paths.0.body",
+				"value": "We look at the whole roof and give you a written estimate."
+			},
+			{
+				"id": "s4.paths.0.cta",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s4.paths.1.eyebrow",
+				"value": "Questions first"
+			},
+			{
+				"id": "s4.paths.1.title",
+				"value": "Talk to the crew"
+			},
+			{
+				"id": "s4.paths.1.body",
+				"value": "Call us and ask anything about your roof before you book."
+			},
+			{
+				"id": "s4.paths.1.cta",
+				"value": "Call the crew"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

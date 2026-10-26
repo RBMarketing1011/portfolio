@@ -2,6 +2,15 @@
 
 Rules for anyone (person or AI agent) changing this codebase.
 
+## Output rules
+
+- When a task is done, reply with one line: what changed, or "Done."
+- No summaries, recaps, or explanations of what you did unless asked.
+- No "Next steps," "Notes," or "What I changed" sections.
+- No questions or offers at the end.
+- If something failed or needs my decision, say that in one line.
+- Answer questions in 1-3 sentences.
+
 ## UI: shadcn everywhere outside the builder and the section kit
 
 The app has one UI system: the shadcn components in `src/components/ui/`.
@@ -66,6 +75,13 @@ elements.
 - Builder templates: `node scripts/prove-builder-templates.cjs`
 - Header menu: `node scripts/prove-builder-menu.cjs`
 - Site SEO: `node scripts/prove-site-seo.cjs`
+- AI builder (offline, no API calls): `node scripts/prove-builder-design.cjs`,
+  `prove-builder-look.cjs`, `prove-builder-catalog.cjs`, `prove-builder-compose.cjs`,
+  `prove-builder-kit.cjs`, `prove-builder-plan.cjs`, `prove-builder-chrome.cjs`,
+  `prove-builder-writer.cjs`, `prove-builder-ai.cjs`, `prove-builder-history.cjs`,
+  `prove-builder-land.cjs` and `node scripts/prove-builder-ui.mjs`
+- AI builder infrastructure: `node scripts/prove-builder-ai-infra.mjs` (local Mongo
+  only, no `--env-file`)
 - Authentication: `pnpm prove:auth` (see below)
 - Blog and its API: `pnpm prove:blog` (same local setup as the auth proofs,
   plus `BLOG_API_KEY`)
@@ -104,4 +120,25 @@ pnpm prove:auth
 Never run `scripts/clean-test-data.mjs` or the proofs against the hosted
 cluster. After deploying, run `node --env-file=.env scripts/ensure-indexes.mjs`
 once against production so the unique and TTL indexes the auth flows rely on
-exist there.
+exist there (it also creates the `aiBuilds` indexes the AI builder uses).
+
+## AI builder
+
+"Build with AI" (top bar, empty site, pages nav "+", page actions) builds one page
+or a whole site from a prompt. The browser runs it in stages, each its own request
+under the 300 s limit: `POST /api/sites/:id/ai/builds` plans (streamed NDJSON),
+`…/outline` lays out any pages the plan left empty, `…/pages/:key` writes one page,
+`…/land` returns the result, which the builder applies as one undo step. Builds live
+in `aiBuilds` for 24 hours. Code: `src/lib/builder/ai/**` (pipeline),
+`src/lib/builder/catalog/**` (what the AI may compose from the section kit),
+`src/lib/builder/design/**` (palettes, fonts, surfaces, contrast).
+
+- The plan is two structured-output calls: the API will not compile the plan and
+  the header/menu as one grammar ("compiled grammar is too large").
+- `BUILDER_AI_MODEL` (default `claude-opus-5-5`), `BUILDER_AI_PLAN_EFFORT`,
+  `BUILDER_AI_WRITE_EFFORT`, `BUILDER_AI_DAILY_LIMIT` (units per account per day,
+  default 100; a site costs 1 + its pages), `BUILDER_AI_DAILY_OUTPUT_TOKENS`.
+- Live runs spend real API usage. Run them against a throwaway local Mongo, as for
+  the auth proofs, and a second dev server with `NEXT_DIST_DIR=.next-e2e` so it does
+  not share `.next` with one already running. That server rewrites `tsconfig.json`
+  (adds `.next-e2e/types`); revert it afterwards.

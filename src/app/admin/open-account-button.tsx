@@ -1,21 +1,20 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Loader2, LogIn } from 'lucide-react'
+import { Eye, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-/** Switches the admin into an account, then lands them where they asked to go. */
+/** The only way an admin gets into an account: views it as its owner sees it,
+ *  until they go back to admin or close the browser. */
 export function OpenAccountButton({
 	workspaceId,
 	to = '/account',
-	label = 'Open',
+	label = 'View account',
 }: {
 	workspaceId: string
 	to?: string
 	label?: string
 }) {
-	const router = useRouter()
 	const [busy, setBusy] = useState(false)
 
 	const open = async () => {
@@ -29,8 +28,9 @@ export function OpenAccountButton({
 			setBusy(false)
 			return
 		}
-		router.push(to)
-		router.refresh()
+		// A full page load, not a client navigation: the router may hold an earlier
+		// "/account sends admins to /admin" answer and would replay it.
+		window.location.assign(to)
 	}
 
 	return (
@@ -39,7 +39,7 @@ export function OpenAccountButton({
 			variant='outline'
 			disabled={busy}
 			onClick={open}>
-			{busy ? <Loader2 className='animate-spin' /> : <LogIn />} {label}
+			{busy ? <Loader2 className='animate-spin' /> : <Eye />} {label}
 		</Button>
 	)
 }

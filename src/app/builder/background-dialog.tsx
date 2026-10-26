@@ -13,6 +13,7 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from '@/components/ui/sheet'
+import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
@@ -227,13 +228,14 @@ export function BackgroundDialog({
 				setOpen(next)
 			}}>
 			<SheetTrigger asChild>
-				<button
+				<Button
 					type='button'
-					title='Section background'
-					className='flex size-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-white'>
+					variant='ghost'
+					size='icon'
+					aria-label='Section background'
+					className='size-8 text-slate-400 hover:bg-white/5 hover:text-white'>
 					<SlidersHorizontal className='size-4' />
-					<span className='sr-only'>Section background</span>
-				</button>
+				</Button>
 			</SheetTrigger>
 
 			<SheetContent
@@ -272,31 +274,24 @@ export function BackgroundDialog({
 
 							<TabsContent value='menu' className='space-y-5'>
 								<div className='flex items-center justify-between gap-4'>
-									<div>
-										<p className='text-sm font-medium text-white'>Mega menu</p>
-										<p className='mt-0.5 text-xs text-slate-500'>
+									<div className='space-y-0.5'>
+										<Label
+											htmlFor='background-dialog-mega-menu'
+											className='text-sm font-medium text-white'>
+											Mega menu
+										</Label>
+										<p className='text-xs text-slate-500'>
 											Off swaps each panel for a plain dropdown list.
 										</p>
 									</div>
-									<button
-										type='button'
-										role='switch'
-										aria-checked={draft.megaMenu}
-										onClick={() =>
-											setDraft({ ...draft, megaMenu: !draft.megaMenu })
+									<Switch
+										id='background-dialog-mega-menu'
+										checked={draft.megaMenu}
+										onCheckedChange={(megaMenu) =>
+											setDraft({ ...draft, megaMenu })
 										}
-										className={cn(
-											'relative h-5 w-9 shrink-0 rounded-full transition-colors',
-											draft.megaMenu ? 'bg-brand' : 'bg-white/15',
-										)}>
-										<span
-											className={cn(
-												'absolute top-0.5 size-4 rounded-full bg-white transition-[left]',
-												draft.megaMenu ? 'left-4.5' : 'left-0.5',
-											)}
-										/>
-										<span className='sr-only'>Toggle mega menu</span>
-									</button>
+										className='data-[state=checked]:bg-brand data-[state=unchecked]:bg-white/15'
+									/>
 								</div>
 
 								<SurfaceFields

@@ -11,16 +11,31 @@ export const ICON_NAMES = Object.keys(canonical).sort()
 
 export type IconName = string
 
-// Resolution stays on the full namespace, not `icons`, so deprecated aliases
+// Resolution also reads the full namespace, not only `icons`, so deprecated aliases
 // already saved in a page (CheckCircle2, BarChart3, ...) keep rendering.
-const iconMap = Icons as unknown as Record<string, LucideIcon>
+const iconMap = Icons as unknown as Record<string, unknown>
+
+// An alias is the very component a canonical name holds. That is what tells it apart from
+// the namespace's other exports (`Icon`, `createLucideIcon`, `icons`), which crash as icons.
+const components = new Set<unknown>(Object.values(canonical))
+
+/** A saved name is a component name; `toString` or `__proto__` never get as far as a lookup. */
+const ICON_NAME = /^[A-Z][A-Za-z0-9]*$/
+
+const isComponent = (value: unknown): value is LucideIcon =>
+	typeof value === 'object' &&
+	value !== null &&
+	'$$typeof' in value &&
+	components.has(value)
 
 export function resolveIcon(name: unknown): LucideIcon | undefined {
-	if (typeof name !== 'string') return undefined
-	const icon = iconMap[name]
-	return typeof icon === 'function' || typeof icon === 'object'
-		? icon
-		: undefined
+	if (typeof name !== 'string' || !ICON_NAME.test(name)) return undefined
+	const icon = Object.hasOwn(canonical, name)
+		? canonical[name]
+		: Object.hasOwn(iconMap, name)
+			? iconMap[name]
+			: undefined
+	return isComponent(icon) ? icon : undefined
 }
 
 /** "CircleCheckBig" -> "Circle Check Big", so a search for "check" matches. */

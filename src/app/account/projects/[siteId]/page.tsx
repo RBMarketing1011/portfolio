@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation'
 import { ObjectId } from 'mongodb'
-import { currentMembership } from '@/lib/workspace/current'
+import {
+	currentMembership,
+	requireAccountMembership,
+} from '@/lib/workspace/current'
 import { appHost, appProtocol } from '@/lib/builder/hosting'
 import type { SiteDoc } from '@/lib/builder/site-doc'
 import { readSiteProfile } from '@/lib/builder/site-profile'
@@ -35,8 +38,8 @@ export default async function ProjectPage({
 	const { siteId } = await params
 	if (!ObjectId.isValid(siteId)) notFound()
 
-	const membership = await currentMembership()
-	if (!membership?.permissions.has('projects.view')) notFound()
+	const membership = await requireAccountMembership()
+	if (!membership.permissions.has('projects.view')) notFound()
 
 	// Scoped to the account, so a valid id from another account is simply not here.
 	const doc = await membership.db.collection<SiteDoc>('sites').findOne({

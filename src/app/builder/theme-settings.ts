@@ -32,13 +32,24 @@ const mixWith = (color: string, lightness: number) => {
 	return `color-mix(in srgb, ${color}, ${amount > 0 ? 'white' : 'black'} ${Math.abs(amount)}%)`
 }
 
-/** The CSS color a tint resolves to inside the preview, tracking the live theme. */
-export const tintVar = (tint: Tint) =>
-	mixWith(paletteVar[tint.token] ?? paletteVar.accent, tint.lightness)
+/** A saved tint is only trusted once its token is one of the four and its lightness a number. */
+export const isTint = (value: unknown): value is Tint =>
+	typeof value === 'object' &&
+	value !== null &&
+	isPaletteToken((value as { token?: unknown }).token as string) &&
+	typeof (value as { lightness?: unknown }).lightness === 'number' &&
+	Number.isFinite((value as { lightness: number }).lightness)
+
+/**
+ * The CSS color a tint resolves to inside the preview, tracking the live theme.
+ * Anything that is not a tint (a saved `null`, junk) paints the accent rather than throwing.
+ */
+export const tintVar = (tint: unknown) =>
+	isTint(tint) ? mixWith(paletteVar[tint.token], tint.lightness) : paletteVar.accent
 
 /** The same tint as a literal color, for swatches in the editors. */
 export const tintHex = (settings: ThemeSettings, tint: Tint) =>
-	mixWith(settings[tint.token] ?? settings.accent, tint.lightness)
+	isTint(tint) ? mixWith(settings[tint.token], tint.lightness) : settings.accent
 
 /** Mirrors Tailwind's max-w scale, so the token is the class it stands in for. */
 export const contentWidths = [
@@ -58,6 +69,21 @@ export const isContentWidth = (value: string | null): value is ContentWidth =>
 export const contentWidthValue = (id: ContentWidth) =>
 	contentWidths.find((item) => item.id === id)?.value ?? '72rem'
 
+/** Corner shape: one --radius token that cards, buttons, inputs and badges all derive from. */
+export const SHAPES = ['sharp', 'soft', 'round'] as const
+
+export type Shape = (typeof SHAPES)[number]
+
+export const isShape = (value: unknown): value is Shape =>
+	SHAPES.some((item) => item === value)
+
+/** --radius per shape; `soft` is the value the site has always had. */
+export const shapeRadius: Record<Shape, string> = {
+	sharp: '0.25rem',
+	soft: '0.625rem',
+	round: '1rem',
+}
+
 export type ThemeSettings = {
 	background: string
 	accent: string
@@ -71,6 +97,7 @@ export type ThemeSettings = {
 	buttonFrom: Tint
 	buttonTo: Tint
 	buttonAngle: number
+	radius: Shape
 }
 
 export const defaultSettings: ThemeSettings = {
@@ -85,6 +112,7 @@ export const defaultSettings: ThemeSettings = {
 	buttonFrom: { token: 'accent', lightness: 0 },
 	buttonTo: { token: 'accent', lightness: 40 },
 	buttonAngle: 90,
+	radius: 'soft',
 }
 
 // Hex travels through the URL without the hash so the query stays readable.
@@ -104,6 +132,10 @@ const tintKeys = {
 	buttonFrom: { token: 'bt1', lightness: 'bt1l' },
 	buttonTo: { token: 'bt2', lightness: 'bt2l' },
 } as const
+
+// One letter per shape; the default (soft) is left out of the URL entirely.
+const radiusKey = 'rd'
+const radiusCodes: Record<Shape, string> = { sharp: 's', soft: 'o', round: 'r' }
 
 export const isPaletteToken = (value: string | null): value is PaletteToken =>
 	paletteTokens.some((item) => item.id === value)
@@ -180,6 +212,10 @@ export function readSettings(params: URLSearchParams): ThemeSettings {
 			next.buttonAngle = ((Math.round(parsed) % 360) + 360) % 360
 	}
 
+	const radius = params.get(radiusKey)
+	const shape = SHAPES.find((item) => radiusCodes[item] === radius)
+	if (shape) next.radius = shape
+
 	return next
 }
 
@@ -218,6 +254,11 @@ export function writeSettings(
 
 	if (settings.buttonAngle === defaultSettings.buttonAngle) next.delete('bta')
 	else next.set('bta', String(settings.buttonAngle))
+
+	// A look saved before shapes existed has no radius, which reads as the default.
+	const radius = isShape(settings.radius) ? settings.radius : defaultSettings.radius
+	if (radius === defaultSettings.radius) next.delete(radiusKey)
+	else next.set(radiusKey, radiusCodes[radius])
 
 	return next
 }

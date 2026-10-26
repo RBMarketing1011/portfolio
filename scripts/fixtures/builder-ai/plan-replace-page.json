@@ -1,0 +1,41 @@
+{
+	"about": "Brief 8 of section 16.2: rebuilding one page. The page keeps its id, name and slug whatever the planner called it; the design and chrome are kept (keepDesign is forced on for a page build), and a fact the owner stated ('15 years') survives provenance.",
+	"request": {
+		"mode": "page",
+		"placement": "replace-page",
+		"targetPageId": "pg_about000001",
+		"prompt": "Rebuild the About page: warmer, about Dr. Lee's 15 years with kids.",
+		"pins": { "pages": { "kind": "ai" }, "palette": { "kind": "ai", "polarity": "any" }, "fonts": { "kind": "ai" }, "shape": "ai", "header": "ai", "footer": "ai", "menu": "ai", "ctaLabel": "", "keepDesign": false, "updateMenu": true },
+		"business": { "name": "", "type": "Dentist", "phone": "", "email": "", "city": "Tampa", "region": "FL", "areas": [] }
+	},
+	"existing": {
+		"pages": [
+			{ "id": "pg_home000001", "name": "Home", "slug": "/", "archetype": "home" },
+			{ "id": "pg_about000001", "name": "About Us", "slug": "about-us", "archetype": "about" },
+			{ "id": "pg_cont000001", "name": "Contact", "slug": "contact", "archetype": "contact" }
+		]
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Bright Smiles", "language": "en-US", "businessType": "Dentist", "tagline": "Gentle care for Tampa kids.",
+			"description": "Meet Dr. Lee and fifteen years of caring for Tampa kids.", "audience": "Tampa parents",
+			"offer": "Gentle pediatric dentistry.", "voice": "Warm and reassuring.", "personality": "warm",
+			"services": [], "areas": ["Tampa"],
+			"primaryAction": { "label": "Book a visit", "target": "page:contact" }
+		},
+		"facts": [{ "value": "15 years", "label": "With kids", "quote": "Dr. Lee's 15 years with kids" }],
+		"photos": [],
+		"design": { "palette": "L13", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "lora-nunito", "shape": "round", "buttons": "solid", "width": "6xl", "backdrop": "paper", "footerTone": "match" },
+		"pages": [
+			{ "name": "Meet Dr. Lee", "slug": "meet-dr-lee", "archetype": "about", "purpose": "Introduce Dr. Lee and the clinic's way with kids.", "keyword": "pediatric dentist Tampa Dr. Lee", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Introduce Dr. Lee and fifteen years with kids.", "items": 0, "child": "none", "surface": "plain", "tweaks": ["hero-stats"], "images": [] },
+				{ "layout": "prose-block:plain", "job": "Tell the story from the brief only.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:numbered", "job": "How the clinic makes visits easy for kids.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "A first visit, step by step.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "split-cta:cards", "job": "Book a visit or ask a question.", "items": 2, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "cta": { "label": "Book a visit", "target": "page:contact" }, "menu": [] }
+	}
+}

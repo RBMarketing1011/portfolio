@@ -1,16 +1,22 @@
 import { z } from 'zod'
+import { sanitizeLook } from './look'
 import { siteSchema } from './page-schema'
 import { readSiteProfile, type SiteProfile } from './site-profile'
 
-/** The saved theme/background settings. Shape-checked loosely: the builder's own
- *  merge fills in anything an older save is missing. */
-const lookSchema = z.object({
-	theme: z.record(z.string(), z.unknown()).optional(),
-	page: z.record(z.string(), z.unknown()).optional(),
-	header: z.record(z.string(), z.unknown()).optional(),
-	footer: z.record(z.string(), z.unknown()).optional(),
-	blocks: z.record(z.string(), z.unknown()).optional(),
-})
+/**
+ * The saved theme and surfaces. Any object is accepted and rebuilt field by field, so
+ * what is stored is always a complete, valid look: a block key or a value built to break
+ * out of the stylesheet never reaches the database.
+ */
+const lookSchema = z
+	.custom<Record<string, unknown>>(
+		(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
+		'Expected an object',
+	)
+	.transform((value) => sanitizeLook(value))
+
+/** Pixel dimensions are optional and dropped when unreadable: an entry is never rejected for them. */
+const dimension = z.number().int().min(1).max(20000).optional().catch(undefined)
 
 export const mediaEntrySchema = z.object({
 	id: z.string().min(1),
@@ -20,6 +26,8 @@ export const mediaEntrySchema = z.object({
 	bytes: z.number().int().nonnegative(),
 	contentType: z.string().max(100),
 	addedAt: z.string(),
+	width: dimension,
+	height: dimension,
 })
 
 export type MediaEntry = z.infer<typeof mediaEntrySchema>

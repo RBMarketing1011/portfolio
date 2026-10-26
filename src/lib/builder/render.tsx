@@ -21,18 +21,21 @@ export function RenderBlock({
 	selectedId,
 	flashId,
 	nested = false,
+	linkBase,
 }: {
 	block: Block
 	selectable?: boolean
 	selectedId?: string | null
 	flashId?: string | null
 	nested?: boolean
+	/** Where page links point ('' on a hosted site); left out, hrefs render as stored. */
+	linkBase?: string
 }) {
 	const Component = sectionRegistry[block.type]
 	const schema = getSchema(block.type)
 	if (!Component || !schema) return <MissingBlock type={block.type} />
 
-	const props = hydrateProps(block.type, block.props)
+	const props = hydrateProps(block.type, block.props, { linkBase })
 
 	if (schema.variantProp && block.variant) {
 		props[schema.variantProp] = block.variant
@@ -42,7 +45,13 @@ export function RenderBlock({
 	// Children are edited from the parent's Items tab, so they are never selectable.
 	const children = block.children?.length
 		? block.children.map((child) => (
-				<RenderBlock key={child.id} block={child} selectable={false} nested />
+				<RenderBlock
+					key={child.id}
+					block={child}
+					selectable={false}
+					nested
+					linkBase={linkBase}
+				/>
 			))
 		: undefined
 
@@ -82,11 +91,14 @@ export function RenderBlocks({
 	selectable = false,
 	selectedId,
 	flashId,
+	linkBase,
 }: {
 	blocks: Block[]
 	selectable?: boolean
 	selectedId?: string | null
 	flashId?: string | null
+	/** Where page links point ('' on a hosted site); left out, hrefs render as stored. */
+	linkBase?: string
 }) {
 	return (
 		<>
@@ -97,6 +109,7 @@ export function RenderBlocks({
 					selectable={selectable}
 					selectedId={selectedId}
 					flashId={flashId}
+					linkBase={linkBase}
 				/>
 			))}
 		</>

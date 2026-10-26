@@ -32,6 +32,7 @@ export default async function AdminSitesPage() {
 						key={s.id}
 						workspaceId={s.workspaceId}
 						to={`/account/projects/${s.id}`}
+						label='View website'
 					/>,
 				])}
 			/>

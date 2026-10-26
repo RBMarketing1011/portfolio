@@ -1,0 +1,32 @@
+{
+	"about": "Brief 6 of section 16.2: a Spanish brief for an app studio. The language arrives as a name ('Spanish') and reads as 'es'; the invented client count fails provenance, and the language-neutral digit rule applies to the copy (section 10.6).",
+	"request": {
+		"prompt": "Estudio de desarrollo de apps en Madrid: apps móviles a medida, diseño de producto y mantenimiento. Trabajamos con startups y pymes.",
+		"business": { "name": "Nube Estudio", "type": "ProfessionalService", "phone": "", "email": "hola@nube.example", "city": "Madrid", "region": "", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Nube Estudio", "language": "Spanish", "businessType": "ProfessionalService", "tagline": "Apps que la gente usa.",
+			"description": "Apps móviles a medida, diseño de producto y mantenimiento en Madrid.", "audience": "Startups y pymes",
+			"offer": "Apps móviles a medida, diseño de producto y mantenimiento.", "voice": "Directo y técnico.", "personality": "technical",
+			"services": ["Apps a medida", "Diseño de producto", "Mantenimiento"], "areas": ["Madrid"],
+			"primaryAction": { "label": "Escríbenos", "target": "email" }
+		},
+		"facts": [{ "value": "120 clientes", "label": "Clientes", "quote": "más de 120 clientes" }],
+		"photos": [],
+		"design": { "palette": "D1", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "grotesk-dm", "shape": "soft", "buttons": "gradient", "width": "6xl", "backdrop": "grid", "footerTone": "match" },
+		"pages": [
+			{ "name": "Inicio", "slug": "/", "archetype": "home", "purpose": "Conseguir el primer correo.", "keyword": "desarrollo de apps Madrid", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Prometer apps que la gente usa.", "items": 0, "child": "none", "surface": "inverse-glow", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "Los tres servicios.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "Cómo trabajamos.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "Una app genérica frente a una a medida.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Preguntas.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Pedir el primer correo.", "items": 0, "child": "none", "surface": "brand", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Contacto", "slug": "contacto", "archetype": "contact", "purpose": "Escribir al estudio.", "keyword": "estudio de apps Madrid contacto", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [] }
+		],
+		"chrome": { "header": "floating", "footer": "centered", "cta": { "label": "Escríbenos", "target": "email" }, "menu": [] }
+	}
+}

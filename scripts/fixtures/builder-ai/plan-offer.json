@@ -1,0 +1,32 @@
+{
+	"about": "The tightened announcement trigger (section 7.9): \"We offer roof repair\" announces nothing, so the planned announcement bar is dropped with an Issue.",
+	"request": {
+		"prompt": "We offer roof repair and gutter cleaning in Tulsa. Honest quotes, tidy crews.",
+		"business": { "name": "Redbud Roofing", "type": "RoofingContractor", "phone": "918-555-0150", "email": "", "city": "Tulsa", "region": "OK", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Redbud Roofing", "language": "en-US", "businessType": "RoofingContractor", "tagline": "Honest roofing in Tulsa.",
+			"description": "Roof repair and gutter cleaning in Tulsa with honest quotes.", "audience": "Tulsa homeowners",
+			"offer": "Roof repair and gutter cleaning with honest quotes.", "voice": "Plain-spoken.", "personality": "rugged",
+			"services": ["Roof repair", "Gutter cleaning"], "areas": ["Tulsa"],
+			"primaryAction": { "label": "Call for a quote", "target": "tel" }
+		},
+		"facts": [{ "value": "Honest quotes", "label": "Our promise", "quote": "Honest quotes, tidy crews" }],
+		"photos": [],
+		"design": { "palette": "L5", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "archivo", "shape": "sharp", "buttons": "solid", "width": "6xl", "backdrop": "lines", "footerTone": "match" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "Get the call.", "keyword": "roof repair Tulsa", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "announcement-bar:badge", "job": "Announce the roof repair offer.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "page-hero:centered", "job": "Promise honest roofing.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "Repair and gutters.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "How a quote works.", "items": 3, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "Surprise bills versus honest quotes.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Call for a quote.", "items": 0, "child": "none", "surface": "brand", "tweaks": [], "images": [] }
+			] }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "cta": { "label": "Call for a quote", "target": "tel" }, "menu": [] }
+	}
+}

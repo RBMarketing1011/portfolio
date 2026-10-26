@@ -25,9 +25,12 @@ import {
 // Uploads are inlined as data URLs, which live in localStorage, so a full-size photo
 // would eat the whole budget. Downscale to something a hero can still use.
 const MAX_EDGE = 1600
-const MAX_UPLOAD = 12 * 1024 * 1024
+export const MAX_UPLOAD = 12 * 1024 * 1024
 
-async function toWebp(file: File): Promise<Blob> {
+/** The image as WebP, downscaled, with the pixel size it ended up at. */
+export async function toWebpWithSize(
+	file: File,
+): Promise<{ blob: Blob; width: number; height: number }> {
 	const bitmap = await createImageBitmap(file)
 	const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height))
 	const canvas = document.createElement('canvas')
@@ -40,7 +43,11 @@ async function toWebp(file: File): Promise<Blob> {
 		canvas.toBlob(resolve, 'image/webp', 0.82),
 	)
 	if (!blob) throw new Error('encode failed')
-	return blob
+	return { blob, width: canvas.width, height: canvas.height }
+}
+
+export async function toWebp(file: File): Promise<Blob> {
+	return (await toWebpWithSize(file)).blob
 }
 
 const blobToDataUrl = (blob: Blob) =>
@@ -99,18 +106,19 @@ export function MediaPicker({
 			return
 		}
 		setError(null)
-		let blob: Blob
+		let image: { blob: Blob; width: number; height: number }
 		const name = file.name.replace(/\.[^.]+$/, '')
 		try {
-			blob = await toWebp(file)
+			image = await toWebpWithSize(file)
 		} catch {
 			setError('That file could not be read as an image.')
 			return
 		}
 		try {
+			// The size rides along so the AI can place the photo by its shape.
 			const item = remote
-				? await uploadMedia(name, blob)
-				: addMedia(name, await blobToDataUrl(blob))
+				? await uploadMedia(name, image.blob, { width: image.width, height: image.height })
+				: addMedia(name, await blobToDataUrl(image.blob))
 			if (select) onChange(mediaRef(item.id))
 		} catch {
 			setError('That image could not be saved. Try again.')

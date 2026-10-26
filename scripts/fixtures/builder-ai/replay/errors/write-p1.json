@@ -1,0 +1,270 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Roofing Company in Austin | Summit Roofing Co.",
+			"description": "Family-owned Austin roofers since 2004: repairs, full replacements and storm damage. Book a free roof inspection."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Austin roofing"
+			},
+			{
+				"id": "s1.title",
+				"value": "A roof [[done right]], start to finish"
+			},
+			{
+				"id": "s1.description",
+				"value": "Repairs, full replacements and storm damage for Austin homes, from a family-owned crew that has worked here since 2004."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See our services"
+			},
+			{
+				"id": "s1.mediaLabel",
+				"value": "Two roofers laying shingles on a two-storey house"
+			},
+			{
+				"id": "s2.label",
+				"value": "Areas we serve"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "What we do"
+			},
+			{
+				"id": "s3.title",
+				"value": "Roofing work from [[one crew]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "Four ways we look after Austin roofs, each handled by the same family crew."
+			},
+			{
+				"id": "s3.c0.title",
+				"value": "Roof replacement"
+			},
+			{
+				"id": "s3.c0.blurb",
+				"value": "A full tear-off and a new roof, with the yard cleaned up when we leave."
+			},
+			{
+				"id": "s3.c0.icon",
+				"value": "House"
+			},
+			{
+				"id": "s3.c1.title",
+				"value": "Roof repair"
+			},
+			{
+				"id": "s3.c1.blurb",
+				"value": "Leaks, lifted shingles and failed flashing fixed before they spread."
+			},
+			{
+				"id": "s3.c1.icon",
+				"value": "Hammer"
+			},
+			{
+				"id": "s3.c2.title",
+				"value": "Storm damage"
+			},
+			{
+				"id": "s3.c2.blurb",
+				"value": "Hail and wind damage documented and repaired, with help on the insurance claim."
+			},
+			{
+				"id": "s3.c2.icon",
+				"value": "CloudHail"
+			},
+			{
+				"id": "s3.c3.title",
+				"value": "Free inspections"
+			},
+			{
+				"id": "s3.c3.blurb",
+				"value": "A look at every slope, photos of what we find and a written estimate."
+			},
+			{
+				"id": "s3.c3.icon",
+				"value": "Search"
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "How it works"
+			},
+			{
+				"id": "s4.title",
+				"value": "Three steps to a [[sound roof]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "No pressure and no surprises: you see what we see before any work starts."
+			},
+			{
+				"id": "s4.steps.0.title",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s4.steps.0.summary",
+				"value": "Call or book online and we come out to look at every slope of the roof."
+			},
+			{
+				"id": "s4.steps.1.title",
+				"value": "Read the estimate"
+			},
+			{
+				"id": "s4.steps.1.summary",
+				"value": "You get photos of what we found and a written estimate you can keep."
+			},
+			{
+				"id": "s4.steps.2.title",
+				"value": "We do the work"
+			},
+			{
+				"id": "s4.steps.2.summary",
+				"value": "The crew finishes the job and cleans up before we leave."
+			},
+			{
+				"id": "s5.eyebrow",
+				"value": "Why us"
+			},
+			{
+				"id": "s5.title",
+				"value": "What a [[family crew]] changes"
+			},
+			{
+				"id": "s5.beforeLabel",
+				"value": "The usual way"
+			},
+			{
+				"id": "s5.afterLabel",
+				"value": "With Summit"
+			},
+			{
+				"id": "s5.before.0.text",
+				"value": "A quote shouted from the driveway"
+			},
+			{
+				"id": "s5.before.1.text",
+				"value": "Crews you have never met"
+			},
+			{
+				"id": "s5.before.2.text",
+				"value": "Nails and scraps left in the yard"
+			},
+			{
+				"id": "s5.before.3.text",
+				"value": "An insurance claim you sort out alone"
+			},
+			{
+				"id": "s5.after.0.text",
+				"value": "Photos and a written estimate"
+			},
+			{
+				"id": "s5.after.1.text",
+				"value": "The same family crew every visit"
+			},
+			{
+				"id": "s5.after.2.text",
+				"value": "A tidy yard when we leave"
+			},
+			{
+				"id": "s5.after.3.text",
+				"value": "Help with your insurance claim"
+			},
+			{
+				"id": "s6.eyebrow",
+				"value": "Homeowners say"
+			},
+			{
+				"id": "s6.title",
+				"value": "What our customers [[tell us]]"
+			},
+			{
+				"id": "s6.description",
+				"value": "Reviews from Austin homeowners, in their own words."
+			},
+			{
+				"id": "s7.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s7.title",
+				"value": "Before you [[book]]"
+			},
+			{
+				"id": "s7.description",
+				"value": "Straight answers to what homeowners ask us most."
+			},
+			{
+				"id": "s7.faqs.0.question",
+				"value": "Is the inspection really free?"
+			},
+			{
+				"id": "s7.faqs.0.answer",
+				"value": "Yes. We look at the whole roof, take photos of what we find and leave you a written estimate, with no obligation to book."
+			},
+			{
+				"id": "s7.faqs.1.question",
+				"value": "Should I repair or replace my roof?"
+			},
+			{
+				"id": "s7.faqs.1.answer",
+				"value": "It depends on the age of the roof and how far the damage goes. The inspection shows you both options so you can decide."
+			},
+			{
+				"id": "s7.faqs.2.question",
+				"value": "Do you help with insurance claims?"
+			},
+			{
+				"id": "s7.faqs.2.answer",
+				"value": "Yes. After a storm we document the damage with photos and notes that support your claim."
+			},
+			{
+				"id": "s7.faqs.3.question",
+				"value": "Which areas do you cover?"
+			},
+			{
+				"id": "s7.faqs.3.answer",
+				"value": "We work across Austin, Round Rock, Cedar Park and Pflugerville."
+			},
+			{
+				"id": "s7.faqs.4.question",
+				"value": "How do I book?"
+			},
+			{
+				"id": "s7.faqs.4.answer",
+				"value": "Call (512) 555-0142 or use the contact page, and we will set a time that suits you."
+			},
+			{
+				"id": "s8.title",
+				"value": "Book your free roof inspection"
+			},
+			{
+				"id": "s8.description",
+				"value": "Find out what your roof needs, with photos and a written estimate."
+			},
+			{
+				"id": "s8.actions.0.label",
+				"value": "Book my inspection"
+			},
+			{
+				"id": "s8.actions.1.label",
+				"value": "Call (512) 555-0142"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 0,
+		"cache_creation_input_tokens": 3900
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

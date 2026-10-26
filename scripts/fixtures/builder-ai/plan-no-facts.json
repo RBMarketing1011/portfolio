@@ -1,0 +1,50 @@
+{
+	"about": "Statistic layouts and facts the owner never stated: the facts fail provenance (fact-removed), so the stat band and stat hero fall back and the hero loses its stats (section 7.9).",
+	"request": {
+		"prompt": "Independent bike repair shop in Minneapolis. Tune-ups, flat fixes and wheel builds, done while you wait when we can.",
+		"business": { "name": "Spoke & Chain", "type": "Store", "phone": "", "email": "", "city": "Minneapolis", "region": "MN", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Spoke & Chain", "language": "en-US", "businessType": "Store", "tagline": "Rated 4.9 by 500 riders.",
+			"description": "Bike tune-ups, flat fixes and wheel builds in Minneapolis.", "audience": "Minneapolis riders",
+			"offer": "Tune-ups, flat fixes and wheel builds.", "voice": "Friendly mechanic.", "personality": "friendly",
+			"services": ["Tune-ups", "Flat fixes", "Wheel builds"], "areas": ["Minneapolis"],
+			"primaryAction": { "label": "Visit the shop", "target": "page:contact" }
+		},
+		"facts": [
+			{ "value": "4.9/5", "label": "Average rating", "quote": "rated 4.9 out of 5 by riders" },
+			{ "value": "500+", "label": "Bikes fixed", "quote": "over 500 bikes fixed" },
+			{ "value": "15 years", "label": "In business", "quote": "15 years on the same corner" }
+		],
+		"photos": [],
+		"design": { "palette": "L14", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "jakarta", "shape": "round", "buttons": "solid", "width": "6xl", "backdrop": "paper", "footerTone": "match" },
+		"pages": [
+			{
+				"name": "Home", "slug": "/", "archetype": "home", "purpose": "Bring riders to the shop.", "keyword": "bike repair Minneapolis", "inMenu": true,
+				"opener": "stat-hero:divided", "closer": "cta-band:split", "photos": [],
+				"sections": [
+					{ "layout": "stat-hero:divided", "job": "Lead with the numbers.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "stat-band:cards", "job": "More numbers.", "items": 3, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+					{ "layout": "bento-grid:accent", "job": "Show the three services.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "process-steps:columns", "job": "How a repair goes.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "faq-accordion:split", "job": "Common questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "cta-band:split", "job": "Come to the shop.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+				]
+			},
+			{
+				"name": "About", "slug": "about", "archetype": "about", "purpose": "The shop's story.", "keyword": "bike shop Minneapolis", "inMenu": true,
+				"opener": "page-hero:left", "closer": "split-cta:cards", "photos": [],
+				"sections": [
+					{ "layout": "page-hero:left", "job": "Introduce the shop with its numbers.", "items": 0, "child": "none", "surface": "plain", "tweaks": ["hero-stats"], "images": [] },
+					{ "layout": "stat-band:row", "job": "The shop in numbers.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "bento-grid:numbered", "job": "What the shop values.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "split-cta:cards", "job": "Visit or call.", "items": 2, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+				]
+			},
+			{ "name": "Contact", "slug": "contact", "archetype": "contact", "purpose": "Find the shop.", "keyword": "bike shop near me Minneapolis", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [] }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "cta": { "label": "Visit the shop", "target": "page:contact" }, "menu": [] }
+	}
+}

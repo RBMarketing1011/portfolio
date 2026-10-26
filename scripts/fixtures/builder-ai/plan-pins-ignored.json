@@ -1,0 +1,49 @@
+{
+	"about": "Pins the planner ignored: a curated palette, a header, footer and menu style, the button text and an exact page list. Code enforces every one after planning (section 2.5).",
+	"request": {
+		"prompt": "Boutique law firm in Chicago: estate planning and probate. Calm, serious, trustworthy.",
+		"pins": {
+			"pages": { "kind": "list", "names": ["Home", "Estate Planning", "Probate", "About", "Contact"] },
+			"palette": { "kind": "curated", "id": "L1" }, "fonts": { "kind": "pair", "id": "caslon-franklin" }, "shape": "sharp",
+			"header": "stacked", "footer": "split", "menu": "links", "ctaLabel": "Schedule a consultation", "keepDesign": true, "updateMenu": true
+		},
+		"business": { "name": "Hale & Whitford", "type": "Attorney", "phone": "312-555-0144", "email": "office@halewhitford.example", "city": "Chicago", "region": "IL", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Hale & Whitford", "language": "en-US", "businessType": "Attorney", "tagline": "Estate plans that hold up.",
+			"description": "Estate planning and probate counsel in Chicago.", "audience": "Chicago families planning ahead",
+			"offer": "Estate planning and probate.", "voice": "Calm, serious, exact.", "personality": "refined",
+			"services": ["Estate planning", "Probate"], "areas": ["Chicago"],
+			"primaryAction": { "label": "Book now", "target": "page:contact" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "D3", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "bricolage-inter", "shape": "round", "buttons": "gradient", "width": "7xl", "backdrop": "glow", "footerTone": "inverse" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "Book the consultation.", "keyword": "estate planning lawyer Chicago", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:split", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Promise a plan that holds up.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:divided", "job": "The two practice areas and how the firm works.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "From first meeting to signed plan.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "A template will versus a counselled plan.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:split", "job": "Book the consultation.", "items": 0, "child": "none", "surface": "soft", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Our Services", "slug": "services", "archetype": "services", "purpose": "Practice areas.", "keyword": "estate law Chicago", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [] },
+			{ "name": "Blog", "slug": "blog", "archetype": "article", "purpose": "News.", "keyword": "estate planning blog", "inMenu": true, "opener": "page-hero:compact", "closer": "cta-band:split", "photos": [], "sections": [] },
+			{ "name": "Contact", "slug": "contact", "archetype": "contact", "purpose": "Reach the firm.", "keyword": "estate lawyer Chicago contact", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [] }
+		],
+		"chrome": {
+			"header": "floating", "footer": "centered", "cta": { "label": "Book now", "target": "page:contact" },
+			"menu": [
+				{ "label": "Practice", "kind": "group", "target": "", "style": "mega", "links": [
+					{ "label": "Estate Planning", "target": "page:estate-planning", "description": "Wills, trusts and powers of attorney", "icon": "ScrollText" },
+					{ "label": "Probate", "target": "page:probate", "description": "Guidance through probate court", "icon": "Scale" }
+				], "promo": { "show": true, "eyebrow": "", "title": "Talk it through", "body": "A first meeting to understand what you need.", "ctaLabel": "Book", "target": "page:contact", "image": "" } },
+				{ "label": "About", "kind": "page", "target": "page:about", "style": "mega", "links": [], "promo": { "show": false, "eyebrow": "", "title": "", "body": "", "ctaLabel": "", "target": "", "image": "" } },
+				{ "label": "Contact", "kind": "page", "target": "page:contact", "style": "mega", "links": [], "promo": { "show": false, "eyebrow": "", "title": "", "body": "", "ctaLabel": "", "target": "", "image": "" } }
+			]
+		}
+	}
+}

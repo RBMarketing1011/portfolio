@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { getDb } from '@/lib/mongo'
 import type { SiteDoc } from '@/lib/builder/site-doc'
 import { resolveMembership, type Membership } from '@/lib/workspace'
-import { currentWorkspaceId } from '@/lib/workspace/current'
+import { selectedWorkspaceId } from '@/lib/workspace/current'
 import type { Permission } from '@/lib/workspace/permissions'
 
 export class HttpError extends Error {
@@ -60,7 +60,7 @@ export async function requirePermission(
 	// An explicit id is a demand and must match; the cookie is only a preference.
 	const membership = workspaceId
 		? await resolveMembership(userId, workspaceId)
-		: await resolveMembership(userId, await currentWorkspaceId(), {
+		: await resolveMembership(userId, await selectedWorkspaceId(userId), {
 				preferred: true,
 			})
 	if (!membership) throw new HttpError(404, 'Account not found.')

@@ -1,0 +1,77 @@
+{
+	"about": "Brief 4 of section 16.2 and the photo strategy of section 7.7: twelve photos, one before/after pair, a portrait and two squares. The signatures (fanned hero, overlapping spotlight, mosaic) are planned twice and must stay on one page each; a 16:9 slot never takes the portrait; a photo is never used twice on one page.",
+	"request": {
+		"prompt": "Specialty coffee roaster and café in Portland. Single-origin beans, wholesale for restaurants, weekend cupping classes.",
+		"pins": { "pages": { "kind": "count", "count": 4 }, "palette": { "kind": "curated", "id": "D9" }, "fonts": { "kind": "ai" }, "shape": "round", "header": "ai", "footer": "ai", "menu": "ai", "ctaLabel": "", "keepDesign": true, "updateMenu": true },
+		"business": { "name": "Ember & Bean", "type": "CafeOrCoffeeShop", "phone": "", "email": "hello@emberbean.example", "city": "Portland", "region": "OR", "areas": [] }
+	},
+	"photos": [
+		{ "ref": "img1", "value": "media:md_c1", "width": 2000, "height": 1200, "orientation": "landscape", "caption": "Roaster pouring beans" },
+		{ "ref": "img2", "value": "media:md_c2", "width": 1800, "height": 1200, "orientation": "landscape", "caption": "Espresso bar" },
+		{ "ref": "img3", "value": "media:md_c3", "width": 1600, "height": 1067, "orientation": "landscape", "caption": "Cupping table" },
+		{ "ref": "img4", "value": "media:md_c4", "width": 1600, "height": 1067, "orientation": "landscape", "caption": "Bags of single-origin beans" },
+		{ "ref": "img5", "value": "media:md_c5", "width": 2400, "height": 1000, "orientation": "panorama", "caption": "The café from the street" },
+		{ "ref": "img6", "value": "media:md_c6", "width": 1600, "height": 1067, "orientation": "landscape", "caption": "Green beans before roasting" },
+		{ "ref": "img7", "value": "media:md_c7", "width": 1600, "height": 1067, "orientation": "landscape", "caption": "Roasted beans after" },
+		{ "ref": "img8", "value": "media:md_c8", "width": 1000, "height": 1500, "orientation": "portrait", "caption": "Barista portrait" },
+		{ "ref": "img9", "value": "media:md_c9", "width": 1200, "height": 1200, "orientation": "square", "caption": "Latte art" },
+		{ "ref": "img10", "value": "media:md_c10", "width": 1200, "height": 1200, "orientation": "square", "caption": "Pastry case" },
+		{ "ref": "img11", "value": "media:md_c11", "width": 1600, "height": 1067, "orientation": "landscape", "caption": "Wholesale delivery crates" },
+		{ "ref": "img12", "value": "media:md_c12", "width": 1600, "height": 1067, "orientation": "landscape", "caption": "Weekend class" }
+	],
+	"reply": {
+		"site": {
+			"name": "Ember & Bean", "language": "en-US", "businessType": "CafeOrCoffeeShop", "tagline": "Roasted here, poured here.",
+			"description": "Single-origin coffee roasted in Portland, wholesale for restaurants and weekend cupping classes.", "audience": "Portland coffee drinkers and restaurants",
+			"offer": "Single-origin beans, wholesale for restaurants and weekend cupping classes.", "voice": "Warm and curious.", "personality": "warm",
+			"services": ["Single-origin beans", "Wholesale", "Cupping classes"], "areas": ["Portland"],
+			"primaryAction": { "label": "Visit the café", "target": "page:contact" }
+		},
+		"facts": [],
+		"photos": [
+			{ "ref": "img1", "description": "A roaster tipping fresh beans into the cooling tray", "subject": "roasting", "shape": "landscape", "pair": "none", "pairKey": "" },
+			{ "ref": "img2", "description": "The espresso bar with two baristas at work", "subject": "espresso bar", "shape": "landscape", "pair": "none", "pairKey": "" },
+			{ "ref": "img3", "description": "A cupping table set with rows of small bowls", "subject": "cupping", "shape": "landscape", "pair": "none", "pairKey": "" },
+			{ "ref": "img4", "description": "Labelled bags of single-origin beans on a shelf", "subject": "beans", "shape": "landscape", "pair": "none", "pairKey": "" },
+			{ "ref": "img5", "description": "The café's storefront on a rainy Portland street", "subject": "storefront", "shape": "panorama", "pair": "none", "pairKey": "" },
+			{ "ref": "img6", "description": "Pale green coffee beans before roasting", "subject": "green beans", "shape": "landscape", "pair": "before", "pairKey": "roast" },
+			{ "ref": "img7", "description": "The same beans after a medium roast", "subject": "roasted beans", "shape": "landscape", "pair": "after", "pairKey": "roast" },
+			{ "ref": "img8", "description": "A barista smiling behind the counter", "subject": "barista", "shape": "portrait", "pair": "none", "pairKey": "" },
+			{ "ref": "img9", "description": "A flat white with rosetta latte art", "subject": "latte", "shape": "square", "pair": "none", "pairKey": "" },
+			{ "ref": "img10", "description": "The pastry case at opening time", "subject": "pastries", "shape": "square", "pair": "none", "pairKey": "" },
+			{ "ref": "img11", "description": "Crates of roasted coffee ready for restaurant delivery", "subject": "wholesale", "shape": "landscape", "pair": "none", "pairKey": "" },
+			{ "ref": "img12", "description": "A weekend class tasting coffees side by side", "subject": "class", "shape": "landscape", "pair": "none", "pairKey": "" }
+		],
+		"design": { "palette": "L2", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "fraunces-inter", "shape": "sharp", "buttons": "solid", "width": "7xl", "backdrop": "paper", "footerTone": "match" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "Bring people to the café and restaurants to wholesale.", "keyword": "coffee roaster Portland", "inMenu": true, "opener": "split-hero:split", "closer": "cta-band:centered", "photos": ["img1", "img2", "img3", "img4", "img5", "img9"], "sections": [
+				{ "layout": "split-hero:split", "job": "Promise coffee roasted and poured in the same room.", "items": 0, "child": "none", "surface": "plain", "tweaks": ["fan"], "images": ["img1", "img2", "img3", "img4", "img9", "img10"] },
+				{ "layout": "feature-rows:alternating", "job": "Beans, wholesale and classes, one row each.", "items": 3, "child": "none", "surface": "plain", "tweaks": ["points"], "images": ["img4", "img11", "img12"] },
+				{ "layout": "spotlight:overlap", "job": "Feature the café itself.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": ["img5"] },
+				{ "layout": "image-compare:stacked", "job": "Show green beans becoming a medium roast.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": ["img6", "img7"] },
+				{ "layout": "media-mosaic:default", "job": "Show the café and the roastery.", "items": 5, "child": "none", "surface": "inverse", "tweaks": [], "images": ["img2", "img3", "img8", "img9", "img10"] },
+				{ "layout": "faq-accordion:split", "job": "Questions about beans and classes.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Invite a visit.", "items": 0, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Wholesale", "slug": "wholesale", "archetype": "service", "purpose": "Win restaurant accounts.", "keyword": "wholesale coffee Portland", "inMenu": true, "opener": "split-hero:reversed", "closer": "cta-band:split", "photos": ["img11"], "sections": [
+				{ "layout": "split-hero:reversed", "job": "Promise fresh-roasted coffee for restaurant menus.", "items": 0, "child": "none", "surface": "plain", "tweaks": ["fan"], "images": ["img11", "img1", "img2", "img3", "img4", "img5"] },
+				{ "layout": "spotlight:overlap", "job": "Feature the delivery.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": ["img8"] },
+				{ "layout": "process-steps:timeline", "job": "How an account starts.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "media-mosaic:default", "job": "The roastery at work.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": ["img1", "img2", "img3", "img4", "img6"] },
+				{ "layout": "faq-accordion:stacked", "job": "Wholesale questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:split", "job": "Email about an account.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Gallery", "slug": "gallery", "archetype": "work", "purpose": "Show the café.", "keyword": "café Portland photos", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Introduce the photos.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "media-gallery:bottom", "job": "The café in photos.", "items": 8, "child": "none", "surface": "plain", "tweaks": [], "images": ["img1", "img2", "img3", "img4", "img5", "img9", "img10", "img12"] },
+				{ "layout": "masonry:above", "job": "More moments.", "items": 6, "child": "media-card:bare", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Visit the café.", "items": 0, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Contact", "slug": "contact", "archetype": "contact", "purpose": "Find the café.", "keyword": "coffee shop Portland", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [
+				{ "layout": "page-hero:compact", "job": "Invite a visit or an email.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "figure:framed", "job": "Show the storefront.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": ["img8"] }
+			] }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "cta": { "label": "Visit", "target": "page:contact" }, "menu": [] }
+	}
+}

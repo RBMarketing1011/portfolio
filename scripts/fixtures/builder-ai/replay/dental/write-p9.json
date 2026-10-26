@@ -1,0 +1,114 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Book a Pediatric Dentist in Tampa",
+			"description": "Book a visit at a friendly Tampa dental clinic for kids. Most insurance plans accepted."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Contact"
+			},
+			{
+				"id": "s1.title",
+				"value": "Book your child's [[visit]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "Get in touch and we will find a time that suits your family."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "After you get in touch"
+			},
+			{
+				"id": "s2.title",
+				"value": "What happens [[next]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "Three steps from your message to the visit."
+			},
+			{
+				"id": "s2.steps.0.title",
+				"value": "We reply"
+			},
+			{
+				"id": "s2.steps.0.summary",
+				"value": "We get back to you to find a time."
+			},
+			{
+				"id": "s2.steps.1.title",
+				"value": "We book"
+			},
+			{
+				"id": "s2.steps.1.summary",
+				"value": "We confirm the visit and what to bring."
+			},
+			{
+				"id": "s2.steps.2.title",
+				"value": "You visit"
+			},
+			{
+				"id": "s2.steps.2.summary",
+				"value": "Your child meets the team for a calm first visit."
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s3.title",
+				"value": "Before you [[book]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "What to know about booking."
+			},
+			{
+				"id": "s3.faqs.0.question",
+				"value": "What should I bring?"
+			},
+			{
+				"id": "s3.faqs.0.answer",
+				"value": "Your insurance card and any questions you have."
+			},
+			{
+				"id": "s3.faqs.1.question",
+				"value": "Do you take my insurance?"
+			},
+			{
+				"id": "s3.faqs.1.answer",
+				"value": "We take most insurance plans and check your cover with you."
+			},
+			{
+				"id": "s3.faqs.2.question",
+				"value": "Can siblings come together?"
+			},
+			{
+				"id": "s3.faqs.2.answer",
+				"value": "Yes. Ask when you book and we will plan the visit for both."
+			},
+			{
+				"id": "s3.faqs.3.question",
+				"value": "What if we need to change the time?"
+			},
+			{
+				"id": "s3.faqs.3.answer",
+				"value": "Get in touch and we will find another time."
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

@@ -1,0 +1,41 @@
+{
+	"about": "The home page comes third in the plan, and one page asks for the root slug although it is not home. Home moves to the front with the root slug; nothing else may take it.",
+	"request": {
+		"prompt": "Family-run Italian restaurant in Chicago with handmade pasta, a wood-fired oven and a private dining room.",
+		"business": { "name": "Nonna Lucia", "type": "Restaurant", "phone": "312-555-0168", "email": "", "city": "Chicago", "region": "IL", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Nonna Lucia", "language": "en-US", "businessType": "Restaurant", "tagline": "Pasta made by hand, every day.",
+			"description": "Handmade pasta, a wood-fired oven and a private dining room in Chicago.", "audience": "Chicago diners",
+			"offer": "Handmade pasta and wood-fired dishes, with a private dining room.", "voice": "Warm and familial.", "personality": "warm",
+			"services": ["Dinner", "Private dining"], "areas": ["Chicago"],
+			"primaryAction": { "label": "Call for a table", "target": "tel" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L7", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "fraunces-inter", "shape": "round", "buttons": "solid", "width": "6xl", "backdrop": "paper", "footerTone": "match" },
+		"pages": [
+			{ "name": "Menu", "slug": "/", "archetype": "custom", "purpose": "What we cook.", "keyword": "Italian restaurant menu Chicago", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Introduce the kitchen.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:numbered", "job": "What makes the food.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:split", "job": "Call for a table.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Private Dining", "slug": "private-dining", "archetype": "service", "purpose": "Book the private room.", "keyword": "private dining Chicago", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Promise a private dinner without fuss.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "How booking the room works.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "split-cta:cards", "job": "Book or ask.", "items": 2, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Home", "slug": "home", "archetype": "home", "purpose": "Bring diners in.", "keyword": "Italian restaurant Chicago", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Promise pasta made by hand.", "items": 0, "child": "none", "surface": "wash", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "Pasta, the oven, the room.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "Boxed pasta versus handmade.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "An evening at the restaurant.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Call for a table.", "items": 0, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] }
+		],
+		"chrome": { "header": "bar", "footer": "centered", "cta": { "label": "Call for a table", "target": "tel" }, "menu": [] }
+	}
+}

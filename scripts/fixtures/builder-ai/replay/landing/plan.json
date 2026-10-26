@@ -1,0 +1,153 @@
+{
+	"about": "The one-page landing of section 9.10 (plan-landing.json): one page that keeps the landing archetype, an announcement backed by a verified fact, a floating header with no menu entries.",
+	"reply": {
+		"site": {
+			"name": "Polar Air Heating & Cooling",
+			"language": "en-US",
+			"businessType": "HVACBusiness",
+			"tagline": "Cool air before the heat arrives.",
+			"description": "AC tune-up special for $89 in Austin. Book by April 30.",
+			"audience": "Austin homeowners before summer",
+			"offer": "An $89 AC tune-up, booked by April 30.",
+			"voice": "Direct, friendly, no pressure.",
+			"personality": "friendly",
+			"services": [
+				"AC tune-up"
+			],
+			"areas": [
+				"Austin"
+			],
+			"primaryAction": {
+				"label": "Book a tune-up",
+				"target": "tel"
+			}
+		},
+		"facts": [
+			{
+				"value": "$89",
+				"label": "AC tune-up special",
+				"quote": "AC tune-up special: $89"
+			},
+			{
+				"value": "April 30",
+				"label": "Book by",
+				"quote": "book by April 30"
+			}
+		],
+		"photos": [],
+		"design": {
+			"palette": "L8",
+			"custom": {
+				"background": "",
+				"accent": "",
+				"heading": "",
+				"body": ""
+			},
+			"fonts": "outfit-figtree",
+			"shape": "round",
+			"buttons": "solid",
+			"width": "5xl",
+			"backdrop": "paper",
+			"footerTone": "match"
+		},
+		"pages": [
+			{
+				"name": "AC Tune-Up Special",
+				"slug": "/",
+				"archetype": "landing",
+				"purpose": "Book the $89 tune-up by April 30.",
+				"keyword": "AC tune-up Austin",
+				"inMenu": true,
+				"opener": "page-hero:centered",
+				"closer": "cta-band:centered",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "announcement-bar:strip",
+						"job": "Announce the $89 special and the April 30 deadline.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "page-hero:centered",
+						"job": "Promise a cool summer for $89, with one call.",
+						"items": 0,
+						"child": "none",
+						"surface": "wash",
+						"tweaks": [
+							"one-button"
+						],
+						"images": []
+					},
+					{
+						"layout": "check-list:inline",
+						"job": "Four short reassurances about the visit.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:accent",
+						"job": "What the tune-up checks.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:cards",
+						"job": "Call, visit, done.",
+						"items": 3,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:boxed",
+						"job": "Answer questions about the special.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:centered",
+						"job": "Call to book before April 30.",
+						"items": 0,
+						"child": "none",
+						"surface": "brand",
+						"tweaks": [
+							"one-button"
+						],
+						"images": []
+					}
+				]
+			}
+		],
+		"chrome": {
+			"header": "floating",
+			"footer": "centered",
+			"cta": {
+				"label": "Book a tune-up",
+				"target": "tel"
+			},
+			"menu": []
+		}
+	},
+	"usage": {
+		"input_tokens": 16400,
+		"output_tokens": 4300,
+		"cache_read_input_tokens": 0,
+		"cache_creation_input_tokens": 11200
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

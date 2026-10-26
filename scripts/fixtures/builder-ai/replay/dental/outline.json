@@ -1,0 +1,237 @@
+{
+	"reply": {
+		"pages": [
+			{
+				"key": "p5",
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Explain clear aligners for teens and invite a consultation.",
+						"items": 0,
+						"child": "none",
+						"surface": "wash",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:numbered",
+						"job": "What treatment with clear aligners involves.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:columns",
+						"job": "Three steps from consultation to aligners.",
+						"items": 3,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:boxed",
+						"job": "Answer parents' questions about aligners.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:card",
+						"job": "Invite a consultation.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"key": "p6",
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Explain implant consultations plainly.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "before-after:rows",
+						"job": "Pair each worry with how the clinic handles it.",
+						"items": 3,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:timeline",
+						"job": "How a consultation goes.",
+						"items": 4,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:stacked",
+						"job": "Answer implant questions.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:split",
+						"job": "Invite a consultation.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"key": "p7",
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Get a child seen fast after a dental injury.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "check-list:stacked",
+						"job": "What to do right away.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:cards",
+						"job": "What happens when you call.",
+						"items": 3,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:split",
+						"job": "Emergency questions.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "split-cta:cards",
+						"job": "Call now or book a visit.",
+						"items": 2,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"key": "p8",
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Introduce the clinic and how it treats children.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:divided",
+						"job": "How the clinic makes visits easy for kids.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:timeline",
+						"job": "A first visit, step by step.",
+						"items": 4,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "split-cta:cards",
+						"job": "Book a visit or ask a question.",
+						"items": 2,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"key": "p9",
+				"sections": [
+					{
+						"layout": "page-hero:compact",
+						"job": "Invite parents to book a visit.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:columns",
+						"job": "What happens after you get in touch.",
+						"items": 3,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:stacked",
+						"job": "Booking questions.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 4100,
+		"output_tokens": 1200,
+		"cache_read_input_tokens": 0,
+		"cache_creation_input_tokens": 11200
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

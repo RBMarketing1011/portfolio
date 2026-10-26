@@ -6,14 +6,17 @@ import {
 	Check,
 	ChevronsUpDown,
 	Copy,
+	FilePlus2,
 	GripVertical,
 	MoreVertical,
 	Pencil,
 	Plus,
 	Settings2,
 	SlidersHorizontal,
+	Sparkles,
 	Trash2,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -62,6 +65,7 @@ import { SaveButton } from './save-button'
 import { SiteSwitcher } from './site-switcher'
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog'
 import { AddPageDialog } from './builder/add-page-dialog'
+import { useAiBuild } from './builder/ai-build-host'
 import { EditPageDialog } from './builder/edit-page-dialog'
 import { SectionPicker } from './builder/section-picker'
 import { ChromeSettingsDrawer } from './builder/chrome-settings-drawer'
@@ -75,6 +79,7 @@ export function PagesNav({
 }) {
 	const router = useRouter()
 	const store = useBuilder()
+	const ai = useAiBuild()
 	const [addOpen, setAddOpen] = useState(false)
 	const [pickerOpen, setPickerOpen] = useState(false)
 	const [editOpen, setEditOpen] = useState(false)
@@ -209,9 +214,28 @@ export function PagesNav({
 								</Command>
 							</PopoverContent>
 						</Popover>
-						<FieldButton label='Add page' onClick={() => setAddOpen(true)}>
-							<Plus className='size-4' />
-						</FieldButton>
+						{ai.enabled ? (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<FieldButton label='Add page'>
+										<Plus className='size-4' />
+									</FieldButton>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align='end' className='w-44'>
+									<DropdownMenuItem onSelect={() => setAddOpen(true)}>
+										<FilePlus2 className='size-3.5' /> Blank page…
+									</DropdownMenuItem>
+									<DropdownMenuItem
+										onSelect={() => ai.open({ mode: 'page', placement: 'append' })}>
+										<Sparkles className='size-3.5' /> Page with AI…
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						) : (
+							<FieldButton label='Add page' onClick={() => setAddOpen(true)}>
+								<Plus className='size-4' />
+							</FieldButton>
+						)}
 					</div>
 				</Field>
 			</div>
@@ -243,6 +267,14 @@ export function PagesNav({
 								<DropdownMenuItem onSelect={() => setEditOpen(true)}>
 									<Pencil className='size-3.5' /> Edit page
 								</DropdownMenuItem>
+								{ai.enabled && (
+									<DropdownMenuItem
+										onSelect={() =>
+											ai.open({ mode: 'page', placement: 'replace-page', targetPageId: page.id })
+										}>
+										<Sparkles className='size-3.5' /> Rebuild with AI…
+									</DropdownMenuItem>
+								)}
 								<DropdownMenuSeparator />
 								<DropdownMenuItem
 									onSelect={() => setDeleteOpen(true)}
@@ -256,9 +288,22 @@ export function PagesNav({
 					<ScrollArea className='min-h-0 flex-1'>
 						<div className='px-2 py-2'>
 							{page.blocks.length === 0 ? (
-								<p className='px-2 py-4 text-sm leading-6 text-slate-500'>
-									This page is empty. Add a section to get going.
-								</p>
+								<div className='px-2 py-4'>
+									<p className='text-sm leading-6 text-slate-500'>
+										This page is empty. Add a section to get going.
+									</p>
+									{ai.enabled && (
+										<Button
+											variant='link'
+											size='sm'
+											className='h-auto px-0 text-brand'
+											onClick={() =>
+												ai.open({ mode: 'page', placement: 'replace-page', targetPageId: page.id })
+											}>
+											<Sparkles /> Build this page with AI
+										</Button>
+									)}
+								</div>
 							) : (
 								<ul className='space-y-1'>
 									{page.blocks.map((block, index) => (
@@ -382,21 +427,20 @@ export function PagesNav({
 	)
 }
 
+/** Also a menu trigger: the props a trigger passes (`asChild`) land on the button. */
 function FieldButton({
 	label,
-	onClick,
 	children,
-}: {
+	...props
+}: React.ComponentProps<'button'> & {
 	label: string
-	onClick: () => void
-	children: React.ReactNode
 }) {
 	return (
 		<button
 			type='button'
-			onClick={onClick}
+			{...props}
 			aria-label={label}
-			className='flex size-9 shrink-0 items-center justify-center rounded-md border border-white/12 bg-white/3 text-slate-400 transition-colors hover:bg-white/6 hover:text-white'>
+			className='flex size-9 shrink-0 items-center justify-center rounded-md border border-white/12 bg-white/3 text-slate-400 transition-colors hover:bg-white/6 hover:text-white data-[state=open]:bg-white/6 data-[state=open]:text-white'>
 			{children}
 		</button>
 	)

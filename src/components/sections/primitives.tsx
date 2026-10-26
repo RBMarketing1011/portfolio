@@ -303,13 +303,15 @@ export function PageHero({
 	const figures = stats?.slice(0, 3) ?? []
 	const centered = variant === 'centered'
 
+	// The top padding clears the marketing site's overlay header. A built site's header is
+	// in the flow instead, so it trims the space back (--hero-trim, 0 everywhere else).
 	return (
 		<section
 			className={cn(
 				'px-6 sm:px-10 lg:px-16',
 				variant === 'compact'
-					? 'pb-10 pt-28 lg:pb-14 lg:pt-32'
-					: 'pb-16 pt-36 lg:pb-24 lg:pt-44',
+					? 'pb-10 pt-[calc(7rem-var(--hero-trim,0rem))] lg:pb-14 lg:pt-[calc(8rem-var(--hero-trim-lg,0rem))]'
+					: 'pb-16 pt-[calc(9rem-var(--hero-trim,0rem))] lg:pb-24 lg:pt-[calc(11rem-var(--hero-trim-lg,0rem))]',
 			)}>
 			<div
 				className={cn(

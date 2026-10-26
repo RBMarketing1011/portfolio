@@ -1,13 +1,13 @@
 import { notFound } from 'next/navigation'
-import { currentMembership } from '@/lib/workspace/current'
+import { requireAccountMembership } from '@/lib/workspace/current'
 import { TeamManager } from './team-manager'
 
 export const metadata = { title: 'Team' }
 export const dynamic = 'force-dynamic'
 
 export default async function TeamPage() {
-	const membership = await currentMembership()
-	if (!membership?.permissions.has('team.view')) notFound()
+	const membership = await requireAccountMembership()
+	if (!membership.permissions.has('team.view')) notFound()
 
 	return (
 		<TeamManager

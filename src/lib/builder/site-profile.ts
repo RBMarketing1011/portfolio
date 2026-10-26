@@ -46,10 +46,9 @@ export const BUSINESS_TYPES = [
 ] as const
 
 export type BusinessType = (typeof BUSINESS_TYPES)[number]['value']
-const BUSINESS_TYPE_VALUES = BUSINESS_TYPES.map((t) => t.value) as [
-	BusinessType,
-	...BusinessType[],
-]
+/** The schema.org types alone, in the order above (the AI's output schemas use them as an enum). */
+export const BUSINESS_TYPE_VALUES: readonly [BusinessType, ...BusinessType[]] =
+	BUSINESS_TYPES.map((t) => t.value) as [BusinessType, ...BusinessType[]]
 
 export const WEEKDAYS = [
 	'Monday',
@@ -197,16 +196,95 @@ export const profileImages = (profile: SiteProfile) =>
 		(url): url is string => Boolean(url),
 	)
 
+type Business = SiteProfile['business']
+
+/** How a business is reached, as the footer's Contact column shows it. Empty when unknown. */
+export type BusinessContact = {
+	phone: string
+	email: string
+	/** Street, city, region and postal code on one line. */
+	address: string
+	/** One line per opening-hours row, such as "Monday to Friday 7:00 to 18:00". */
+	hours: string[]
+	areas: string[]
+}
+
+/** "1 Main St, Austin, TX 78701", from whichever parts are set. */
+export function addressLine(business: Business) {
+	const locality = [business.region, business.postalCode].filter(Boolean).join(' ')
+	return [business.street, business.city, locality].filter(Boolean).join(', ')
+}
+
+const and = (parts: string[]) =>
+	parts.length < 2
+		? (parts[0] ?? '')
+		: `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+
+/** Consecutive days read as a range ("Monday to Friday"), the rest are listed. */
+function dayRange(days: Weekday[]) {
+	const indexes = [...new Set(days)]
+		.map((day) => WEEKDAYS.indexOf(day))
+		.filter((index) => index >= 0)
+		.sort((a, b) => a - b)
+	if (indexes.length === 7) return 'Every day'
+	const runs: number[][] = []
+	for (const index of indexes) {
+		const run = runs[runs.length - 1]
+		if (run && index === run[run.length - 1] + 1) run.push(index)
+		else runs.push([index])
+	}
+	return and(
+		runs.flatMap((run) =>
+			run.length > 2
+				? [`${WEEKDAYS[run[0]]} to ${WEEKDAYS[run[run.length - 1]]}`]
+				: run.map((index) => WEEKDAYS[index]),
+		),
+	)
+}
+
+const clock = (time: string) => time.replace(/^0(?=\d)/, '')
+
+/** The opening hours as plain lines; a row with no days is not published, as in the structured data. */
+export function hoursLines(business: Business) {
+	return business.hours
+		.filter((slot) => slot.days.length > 0)
+		.map((slot) => `${dayRange(slot.days)} ${clock(slot.opens)} to ${clock(slot.closes)}`)
+}
+
+/**
+ * A phone number as a `tel:` link, or '' when it is not one: international when it is
+ * written with a country code, and a 10-digit number reads as North American (+1).
+ */
+export function phoneHref(phone: string) {
+	const number = phone.replace(/\s*(?:ext\.?|x|#)\s*\d+\s*$/i, '')
+	const digits = number.replace(/\D/g, '')
+	if (digits.length < 7 || digits.length > 15) return ''
+	if (number.trim().startsWith('+')) return `tel:+${digits}`
+	if (digits.length === 10) return `tel:+1${digits}`
+	if (digits.length === 11 && digits.startsWith('1')) return `tel:+${digits}`
+	return `tel:${digits}`
+}
+
 /**
  * Who a site belongs to, for its header and footer: the logo, or the name set as a
  * wordmark when there is no logo. The business name wins over the SEO title, which
- * wins over the project name, because it is the most deliberate of the three.
+ * wins over the project name, because it is the most deliberate of the three. The
+ * contact details feed the footer's Contact column and the phone in the mobile menu.
  */
 export function brandFromProfile(profile: SiteProfile, projectName: string) {
+	const business = profile.business
+	const contact: BusinessContact = {
+		phone: business.phone,
+		email: business.email,
+		address: addressLine(business),
+		hours: hoursLines(business),
+		areas: [...business.serviceArea],
+	}
 	return {
-		name: profile.business.name || profile.seo.siteTitle || projectName,
+		name: business.name || profile.seo.siteTitle || projectName,
 		logo: profile.brand.logo,
 		logoAlt: profile.brand.logoAlt,
-		tagline: profile.business.description || profile.seo.description,
+		tagline: business.description || profile.seo.description,
+		contact,
 	}
 }

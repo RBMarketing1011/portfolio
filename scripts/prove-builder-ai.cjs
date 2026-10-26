@@ -253,4 +253,6 @@ check('replies are read through stray text and code fences', () => {
 	assert.equal(T.parseReply('{broken'), null)
 })
 
+// Whole-site builds are proved by prove-builder-plan.cjs, prove-builder-writer.cjs and the route proof.
+
 console.log(`\n${passed} checks passed`)

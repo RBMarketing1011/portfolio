@@ -1,0 +1,247 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["site", "facts", "photos", "design", "pages", "chrome"],
+  "properties": {
+    "site": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "language", "businessType", "tagline", "description", "audience", "offer", "voice", "personality", "services", "areas", "primaryAction"],
+      "properties": {
+        "name": { "type": "string" },
+        "language": { "type": "string" },
+        "businessType": {
+          "type": "string",
+          "enum": ["LocalBusiness", "Organization", "ProfessionalService", "HomeAndConstructionBusiness", "GeneralContractor", "Plumber", "Electrician", "HVACBusiness", "RoofingContractor", "HousePainter", "Locksmith", "MovingCompany", "AutoRepair", "Dentist", "MedicalClinic", "Physician", "VeterinaryCare", "LegalService", "Attorney", "AccountingService", "FinancialService", "InsuranceAgency", "RealEstateAgent", "Restaurant", "CafeOrCoffeeShop", "BeautySalon", "HairSalon", "DaySpa", "HealthClub", "Store", "PetStore", "ChildCare"]
+        },
+        "tagline": { "type": "string" },
+        "description": { "type": "string" },
+        "audience": { "type": "string" },
+        "offer": { "type": "string" },
+        "voice": { "type": "string" },
+        "personality": {
+          "type": "string",
+          "enum": ["technical", "bold", "friendly", "refined", "warm", "rugged", "clinical", "editorial", "luxe", "playful"]
+        },
+        "services": { "type": "array", "items": { "type": "string" } },
+        "areas": { "type": "array", "items": { "type": "string" } },
+        "primaryAction": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "target"],
+          "properties": { "label": { "type": "string" }, "target": { "type": "string" } }
+        }
+      }
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value", "label", "quote"],
+        "properties": {
+          "value": { "type": "string" },
+          "label": { "type": "string" },
+          "quote": { "type": "string" }
+        }
+      }
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ref", "description", "subject", "shape", "pair", "pairKey"],
+        "properties": {
+          "ref": { "type": "string" },
+          "description": { "type": "string" },
+          "subject": { "type": "string" },
+          "shape": {
+            "type": "string",
+            "enum": ["landscape", "portrait", "square", "panorama"]
+          },
+          "pair": {
+            "type": "string",
+            "enum": ["none", "before", "after"]
+          },
+          "pairKey": { "type": "string" }
+        }
+      }
+    },
+    "design": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["palette", "custom", "fonts", "shape", "buttons", "width", "backdrop", "footerTone"],
+      "properties": {
+        "palette": {
+          "type": "string",
+          "enum": ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "L13", "L14", "custom"]
+        },
+        "custom": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["background", "accent", "heading", "body"],
+          "properties": {
+            "background": { "type": "string" },
+            "accent": { "type": "string" },
+            "heading": { "type": "string" },
+            "body": { "type": "string" }
+          }
+        },
+        "fonts": {
+          "type": "string",
+          "enum": ["grotesk-dm", "sora-inter", "bricolage-inter", "instrument", "manrope", "jakarta", "redhat", "figtree", "outfit-figtree", "oswald-barlow", "archivo", "epilogue-inter", "schibsted-inter", "plex", "fraunces-inter", "lora-nunito", "merriweather-source", "caslon-franklin", "playfair-source", "cormorant-manrope", "bodoni-jost", "newsreader-intertight", "zilla-work", "cinzel-raleway"]
+        },
+        "shape": {
+          "type": "string",
+          "enum": ["sharp", "soft", "round"]
+        },
+        "buttons": {
+          "type": "string",
+          "enum": ["solid", "gradient"]
+        },
+        "width": {
+          "type": "string",
+          "enum": ["5xl", "6xl", "7xl"]
+        },
+        "backdrop": {
+          "type": "string",
+          "enum": ["clean", "paper", "glow", "grid", "lines", "blueprint"]
+        },
+        "footerTone": {
+          "type": "string",
+          "enum": ["match", "soft", "inverse"]
+        }
+      }
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "slug", "archetype", "purpose", "keyword", "inMenu", "opener", "closer", "photos", "sections"],
+        "properties": {
+          "name": { "type": "string" },
+          "slug": { "type": "string" },
+          "archetype": {
+            "type": "string",
+            "enum": ["home", "services", "service", "area", "about", "contact", "work", "reviews", "pricing", "faq", "landing", "process", "article", "custom"]
+          },
+          "purpose": { "type": "string" },
+          "keyword": { "type": "string" },
+          "inMenu": { "type": "boolean" },
+          "opener": {
+            "type": "string",
+            "enum": ["none", "page-hero:centered", "page-hero:left", "page-hero:compact", "split-hero:split", "split-hero:reversed", "stat-hero:cards", "stat-hero:divided", "stat-hero:centered"]
+          },
+          "closer": {
+            "type": "string",
+            "enum": ["none", "cta-band:card", "cta-band:centered", "cta-band:split", "split-cta:cards", "split-cta:divided", "split-cta:rows"]
+          },
+          "photos": { "type": "array", "items": { "type": "string" } },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["layout", "job", "items", "child", "surface", "tweaks", "images"],
+              "properties": {
+                "layout": {
+                  "type": "string",
+                  "enum": ["page-hero:centered", "page-hero:left", "page-hero:compact", "split-hero:split", "split-hero:reversed", "stat-hero:cards", "stat-hero:divided", "stat-hero:centered", "announcement-bar:strip", "announcement-bar:badge", "announcement-bar:ticker", "stat-band:divided", "stat-band:row", "stat-band:cards", "spotlight:split", "spotlight:stacked", "spotlight:overlap", "before-after:columns", "before-after:rows", "before-after:stacked", "feature-rows:alternating", "feature-rows:cards", "feature-rows:stacked", "process-steps:columns", "process-steps:timeline", "process-steps:cards", "bento-grid:accent", "bento-grid:divided", "bento-grid:numbered", "tabs-showcase:pills", "tabs-showcase:underline", "tabs-showcase:side", "chips:solid", "chips:outline", "chips:inline", "faq-accordion:split", "faq-accordion:stacked", "faq-accordion:boxed", "split-cta:cards", "split-cta:divided", "split-cta:rows", "cta-band:card", "cta-band:centered", "cta-band:split", "prose-block:plain", "prose-block:ruled", "prose-block:marked", "callout:card", "callout:rule", "callout:banner", "check-list:columns", "check-list:inline", "check-list:stacked", "media-gallery:bottom", "media-gallery:side", "media-gallery:top", "media-gallery:carousel", "media-mosaic:default", "figure:below", "figure:framed", "figure:beside", "image-compare:stacked", "image-compare:text-left", "image-compare:text-right", "grid:centered", "grid:above", "grid:beside", "masonry:centered", "masonry:above", "masonry:bare", "carousel:bars", "carousel:below", "carousel:overlay", "marquee:inline", "marquee:rule", "marquee:centered", "detail-card:card", "detail-card:rows", "detail-card:inline", "table-of-contents:rail", "table-of-contents:numbered", "table-of-contents:card"]
+                },
+                "job": { "type": "string" },
+                "items": { "type": "integer" },
+                "child": {
+                  "type": "string",
+                  "enum": ["none", "feature-card:card", "feature-card:inline", "feature-card:numbered", "testimonial-card:card", "testimonial-card:bare", "related-card:card", "related-card:list", "media-card:card", "media-card:overlay", "media-card:bare", "client-logo:wordmark"]
+                },
+                "surface": {
+                  "type": "string",
+                  "enum": ["plain", "soft", "tinted", "wash", "pattern", "inverse", "inverse-glow", "brand"]
+                },
+                "tweaks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["one-button", "no-buttons", "hero-stats", "hero-link", "fan", "cols-2", "cols-3", "cols-4", "points", "details", "tile-images", "with-note", "full-width", "marker-plus", "marker-chevron", "marker-check", "marker-arrow", "numbers-solid", "numbers-outline", "numbers-muted", "size-md", "size-lg", "size-full"]
+                  }
+                },
+                "images": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "chrome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["header", "footer", "cta", "menu"],
+      "properties": {
+        "header": {
+          "type": "string",
+          "enum": ["none", "bar", "floating", "stacked"]
+        },
+        "footer": {
+          "type": "string",
+          "enum": ["none", "columns", "centered", "split"]
+        },
+        "cta": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["label", "target"],
+          "properties": { "label": { "type": "string" }, "target": { "type": "string" } }
+        },
+        "menu": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "kind", "target", "style", "links", "promo"],
+            "properties": {
+              "label": { "type": "string" },
+              "kind": {
+                "type": "string",
+                "enum": ["page", "group", "phone"]
+              },
+              "target": { "type": "string" },
+              "style": {
+                "type": "string",
+                "enum": ["mega", "dropdown"]
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["label", "target", "description", "icon"],
+                  "properties": {
+                    "label": { "type": "string" },
+                    "target": { "type": "string" },
+                    "description": { "type": "string" },
+                    "icon": { "type": "string" }
+                  }
+                }
+              },
+              "promo": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["show", "eyebrow", "title", "body", "ctaLabel", "target", "image"],
+                "properties": {
+                  "show": { "type": "boolean" },
+                  "eyebrow": { "type": "string" },
+                  "title": { "type": "string" },
+                  "body": { "type": "string" },
+                  "ctaLabel": { "type": "string" },
+                  "target": { "type": "string" },
+                  "image": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

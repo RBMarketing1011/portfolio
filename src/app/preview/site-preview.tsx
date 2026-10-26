@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { notFound, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { googleFontHref } from '@/app/builder/google-fonts'
-import { backgroundCss, themeCss } from '@/app/section-preview/theme'
+import { lookCss } from '@/app/section-preview/theme'
 import {
 	BuiltFooter,
 	BuiltHeader,
@@ -12,12 +12,14 @@ import {
 } from '@/components/built-chrome'
 import { brandFromProfile, readSiteProfile } from '@/lib/builder/site-profile'
 import { Button } from '@/components/ui/button'
-import {
-	readLook,
-	mergeLook,
-	type BuilderLook,
-} from '@/lib/builder/builder-context'
+import { readLook } from '@/lib/builder/builder-context'
 import { LOCAL_SITE_ID } from '@/lib/builder/drivers'
+import {
+	builtSiteVars,
+	cssText,
+	sanitizeLook,
+	type BuilderLook,
+} from '@/lib/builder/look'
 import { setMediaIndex } from '@/lib/builder/media-store'
 import { RenderBlocks } from '@/lib/builder/render'
 import { siteSchema, HOME_SLUG, type Site } from '@/lib/builder/page-schema'
@@ -35,19 +37,6 @@ function load(): Site | null {
 	}
 }
 
-/** The same stylesheet the builder canvas gets, so the two surfaces agree. */
-function lookCss(look: BuilderLook) {
-	return [
-		themeCss(look.theme),
-		backgroundCss(look.page),
-		backgroundCss(look.header, 'header', false),
-		backgroundCss(look.footer, 'footer', false),
-		...Object.entries(look.blocks).map(([id, surface]) =>
-			backgroundCss(surface, 'page', false, `[data-block-id='${id}'] > *`),
-		),
-	].join('\n')
-}
-
 export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 	const params = useParams<{ slug?: string[] }>()
 	const [site, setSite] = useState<Site | null>(null)
@@ -59,7 +48,8 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 		if (siteId === LOCAL_SITE_ID) {
 			setMediaIndex(null)
 			setSite(load())
-			setLook(readLook())
+			// Browser storage is as untrusted as anything else, so it is read strictly too.
+			setLook(sanitizeLook(readLook()))
 			setReady(true)
 			return
 		}
@@ -72,7 +62,7 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 				// The library comes with the site, so refs resolve to their CDN URLs.
 				setMediaIndex(body?.site?.media ?? [])
 				setSite(parsed?.success ? parsed.data : null)
-				setLook(mergeLook(body?.site?.look ?? {}))
+				setLook(sanitizeLook(body?.site?.look ?? {}))
 				if (body?.site)
 					setBrand(brandFromProfile(readSiteProfile(body.site.profile), body.site.name))
 				setReady(true)
@@ -113,28 +103,39 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 		: (site.pages.find((p) => p.slug === HOME_SLUG) ?? site.pages[0])
 	if (!page) notFound()
 
+	const linkBase = `/preview/${siteId}`
 	const fontHref = look
 		? googleFontHref([look.theme.headingFont, look.theme.bodyFont])
+		: ''
+	// The same stylesheet the hosted site gets: this page's block surfaces, and the
+	// header's hero trim and anchor offset.
+	const css = look
+		? cssText(
+				[
+					lookCss(look, { blockIds: page.blocks.map((block) => block.id) }),
+					builtSiteVars(site.chrome.header),
+				].join('\n'),
+			)
 		: ''
 
 	return (
 		<>
 			{fontHref && <link rel='stylesheet' href={fontHref} />}
-			{look && <style dangerouslySetInnerHTML={{ __html: lookCss(look) }} />}
+			{css && <style dangerouslySetInnerHTML={{ __html: css }} />}
 			<BuiltHeader
 				chrome={site.chrome}
 				pages={site.pages.filter((p) => p.inHeader)}
 				current={page.slug}
-				linkBase={`/preview/${siteId}`}
+				linkBase={linkBase}
 				brand={brand}
 			/>
 			<main>
-				<RenderBlocks blocks={page.blocks} />
+				<RenderBlocks blocks={page.blocks} linkBase={linkBase} />
 			</main>
 			<BuiltFooter
 				chrome={site.chrome}
 				pages={site.pages}
-				linkBase={`/preview/${siteId}`}
+				linkBase={linkBase}
 				brand={brand}
 			/>
 		</>

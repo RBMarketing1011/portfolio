@@ -1,0 +1,278 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Roof Replacement in Austin | Summit Roofing Co.",
+			"description": "A complete tear-off and new roof for your Austin home, with a written estimate first. Book a free inspection."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Roof replacement"
+			},
+			{
+				"id": "s1.title",
+				"value": "A new roof without the [[mess]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "A complete tear-off and a new roof for your Austin home, with the site cleaned up before we leave."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See all services"
+			},
+			{
+				"id": "s1.mediaLabel",
+				"value": "A finished charcoal shingle roof on a brick home"
+			},
+			{
+				"id": "s2.rows.0.eyebrow",
+				"value": "The tear-off"
+			},
+			{
+				"id": "s2.rows.0.title",
+				"value": "Down to the decking"
+			},
+			{
+				"id": "s2.rows.0.description",
+				"value": "We strip the old shingles and check the decking underneath, so problems are fixed before the new roof goes on."
+			},
+			{
+				"id": "s2.rows.1.eyebrow",
+				"value": "The new layers"
+			},
+			{
+				"id": "s2.rows.1.title",
+				"value": "Built up layer by layer"
+			},
+			{
+				"id": "s2.rows.1.description",
+				"value": "New underlayment and drip edge go on first, then the shingles, so water has nowhere to get in."
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "What is included"
+			},
+			{
+				"id": "s2.title",
+				"value": "Every layer, [[replaced]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "What goes into a complete replacement."
+			},
+			{
+				"id": "s2.tiles.0.title",
+				"value": "Tear-off"
+			},
+			{
+				"id": "s2.tiles.0.blurb",
+				"value": "The old shingles come off down to the decking."
+			},
+			{
+				"id": "s2.tiles.0.icon",
+				"value": "Hammer"
+			},
+			{
+				"id": "s2.tiles.1.title",
+				"value": "Decking check"
+			},
+			{
+				"id": "s2.tiles.1.blurb",
+				"value": "We repair soft or damaged boards before anything new goes on."
+			},
+			{
+				"id": "s2.tiles.1.icon",
+				"value": "Ruler"
+			},
+			{
+				"id": "s2.tiles.2.title",
+				"value": "New underlayment"
+			},
+			{
+				"id": "s2.tiles.2.blurb",
+				"value": "A fresh water barrier goes under every shingle."
+			},
+			{
+				"id": "s2.tiles.2.icon",
+				"value": "Layers"
+			},
+			{
+				"id": "s2.tiles.3.title",
+				"value": "New shingles"
+			},
+			{
+				"id": "s2.tiles.3.blurb",
+				"value": "Finished with the shingles you choose."
+			},
+			{
+				"id": "s2.tiles.3.icon",
+				"value": "House"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "Replacement day"
+			},
+			{
+				"id": "s3.title",
+				"value": "How the day [[goes]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "What to expect from the morning crew to the final sweep."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Protect and tear off"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "We cover your garden and strip the old roof down to the decking."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "Build the new roof"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "Underlayment, drip edge and shingles go on in order."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "Clean and walk through"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "We sweep for nails, haul away the waste and check the work with you."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Your worries"
+			},
+			{
+				"id": "s4.title",
+				"value": "Common worries, [[answered]]"
+			},
+			{
+				"id": "s4.beforeLabel",
+				"value": "Worry"
+			},
+			{
+				"id": "s4.afterLabel",
+				"value": "What we do"
+			},
+			{
+				"id": "s4.before.0.text",
+				"value": "My yard will be a mess"
+			},
+			{
+				"id": "s4.before.1.text",
+				"value": "I will not know what I am paying for"
+			},
+			{
+				"id": "s4.before.2.text",
+				"value": "Hidden damage will surface later"
+			},
+			{
+				"id": "s4.before.3.text",
+				"value": "Nobody will explain the work"
+			},
+			{
+				"id": "s4.after.0.text",
+				"value": "We sweep for nails before we leave"
+			},
+			{
+				"id": "s4.after.1.text",
+				"value": "You get a written estimate first"
+			},
+			{
+				"id": "s4.after.2.text",
+				"value": "We check the decking before re-roofing"
+			},
+			{
+				"id": "s4.after.3.text",
+				"value": "We walk you through each step"
+			},
+			{
+				"id": "s5.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s5.title",
+				"value": "Replacing your [[roof]]"
+			},
+			{
+				"id": "s5.description",
+				"value": "Answers about timing, materials and clean-up."
+			},
+			{
+				"id": "s5.faqs.0.question",
+				"value": "How long does a replacement take?"
+			},
+			{
+				"id": "s5.faqs.0.answer",
+				"value": "It depends on the size and pitch of the roof. Your estimate gives you a timeline before we start."
+			},
+			{
+				"id": "s5.faqs.1.question",
+				"value": "Can I choose my shingles?"
+			},
+			{
+				"id": "s5.faqs.1.answer",
+				"value": "Yes. We walk you through the options during the inspection and note your choice on the estimate."
+			},
+			{
+				"id": "s5.faqs.2.question",
+				"value": "What happens to the old roof?"
+			},
+			{
+				"id": "s5.faqs.2.answer",
+				"value": "We haul it away and sweep the yard for nails before we leave."
+			},
+			{
+				"id": "s5.faqs.3.question",
+				"value": "Do I need to be home?"
+			},
+			{
+				"id": "s5.faqs.3.answer",
+				"value": "Not for the whole job. We meet you at the start and walk the finished roof with you at the end."
+			},
+			{
+				"id": "s5.faqs.4.question",
+				"value": "How do I start?"
+			},
+			{
+				"id": "s5.faqs.4.answer",
+				"value": "Book a free inspection. We look at the whole roof and tell you whether a replacement makes sense."
+			},
+			{
+				"id": "s6.title",
+				"value": "Ready for a new roof?"
+			},
+			{
+				"id": "s6.description",
+				"value": "Book a free inspection and get a written estimate for your replacement."
+			},
+			{
+				"id": "s6.actions.0.label",
+				"value": "Get an estimate"
+			},
+			{
+				"id": "s6.actions.1.label",
+				"value": "Call (512) 555-0142"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

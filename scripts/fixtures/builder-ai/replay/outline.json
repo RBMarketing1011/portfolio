@@ -1,0 +1,55 @@
+{
+	"reply": {
+		"pages": [
+			{
+				"key": "p7",
+				"sections": [
+					{
+						"layout": "page-hero:compact",
+						"job": "Invite the call that books the free inspection.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "detail-card:card",
+						"job": "Give the phone, the hours and the areas served, with the call button.",
+						"items": 3,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:columns",
+						"job": "Say what happens after you call, in three steps.",
+						"items": 3,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:stacked",
+						"job": "Answer questions about booking and the inspection visit.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 4100,
+		"output_tokens": 1200,
+		"cache_read_input_tokens": 0,
+		"cache_creation_input_tokens": 11200
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

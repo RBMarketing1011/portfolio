@@ -1,0 +1,82 @@
+{
+	"about": "Fourteen pages planned against a pinned count of ten: the reader keeps twelve (its cap), two more are left out (page-skipped), the plan outlines only the first six, and pages seven to ten wait for the outline call.",
+	"request": {
+		"prompt": "Full-service landscaping company in Charlotte: lawn care, garden design, tree work, irrigation, hardscaping, lighting, snow removal and seasonal clean-ups.",
+		"pins": { "pages": { "kind": "count", "count": 10 }, "palette": { "kind": "ai", "polarity": "any" }, "fonts": { "kind": "ai" }, "shape": "ai", "header": "ai", "footer": "ai", "menu": "ai", "ctaLabel": "", "keepDesign": true, "updateMenu": true },
+		"business": { "name": "Greenline Landscapes", "type": "HomeAndConstructionBusiness", "phone": "704-555-0110", "email": "", "city": "Charlotte", "region": "NC", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Greenline Landscapes", "language": "en-US", "businessType": "HomeAndConstructionBusiness", "tagline": "Yards that look after themselves.",
+			"description": "Lawn care, garden design, tree work, irrigation and more in Charlotte.", "audience": "Charlotte homeowners",
+			"offer": "Year-round landscaping from one crew.", "voice": "Down to earth.", "personality": "rugged",
+			"services": ["Lawn care", "Garden design", "Tree work", "Irrigation", "Hardscaping", "Lighting", "Snow removal", "Clean-ups"], "areas": ["Charlotte"],
+			"primaryAction": { "label": "Get a quote", "target": "page:contact" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L10", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "zilla-work", "shape": "sharp", "buttons": "solid", "width": "6xl", "backdrop": "lines", "footerTone": "inverse" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "Win the quote.", "keyword": "landscaping Charlotte", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Promise a yard that looks after itself.", "items": 0, "child": "none", "surface": "inverse-glow", "tweaks": [], "images": [] },
+				{ "layout": "marquee:inline", "job": "Run the services.", "items": 8, "child": "client-logo:wordmark", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "The main services.", "items": 6, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "From quote to finished yard.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "Patchwork crews versus one crew.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Ask for the quote.", "items": 0, "child": "none", "surface": "brand", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Services", "slug": "services", "archetype": "services", "purpose": "Every service.", "keyword": "landscaping services Charlotte", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Introduce the services.", "items": 0, "child": "none", "surface": "tinted", "tweaks": [], "images": [] },
+				{ "layout": "grid:centered", "job": "Link to each service page.", "items": 6, "child": "related-card:list", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "How quotes work.", "items": 3, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:boxed", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Ask for the quote.", "items": 0, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Lawn Care", "slug": "lawn-care", "archetype": "service", "purpose": "Weekly lawn care.", "keyword": "lawn care Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Promise a lawn that stays green.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:numbered", "job": "What weekly care includes.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "How the season goes.", "items": 3, "child": "none", "surface": "tinted", "tweaks": [], "images": [] },
+				{ "layout": "check-list:columns", "job": "What every visit includes.", "items": 6, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:boxed", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:split", "job": "Book lawn care.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Garden Design", "slug": "garden-design", "archetype": "service", "purpose": "Design a garden.", "keyword": "garden design Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Promise a garden designed for the way you live.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "What design covers.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "Design steps.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:rows", "job": "Worries and answers.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:stacked", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "split-cta:cards", "job": "Start a design or ask.", "items": 2, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Tree Work", "slug": "tree-work", "archetype": "service", "purpose": "Tree care.", "keyword": "tree service Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:card", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Promise safe tree work.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:numbered", "job": "What tree work covers.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:cards", "job": "How a tree job goes.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "before-after:stacked", "job": "Worries and answers.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:card", "job": "Book tree work.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Irrigation", "slug": "irrigation", "archetype": "service", "purpose": "Irrigation systems.", "keyword": "irrigation Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Promise water where it is needed.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "What an irrigation system covers.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "Install steps.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:boxed", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:split", "job": "Book an irrigation visit.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Hardscaping", "slug": "hardscaping", "archetype": "service", "purpose": "Patios and walls.", "keyword": "hardscaping Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [
+				{ "layout": "page-hero:left", "job": "Patios built to last.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:numbered", "job": "What hardscaping covers.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Lighting", "slug": "lighting", "archetype": "service", "purpose": "Landscape lighting.", "keyword": "landscape lighting Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:card", "photos": [], "sections": [] },
+			{ "name": "Snow Removal", "slug": "snow-removal", "archetype": "service", "purpose": "Snow removal.", "keyword": "snow removal Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [] },
+			{ "name": "Clean-ups", "slug": "clean-ups", "archetype": "service", "purpose": "Seasonal clean-ups.", "keyword": "yard clean up Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [] },
+			{ "name": "About", "slug": "about", "archetype": "about", "purpose": "The crew.", "keyword": "landscaping company Charlotte", "inMenu": true, "opener": "page-hero:left", "closer": "split-cta:cards", "photos": [], "sections": [] },
+			{ "name": "FAQ", "slug": "faq", "archetype": "faq", "purpose": "Questions.", "keyword": "landscaping questions", "inMenu": true, "opener": "page-hero:compact", "closer": "split-cta:cards", "photos": [], "sections": [] },
+			{ "name": "Contact", "slug": "contact", "archetype": "contact", "purpose": "Get a quote.", "keyword": "landscaping quote Charlotte", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [] },
+			{ "name": "Careers", "slug": "careers", "archetype": "custom", "purpose": "Join the crew.", "keyword": "landscaping jobs Charlotte", "inMenu": false, "opener": "page-hero:left", "closer": "cta-band:split", "photos": [], "sections": [] }
+		],
+		"chrome": { "header": "bar", "footer": "split", "cta": { "label": "Get a quote", "target": "page:contact" }, "menu": [] }
+	}
+}

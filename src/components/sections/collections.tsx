@@ -176,15 +176,19 @@ export function Marquee({
 	children: React.ReactNode
 }) {
 	const track = (
-		// Masked at both edges so items fade rather than clip at the viewport.
-		<div className='group overflow-hidden mask-[linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]'>
+		// Masked at both edges so items fade rather than clip at the viewport. With reduced
+		// motion it stands still: one copy, wrapped onto as many rows as it needs, unmasked.
+		<div className='group overflow-hidden mask-[linear-gradient(to_right,transparent,black_12%,black_88%,transparent)] motion-reduce:mask-none'>
 			{/* Two identical copies; the keyframe shifts exactly one, so the loop has no seam. */}
-			<div className='flex w-max animate-marquee gap-14 group-hover:paused'>
+			<div className='flex w-max animate-marquee gap-14 group-hover:paused motion-reduce:w-auto motion-reduce:animate-none'>
 				{[0, 1].map((copy) => (
 					<div
 						key={copy}
 						aria-hidden={copy === 1}
-						className='flex shrink-0 items-center gap-14'>
+						className={cn(
+							'flex shrink-0 items-center gap-14 motion-reduce:shrink motion-reduce:flex-wrap motion-reduce:justify-center motion-reduce:gap-y-6 motion-reduce:px-6',
+							copy === 1 && 'motion-reduce:hidden',
+						)}>
 						{children}
 					</div>
 				))}

@@ -1,0 +1,9 @@
+{
+	"error": {
+		"status": 429,
+		"type": "rate_limit_error",
+		"headers": {
+			"retry-after": "2"
+		}
+	}
+}

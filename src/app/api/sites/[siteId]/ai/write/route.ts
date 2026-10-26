@@ -63,6 +63,9 @@ export async function POST(request: Request, { params }: Params) {
 			return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
 
 		const body = parsed.data
+		// The sections go into the prompt as they are, so their size is bounded too.
+		if (JSON.stringify(body.blocks).length > 250_000)
+			return NextResponse.json({ error: 'These sections are too large to write in one go.' }, { status: 413 })
 		const blocks = await writeBlocks({
 			db,
 			workspaceId: site.workspaceId,

@@ -1,0 +1,32 @@
+{
+	"about": "A pinned brand colour on a light site while the planner chose a dark curated palette: the pin wins, its hue is kept, and only its lightness may move (section 8.13). The planner's custom colours for a dark site are dropped too.",
+	"request": {
+		"prompt": "Solar installer in Sacramento: rooftop panels, batteries and monitoring for homes.",
+		"pins": { "pages": { "kind": "count", "count": 3 }, "palette": { "kind": "brand", "accent": "#0B5FFF", "polarity": "light" }, "fonts": { "kind": "ai" }, "shape": "ai", "header": "ai", "footer": "ai", "menu": "ai", "ctaLabel": "", "keepDesign": true, "updateMenu": true },
+		"business": { "name": "Sunward Solar", "type": "Electrician", "phone": "916-555-0102", "email": "", "city": "Sacramento", "region": "CA", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Sunward Solar", "language": "en-US", "businessType": "Electrician", "tagline": "Power from your own roof.",
+			"description": "Rooftop solar, batteries and monitoring in Sacramento.", "audience": "Sacramento homeowners",
+			"offer": "Rooftop panels, batteries and monitoring.", "voice": "Clear and confident.", "personality": "technical",
+			"services": ["Rooftop panels", "Batteries", "Monitoring"], "areas": ["Sacramento"],
+			"primaryAction": { "label": "Get a solar quote", "target": "page:contact" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "custom", "custom": { "background": "#05070a", "accent": "#c4f04d", "heading": "#ffffff", "body": "#cccccc" }, "fonts": "grotesk-dm", "shape": "soft", "buttons": "gradient", "width": "6xl", "backdrop": "grid", "footerTone": "match" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "Win the quote.", "keyword": "solar installer Sacramento", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Promise power from your own roof.", "items": 0, "child": "none", "surface": "inverse-glow", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:accent", "job": "Panels, batteries, monitoring.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:timeline", "job": "From quote to switch-on.", "items": 4, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "before-after:columns", "job": "Grid bills versus your own power.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:split", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Ask for the quote.", "items": 0, "child": "none", "surface": "brand", "tweaks": [], "images": [] }
+			] }
+		],
+		"chrome": { "header": "floating", "footer": "centered", "cta": { "label": "Get a quote", "target": "page:contact" }, "menu": [] }
+	}
+}

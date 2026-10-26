@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { errorResponse, requireUserId } from '@/lib/auth/guards'
 import { listMemberships, resolveMembership } from '@/lib/workspace'
-import { WORKSPACE_COOKIE } from '@/lib/workspace/current'
+import { ADMIN_VIEW_COOKIE, WORKSPACE_COOKIE } from '@/lib/workspace/current'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,14 +31,36 @@ export async function POST(request: Request) {
 		const membership = await resolveMembership(userId, parsed.data.workspaceId)
 		if (!membership)
 			return NextResponse.json({ error: 'Account not found.' }, { status: 404 })
-		;(await cookies()).set(WORKSPACE_COOKIE, parsed.data.workspaceId, {
+		const base = {
 			httpOnly: true,
 			sameSite: 'lax',
 			secure: process.env.NODE_ENV === 'production',
 			path: '/',
-			maxAge: 60 * 60 * 24 * 365,
-		})
+		} as const
+		const jar = await cookies()
+		// An admin is viewing someone else's account: that lasts only as long as
+		// the browser session, and never touches the member cookie.
+		if (membership.viaAdmin) jar.set(ADMIN_VIEW_COOKIE, parsed.data.workspaceId, base)
+		else
+			jar.set(WORKSPACE_COOKIE, parsed.data.workspaceId, {
+				...base,
+				maxAge: 60 * 60 * 24 * 365,
+			})
 
+		return NextResponse.json({ ok: true })
+	} catch (error) {
+		return errorResponse(error)
+	}
+}
+
+/** Leaves the selected account. For an admin that ends the visit entirely;
+ *  a member falls back to their own account. */
+export async function DELETE() {
+	try {
+		await requireUserId()
+		const jar = await cookies()
+		jar.delete(ADMIN_VIEW_COOKIE)
+		jar.delete(WORKSPACE_COOKIE)
 		return NextResponse.json({ ok: true })
 	} catch (error) {
 		return errorResponse(error)

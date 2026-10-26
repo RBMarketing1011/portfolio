@@ -17,6 +17,11 @@ import {
 	type IconSide,
 } from './primitives'
 
+// A shadow at this strength of the theme's shadow ink: black on dark sites, a lighter
+// slate on light ones (theme.ts), so a light site's fan does not sit in heavy smudges.
+const shadowInk = (percent: number) =>
+	`color-mix(in srgb, var(--shadow-ink) ${percent}%, transparent)`
+
 // Positions are percentages of the primary card, so the cluster scales with it.
 // Tiles stay fully opaque and are shaded with brightness instead, so each one reads
 // as a solid screenshot; the shadow is what separates the layers.
@@ -31,7 +36,7 @@ const backdropLayouts = [
 		height: 'calc(55% + 44px)',
 		z: 2,
 		brightness: 0.86,
-		shadow: '0 20px 45px -12px rgba(0,0,0,0.85)',
+		shadow: `0 20px 45px -12px ${shadowInk(85)}`,
 	},
 	{
 		left: '100%',
@@ -40,7 +45,7 @@ const backdropLayouts = [
 		height: '75%',
 		z: 1,
 		brightness: 0.72,
-		shadow: '0 24px 50px -14px rgba(0,0,0,0.88)',
+		shadow: `0 24px 50px -14px ${shadowInk(88)}`,
 	},
 	{
 		// 16:9 (width % equals height % on a 16:9 parent). Right edge stays at 148%.
@@ -50,7 +55,7 @@ const backdropLayouts = [
 		height: '68%',
 		z: 3,
 		brightness: 0.66,
-		shadow: '0 26px 55px -16px rgba(0,0,0,0.9)',
+		shadow: `0 26px 55px -16px ${shadowInk(90)}`,
 	},
 	{
 		left: '41%',
@@ -59,7 +64,7 @@ const backdropLayouts = [
 		height: '64%',
 		z: 4,
 		brightness: 0.58,
-		shadow: '0 28px 60px -16px rgba(0,0,0,0.92)',
+		shadow: `0 28px 60px -16px ${shadowInk(92)}`,
 	},
 	{
 		// Nudged up and left by 1.5 hero-grid squares (66px).
@@ -69,7 +74,7 @@ const backdropLayouts = [
 		height: '73%',
 		z: 5,
 		brightness: 0.5,
-		shadow: '0 30px 65px -18px rgba(0,0,0,0.94)',
+		shadow: `0 30px 65px -18px ${shadowInk(94)}`,
 	},
 ]
 
@@ -83,8 +88,8 @@ export function SplitHero({
 	],
 	media,
 	mediaSrc,
-	mediaLabel = 'Main Image',
-	backdrop = [],
+	mediaLabel,
+	backdrop,
 	variant = 'split',
 }: {
 	eyebrow?: string
@@ -93,16 +98,25 @@ export function SplitHero({
 	actions?: Action[]
 	media?: React.ReactNode
 	mediaSrc?: string
+	/** Names the main photo for screen readers, and labels the empty slot. */
 	mediaLabel?: string
-	/** Slot images, in the order of backdropLayouts. Empty slots render numbered placeholders. */
+	/**
+	 * Slot images, in the order of backdropLayouts. Once set, only the slots holding an
+	 * image are drawn, so an empty list draws no fan; left unset (the library sample),
+	 * every slot renders as a numbered placeholder.
+	 */
 	backdrop?: string[]
 	/** Which side the media sits on. The copy takes the other side and aligns to it. */
 	variant?: 'split' | 'reversed'
 }) {
 	const mediaLeft = variant === 'reversed'
+	const sample = backdrop === undefined
+	const tiles = backdropLayouts
+		.map((layout, index) => ({ layout, index, src: backdrop?.[index] }))
+		.filter((tile) => sample || tile.src)
 
 	return (
-		<section className='relative overflow-hidden px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-24 lg:pt-44'>
+		<section className='relative overflow-hidden px-6 pb-16 pt-[calc(9rem-var(--hero-trim,0rem))] sm:px-10 lg:px-16 lg:pb-24 lg:pt-[calc(11rem-var(--hero-trim-lg,0rem))]'>
 			<div className='mx-auto grid w-full max-w-[var(--content-max,72rem)] items-center gap-14 lg:grid-cols-2'>
 				<div
 					className={cn(
@@ -128,47 +142,48 @@ export function SplitHero({
 						'relative mx-4 mb-12 mt-16 sm:mx-10 lg:mx-6 lg:my-0',
 						mediaLeft && 'lg:order-1',
 					)}>
-					<div className='absolute inset-0 z-0 hidden scale-85 sm:block lg:scale-100'>
-						{backdropLayouts.map((layout, index) => {
-							const { brightness, shadow, z, left, ...rest } = layout
-							// The fan bleeds off the outer edge of the page. With the media on the
-							// left that edge is the left one, so the layout is mirrored rather than
-							// fanning across the copy.
-							const position = mediaLeft
-								? { ...rest, right: left }
-								: { ...rest, left }
-							const src = backdrop[index]
-							return (
-								<div
-									key={index}
-									aria-hidden
-									className='absolute flex items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-panel'
-									style={{ ...position, zIndex: z, boxShadow: shadow }}>
-									{src ? (
-										<Image
-											src={src}
-											alt=''
-											fill
-											sizes='(min-width: 1024px) 22rem, 45vw'
-											className='object-cover'
-											style={{ filter: `brightness(${brightness})` }}
-										/>
-									) : (
-										<span className='font-display text-sm font-semibold uppercase tracking-widest text-slate-400'>
-											Image {index + 1}
-										</span>
-									)}
-								</div>
-							)
-						})}
-					</div>
+					{tiles.length > 0 && (
+						<div className='absolute inset-0 z-0 hidden scale-85 sm:block lg:scale-100'>
+							{tiles.map(({ layout, index, src }) => {
+								const { brightness, shadow, z, left, ...rest } = layout
+								// The fan bleeds off the outer edge of the page. With the media on the
+								// left that edge is the left one, so the layout is mirrored rather than
+								// fanning across the copy.
+								const position = mediaLeft
+									? { ...rest, right: left }
+									: { ...rest, left }
+								return (
+									<div
+										key={index}
+										aria-hidden
+										className='absolute flex items-center justify-center overflow-hidden rounded-xl border border-white/15 bg-panel'
+										style={{ ...position, zIndex: z, boxShadow: shadow }}>
+										{src ? (
+											<Image
+												src={src}
+												alt=''
+												fill
+												sizes='(min-width: 1024px) 22rem, 45vw'
+												className='object-cover'
+												style={{ filter: `brightness(${brightness})` }}
+											/>
+										) : (
+											<span className='font-display text-sm font-semibold uppercase tracking-widest text-slate-400'>
+												Image {index + 1}
+											</span>
+										)}
+									</div>
+								)
+							})}
+						</div>
+					)}
 
-					<GlassCard className='relative z-10 flex aspect-video w-full items-center justify-center overflow-hidden shadow-[0_32px_70px_-16px_rgba(0,0,0,0.95)]'>
+					<GlassCard className='relative z-10 flex aspect-video w-full items-center justify-center overflow-hidden shadow-[0_32px_70px_-16px_color-mix(in_srgb,var(--shadow-ink)_95%,transparent)]'>
 						{media ??
 							(mediaSrc ? (
 								<Image
 									src={mediaSrc}
-									alt=''
+									alt={mediaLabel ?? ''}
 									fill
 									sizes='(min-width: 1024px) 32rem, 90vw'
 									priority
@@ -176,7 +191,7 @@ export function SplitHero({
 								/>
 							) : (
 								<span className='font-display text-base font-semibold uppercase tracking-widest text-slate-300'>
-									{mediaLabel}
+									{mediaLabel ?? 'Main Image'}
 								</span>
 							))}
 					</GlassCard>
@@ -230,7 +245,7 @@ export function StatHero({
 	const centered = variant === 'centered'
 
 	return (
-		<section className='px-6 pb-16 pt-36 sm:px-10 lg:px-16 lg:pb-20 lg:pt-44'>
+		<section className='px-6 pb-16 pt-[calc(9rem-var(--hero-trim,0rem))] sm:px-10 lg:px-16 lg:pb-20 lg:pt-[calc(11rem-var(--hero-trim-lg,0rem))]'>
 			<div
 				className={cn(
 					'mx-auto w-full max-w-[var(--content-max,72rem)]',

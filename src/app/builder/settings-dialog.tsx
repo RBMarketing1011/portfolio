@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Palette, RotateCcw } from 'lucide-react'
+import { Check, Layers, Palette, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
 	Dialog,
@@ -12,14 +12,20 @@ import {
 	DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useBuilder } from '@/lib/builder/builder-context'
 import { cn } from '@/lib/utils'
+import { BackgroundDrawer } from './background-drawer'
 import { FontCombobox } from './font-combobox'
 import { fontStack } from './google-fonts'
 import {
 	contentWidths,
 	defaultSettings,
+	isShape,
 	paletteTokens,
+	SHAPES,
 	tintHex,
+	type Shape,
 	type ThemeSettings,
 } from './theme-settings'
 import { useGoogleFonts } from './use-google-fonts'
@@ -31,6 +37,22 @@ const colorFields = [
 	{ key: 'body', label: 'Body', hint: 'Paragraphs and supporting copy' },
 ] as const
 
+const shapeLabels: Record<Shape, string> = {
+	sharp: 'Sharp',
+	soft: 'Soft',
+	round: 'Round',
+}
+
+// A small swatch of each corner, so the choice shows itself.
+const shapeCorner: Record<Shape, string> = {
+	sharp: 'rounded-[1px]',
+	soft: 'rounded-[3px]',
+	round: 'rounded-full',
+}
+
+const choiceItem =
+	'h-auto min-w-0 gap-1.5 rounded-md border border-white/10 bg-white/3 px-3 py-1.5 text-xs font-medium text-slate-400 hover:border-white/25 hover:bg-white/3 hover:text-white data-[state=on]:border-brand/40 data-[state=on]:bg-brand/12 data-[state=on]:text-white'
+
 export function SettingsDialog({
 	settings,
 	onChange,
@@ -41,6 +63,12 @@ export function SettingsDialog({
 	const [open, setOpen] = useState(false)
 	// Edits are staged here so the preview only changes when Apply is pressed.
 	const [draft, setDraft] = useState<ThemeSettings>(settings)
+	const [backdropOpen, setBackdropOpen] = useState(false)
+
+	// Only the builder's Theme dialog edits a site: it is handed the site's own theme. The
+	// section library's previews a theme from its URL, where a site backdrop means nothing.
+	const site = useBuilder()
+	const editsSite = settings === site.look.theme
 
 	// Pulls the staged faces in so the specimen renders in the real font.
 	useGoogleFonts([draft.headingFont, draft.bodyFont])
@@ -59,6 +87,7 @@ export function SettingsDialog({
 			open={open}
 			onOpenChange={(next) => {
 				if (next) setDraft(settings)
+				else setBackdropOpen(false)
 				setOpen(next)
 			}}>
 			<DialogTrigger asChild>
@@ -185,6 +214,39 @@ export function SettingsDialog({
 										</button>
 									))}
 								</div>
+							</div>
+						</div>
+
+						<div className='border-t border-white/10 pt-8'>
+							<div className='flex flex-wrap items-end justify-between gap-4'>
+								<div>
+									<p className='font-display text-sm font-semibold text-white'>
+										Shape
+									</p>
+									<p className='mt-0.5 text-xs text-slate-500'>
+										One corner radius for cards, buttons, images and fields.
+									</p>
+								</div>
+								<ToggleGroup
+									type='single'
+									spacing={1}
+									aria-label='Shape'
+									value={isShape(draft.radius) ? draft.radius : defaultSettings.radius}
+									onValueChange={(radius) => {
+										// Radix lets the pressed item be pressed off (''); there is always a shape.
+										if (isShape(radius)) set('radius', radius)
+									}}
+									className='flex flex-wrap gap-1.5'>
+									{SHAPES.map((shape) => (
+										<ToggleGroupItem key={shape} value={shape} className={choiceItem}>
+											<span
+												aria-hidden
+												className={cn('size-3 border border-current', shapeCorner[shape])}
+											/>
+											{shapeLabels[shape]}
+										</ToggleGroupItem>
+									))}
+								</ToggleGroup>
 							</div>
 						</div>
 
@@ -332,8 +394,44 @@ export function SettingsDialog({
 								</div>
 							</div>
 						</div>
+
+						{editsSite && (
+							<div className='border-t border-white/10 pt-8'>
+								<div className='flex flex-wrap items-center justify-between gap-4'>
+									<div>
+										<p className='font-display text-sm font-semibold text-white'>
+											Site background
+										</p>
+										<p className='mt-0.5 text-xs text-slate-500'>
+											The backdrop behind every page and every section without its own.
+										</p>
+									</div>
+									<Button
+										type='button'
+										variant='outline'
+										onClick={() => setBackdropOpen(true)}
+										className='border-white/20 bg-transparent text-slate-200 hover:bg-white/5 hover:text-white'>
+										<Layers /> Site background
+									</Button>
+								</div>
+							</div>
+						)}
 					</div>
 				</div>
+
+				{/* Inside the dialog, so the drawer stacks on top of it instead of closing it.
+				    It saves on its own Apply; the staged theme only colors its swatches. */}
+				{editsSite && (
+					<BackgroundDrawer
+						slug='page'
+						scope='page'
+						open={backdropOpen}
+						onOpenChange={setBackdropOpen}
+						settings={site.look.page}
+						theme={draft}
+						onChange={(page) => site.setLook({ page })}
+					/>
+				)}
 
 				<div className='flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-white/10 bg-panel px-6 py-4'>
 					{dirty && (

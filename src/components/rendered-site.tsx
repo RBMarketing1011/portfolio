@@ -2,30 +2,17 @@
 
 import { notFound } from 'next/navigation'
 import { googleFontHref } from '@/app/builder/google-fonts'
-import { backgroundCss, themeCss } from '@/app/section-preview/theme'
+import { lookCss } from '@/app/section-preview/theme'
 import {
 	BuiltFooter,
 	BuiltHeader,
 	type SiteBrand,
 } from '@/components/built-chrome'
-import { mergeLook, type BuilderLook } from '@/lib/builder/builder-context'
+import { builtSiteVars, cssText, sanitizeLook } from '@/lib/builder/look'
 import { setMediaIndex } from '@/lib/builder/media-store'
 import { RenderBlocks } from '@/lib/builder/render'
 import { HOME_SLUG, type Site } from '@/lib/builder/page-schema'
 import type { MediaEntry } from '@/lib/builder/site-doc'
-
-/** The same stylesheet the builder canvas gets, so the two surfaces agree. */
-function lookCss(look: BuilderLook) {
-	return [
-		themeCss(look.theme),
-		backgroundCss(look.page),
-		backgroundCss(look.header, 'header', false),
-		backgroundCss(look.footer, 'footer', false),
-		...Object.entries(look.blocks).map(([id, surface]) =>
-			backgroundCss(surface, 'page', false, `[data-block-id='${id}'] > *`),
-		),
-	].join('\n')
-}
 
 /**
  * One renderer for every surface a built site appears on: the signed-in
@@ -57,16 +44,25 @@ export function RenderedSite({
 		: (site.pages.find((item) => item.slug === HOME_SLUG) ?? site.pages[0])
 	if (!page) notFound()
 
-	const merged = mergeLook(look)
+	// Whatever was stored, only a rebuilt look reaches the stylesheet.
+	const merged = sanitizeLook(look)
 	const fontHref = googleFontHref([
 		merged.theme.headingFont,
 		merged.theme.bodyFont,
 	])
+	// The same stylesheet the builder canvas gets, so the two surfaces agree: this page's
+	// block surfaces only, and the header's hero trim and anchor offset.
+	const css = cssText(
+		[
+			lookCss(merged, { blockIds: page.blocks.map((block) => block.id) }),
+			builtSiteVars(site.chrome.header),
+		].join('\n'),
+	)
 
 	return (
 		<>
 			{fontHref && <link rel='stylesheet' href={fontHref} />}
-			<style dangerouslySetInnerHTML={{ __html: lookCss(merged) }} />
+			<style dangerouslySetInnerHTML={{ __html: css }} />
 			<BuiltHeader
 				chrome={site.chrome}
 				pages={site.pages.filter((item) => item.inHeader)}
@@ -75,7 +71,7 @@ export function RenderedSite({
 				brand={brand}
 			/>
 			<main>
-				<RenderBlocks blocks={page.blocks} />
+				<RenderBlocks blocks={page.blocks} linkBase={linkBase} />
 			</main>
 			<BuiltFooter
 				chrome={site.chrome}

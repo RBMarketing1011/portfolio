@@ -47,7 +47,8 @@ export function ProseBlock({
 		'[&>ul]:mt-6 [&>ul]:space-y-3 [&>ul]:pl-5 [&>ul>li]:list-disc [&>ul>li]:marker:text-brand',
 		'[&>ol]:mt-6 [&>ol]:space-y-3 [&>ol]:pl-5 [&>ol>li]:list-decimal [&>ol>li]:marker:text-brand',
 		'[&>blockquote]:mt-8 [&>blockquote]:border-l-2 [&>blockquote]:border-brand [&>blockquote]:pl-6 [&>blockquote]:italic [&>blockquote]:text-slate-400',
-		'[&>a]:text-brand [&>a]:underline [&>a]:underline-offset-4',
+		// Links sit inside paragraphs and list items, not directly in the block.
+		'[&_a]:text-brand [&_a]:underline [&_a]:underline-offset-4',
 		'[&_code]:rounded [&_code]:bg-white/8 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.9em]',
 		className,
 	)
@@ -122,8 +123,13 @@ export function Callout({
 		align === 'center' && 'mx-auto',
 		align === 'right' && 'ml-auto',
 	)
+	// Authored HTML carries no classes, and preflight zeroes paragraph margins and list
+	// markers, so the body spaces its own blocks and restores bullets and link underlines.
 	const body = html ? (
-		<div dangerouslySetInnerHTML={{ __html: html }} />
+		<div
+			className='[&>*+*]:mt-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:underline'
+			dangerouslySetInnerHTML={{ __html: html }}
+		/>
 	) : (
 		children
 	)

@@ -1,0 +1,138 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Roof Inspection in Austin | Summit Roofing Co.",
+			"description": "Book a free roof inspection in Austin. Call (512) 555-0142 and we will set a time."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Contact"
+			},
+			{
+				"id": "s1.title",
+				"value": "Book your [[free]] roof inspection"
+			},
+			{
+				"id": "s1.description",
+				"value": "Call us or send a message and we will set a time to look at your roof."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "Reach us"
+			},
+			{
+				"id": "s2.title",
+				"value": "Talk to the [[crew]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "Call during working hours and we will book your inspection."
+			},
+			{
+				"id": "s2.action.label",
+				"value": "Call (512) 555-0142"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "After you call"
+			},
+			{
+				"id": "s3.title",
+				"value": "What happens [[next]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "Three simple steps from your call to a written estimate."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "We book a visit"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "We agree a time that suits you."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "We inspect"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "The crew looks at every slope and takes photos."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "You decide"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "You get a written estimate and choose what to do."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s4.title",
+				"value": "Booking an [[inspection]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "What to know before we visit."
+			},
+			{
+				"id": "s4.faqs.0.question",
+				"value": "Is there a charge for the inspection?"
+			},
+			{
+				"id": "s4.faqs.0.answer",
+				"value": "No. The inspection and the written estimate are free."
+			},
+			{
+				"id": "s4.faqs.1.question",
+				"value": "When can you come out?"
+			},
+			{
+				"id": "s4.faqs.1.answer",
+				"value": "Call us and we will offer you the next available times."
+			},
+			{
+				"id": "s4.faqs.2.question",
+				"value": "Do I need to be home?"
+			},
+			{
+				"id": "s4.faqs.2.answer",
+				"value": "It helps, but we can send you the photos and estimate if you are away."
+			},
+			{
+				"id": "s4.faqs.3.question",
+				"value": "Which areas do you cover?"
+			},
+			{
+				"id": "s4.faqs.3.answer",
+				"value": "Austin, Round Rock, Cedar Park and Pflugerville."
+			},
+			{
+				"id": "s4.faqs.4.question",
+				"value": "What should I have ready for the visit?"
+			},
+			{
+				"id": "s4.faqs.4.answer",
+				"value": "Just tell us what you have noticed, such as a leak or missing shingles, and when it started."
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

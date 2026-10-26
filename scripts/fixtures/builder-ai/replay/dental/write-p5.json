@@ -1,0 +1,202 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Invisalign for Teens in Tampa",
+			"description": "Clear aligner treatment for teenagers in Tampa, planned and explained step by step. Book a consultation."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Clear aligners"
+			},
+			{
+				"id": "s1.title",
+				"value": "Straighter teeth, [[quietly]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "Clear aligner treatment for teenagers, planned and explained step by step."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a consultation"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See all treatments"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "What treatment involves"
+			},
+			{
+				"id": "s2.title",
+				"value": "Aligners, [[step by step]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "What to know before treatment starts."
+			},
+			{
+				"id": "s2.tiles.0.title",
+				"value": "A full check"
+			},
+			{
+				"id": "s2.tiles.0.blurb",
+				"value": "We look at teeth and bite before anything is planned."
+			},
+			{
+				"id": "s2.tiles.0.icon",
+				"value": "Search"
+			},
+			{
+				"id": "s2.tiles.1.title",
+				"value": "A clear plan"
+			},
+			{
+				"id": "s2.tiles.1.blurb",
+				"value": "You see how treatment is planned before it starts."
+			},
+			{
+				"id": "s2.tiles.1.icon",
+				"value": "ClipboardList"
+			},
+			{
+				"id": "s2.tiles.2.title",
+				"value": "Regular check-ins"
+			},
+			{
+				"id": "s2.tiles.2.blurb",
+				"value": "We check progress at each visit."
+			},
+			{
+				"id": "s2.tiles.2.icon",
+				"value": "CalendarCheck"
+			},
+			{
+				"id": "s2.tiles.3.title",
+				"value": "Plain answers"
+			},
+			{
+				"id": "s2.tiles.3.blurb",
+				"value": "Questions answered for parents and teens alike."
+			},
+			{
+				"id": "s2.tiles.3.icon",
+				"value": "MessageCircle"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "Getting started"
+			},
+			{
+				"id": "s3.title",
+				"value": "Three steps to [[aligners]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "From the first visit to the first aligner."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Consultation"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "We check your teen's teeth and talk through the options."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "Planning"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "We plan the treatment and explain each stage."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "First aligners"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "Your teen gets the first aligners and tips for wearing them."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s4.title",
+				"value": "About [[aligners]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "What parents ask about clear aligners."
+			},
+			{
+				"id": "s4.faqs.0.question",
+				"value": "Is my teen ready for aligners?"
+			},
+			{
+				"id": "s4.faqs.0.answer",
+				"value": "A consultation tells us. We check teeth and bite before suggesting treatment."
+			},
+			{
+				"id": "s4.faqs.1.question",
+				"value": "How long is treatment?"
+			},
+			{
+				"id": "s4.faqs.1.answer",
+				"value": "It depends on your teen's teeth. We explain the expected length at the planning stage."
+			},
+			{
+				"id": "s4.faqs.2.question",
+				"value": "Do aligners hurt?"
+			},
+			{
+				"id": "s4.faqs.2.answer",
+				"value": "Some teens feel pressure for a day or two with each new set. It soon passes."
+			},
+			{
+				"id": "s4.faqs.3.question",
+				"value": "Does insurance cover aligners?"
+			},
+			{
+				"id": "s4.faqs.3.answer",
+				"value": "Cover varies by plan. We take most insurance plans and check your cover with you."
+			},
+			{
+				"id": "s4.faqs.4.question",
+				"value": "How do we begin?"
+			},
+			{
+				"id": "s4.faqs.4.answer",
+				"value": "Book a consultation and we will talk it through together."
+			},
+			{
+				"id": "s5.title",
+				"value": "Talk to us about aligners"
+			},
+			{
+				"id": "s5.description",
+				"value": "Book a consultation and get clear answers before you decide."
+			},
+			{
+				"id": "s5.actions.0.label",
+				"value": "Book a consultation"
+			},
+			{
+				"id": "s5.actions.1.label",
+				"value": "See all treatments"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

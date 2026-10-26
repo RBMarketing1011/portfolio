@@ -196,4 +196,101 @@ check('brand: business name, then site title, then project name', () => {
 	assert.equal(P.brandFromProfile(profile, 'Acme Project').name, 'Acme Plumbing LLC')
 })
 
+// A site whose pages carry their own search title and description (the AI writes them,
+// the page dialog edits them).
+const withSeo = (seo) => ({
+	...site,
+	pages: [
+		{ ...site.pages[0], seo: seo.home },
+		{ ...site.pages[1], seo: seo.services },
+	],
+})
+const seoInput = (profile, seo, slug) => ({ profile, siteName: 'Acme Project', site: withSeo(seo), slug, origin })
+
+check('SEO: a page’s own title and description win when set', () => {
+	const profile = P.siteProfileDefaults()
+	profile.seo.siteTitle = 'Acme Plumbing'
+	profile.seo.homeTitle = 'Acme Plumbing | 24/7 Plumbers in Austin'
+	profile.seo.description = 'Plumbers in Austin.'
+	const seo = {
+		home: { title: 'Emergency Plumbers in Austin | Acme', description: 'Burst pipes and leaks fixed around the clock.' },
+		services: { title: 'Drain Cleaning and Repairs | Acme', description: 'Slow and clogged drains cleared at the source.' },
+	}
+	const home = S.siteMetadata(seoInput(profile, seo))
+	assert.deepEqual(home.title, { absolute: 'Emergency Plumbers in Austin | Acme' })
+	assert.equal(home.description, 'Burst pipes and leaks fixed around the clock.')
+	assert.equal(home.openGraph.title, 'Emergency Plumbers in Austin | Acme')
+	assert.equal(home.twitter.description, 'Burst pipes and leaks fixed around the clock.')
+	const services = S.siteMetadata(seoInput(profile, seo, ['services']))
+	assert.deepEqual(services.title, { absolute: 'Drain Cleaning and Repairs | Acme' })
+	assert.equal(services.description, 'Slow and clogged drains cleared at the source.')
+	assert.equal(services.alternates.canonical, 'https://acme.example/services', 'the address is unchanged')
+})
+
+check('SEO: today’s fallbacks apply when a page has none, or only one part', () => {
+	const profile = P.siteProfileDefaults()
+	profile.seo.siteTitle = 'Acme Plumbing'
+	profile.seo.homeTitle = 'Acme Plumbing | 24/7 Plumbers in Austin'
+	profile.business.description = 'Family plumbers since 1998.'
+	const blank = { home: { title: '', description: '' }, services: { title: '  ', description: '' } }
+	assert.deepEqual(S.siteMetadata(seoInput(profile, blank)).title, { absolute: 'Acme Plumbing | 24/7 Plumbers in Austin' })
+	assert.deepEqual(S.siteMetadata(seoInput(profile, blank, ['services'])).title, { absolute: 'Services | Acme Plumbing' })
+	assert.equal(S.siteMetadata(seoInput(profile, blank, ['services'])).description, 'Family plumbers since 1998.')
+	const titleOnly = { home: undefined, services: { title: 'Drains | Acme', description: '' } }
+	const services = S.siteMetadata(seoInput(profile, titleOnly, ['services']))
+	assert.deepEqual(services.title, { absolute: 'Drains | Acme' })
+	assert.equal(services.description, 'Family plumbers since 1998.', 'the description falls back on its own')
+	assert.deepEqual(S.siteMetadata(seoInput(profile, titleOnly)).title, { absolute: 'Acme Plumbing | 24/7 Plumbers in Austin' })
+})
+
+check('BUSINESS_TYPE_VALUES: every type, in order, and the schema uses them', () => {
+	assert.deepEqual(P.BUSINESS_TYPE_VALUES, P.BUSINESS_TYPES.map((t) => t.value))
+	assert.equal(P.BUSINESS_TYPE_VALUES[0], 'LocalBusiness')
+	const profile = P.readSiteProfile({ business: { type: 'Plumber' } })
+	assert.equal(profile.business.type, 'Plumber')
+})
+
+check('brand: the contact details for the footer and the mobile menu', () => {
+	const empty = P.brandFromProfile(P.siteProfileDefaults(), 'Acme Project').contact
+	assert.deepEqual(empty, { phone: '', email: '', address: '', hours: [], areas: [] })
+	const profile = P.siteProfileDefaults()
+	Object.assign(profile.business, {
+		phone: '(512) 555-0142',
+		email: 'hello@acme.example',
+		street: '1 Main St',
+		city: 'Austin',
+		region: 'TX',
+		postalCode: '78701',
+		serviceArea: ['Austin', 'Round Rock'],
+		hours: [
+			{ days: ['Friday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'], opens: '07:00', closes: '18:00' },
+			{ days: ['Saturday'], opens: '09:00', closes: '12:30' },
+			{ days: [], opens: '09:00', closes: '12:00' },
+		],
+	})
+	assert.deepEqual(P.brandFromProfile(profile, 'Acme Project').contact, {
+		phone: '(512) 555-0142',
+		email: 'hello@acme.example',
+		address: '1 Main St, Austin, TX 78701',
+		hours: ['Monday to Friday 7:00 to 18:00', 'Saturday 9:00 to 12:30'],
+		areas: ['Austin', 'Round Rock'],
+	})
+	assert.equal(P.addressLine({ ...profile.business, street: '', postalCode: '' }), 'Austin, TX')
+	const days = (list) => P.hoursLines({ ...profile.business, hours: [{ days: list, opens: '08:00', closes: '17:00' }] })[0]
+	assert.equal(days(['Monday', 'Wednesday', 'Friday']), 'Monday, Wednesday and Friday 8:00 to 17:00')
+	assert.equal(days(['Saturday', 'Sunday']), 'Saturday and Sunday 8:00 to 17:00')
+	assert.equal(days([...P.WEEKDAYS]), 'Every day 8:00 to 17:00')
+	assert.equal(days(['Monday', 'Tuesday', 'Wednesday', 'Saturday']), 'Monday to Wednesday and Saturday 8:00 to 17:00')
+})
+
+check('phoneHref: tel: links the way the AI writes them, nothing for non-numbers', () => {
+	assert.equal(P.phoneHref('(512) 555-0142'), 'tel:+15125550142')
+	assert.equal(P.phoneHref('1-512-555-0142'), 'tel:+15125550142')
+	assert.equal(P.phoneHref('+44 20 7946 0018'), 'tel:+442079460018')
+	assert.equal(P.phoneHref('512.555.0142 ext. 12'), 'tel:+15125550142')
+	assert.equal(P.phoneHref('020 7946 0018'), 'tel:02079460018')
+	assert.equal(P.phoneHref('call us'), '')
+	assert.equal(P.phoneHref('911'), '')
+})
+
 console.log(`\n${passed} checks passed`)

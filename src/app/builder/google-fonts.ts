@@ -1963,10 +1963,12 @@ const byFamily = new Map(googleFonts.map((f) => [f.family, f]))
 
 export const isGoogleFont = (value: string) => byFamily.has(value)
 
+// A display face falls back to a plain sans while it loads (or if it is blocked); a
+// browser's `cursive` would flash a script face under every heading.
 const generic: Record<FontCategory, string> = {
 	Serif: 'serif',
 	Monospace: 'monospace',
-	Display: 'cursive',
+	Display: 'sans-serif',
 	Handwriting: 'cursive',
 	'Sans Serif': 'sans-serif',
 }

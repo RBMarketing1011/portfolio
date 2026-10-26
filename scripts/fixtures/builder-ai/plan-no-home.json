@@ -1,0 +1,34 @@
+{
+	"about": "A whole-site build whose plan has no home page: one is added first with the root slug (outlined later), and every other page keeps its place.",
+	"request": {
+		"prompt": "Yoga studio in Boulder with morning flow classes, prenatal yoga and private sessions.",
+		"business": { "name": "Flatirons Yoga", "type": "HealthClub", "phone": "", "email": "namaste@flatirons.example", "city": "Boulder", "region": "CO", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Flatirons Yoga", "language": "en-US", "businessType": "HealthClub", "tagline": "Classes that meet you where you are.",
+			"description": "Morning flow, prenatal yoga and private sessions in Boulder.", "audience": "Boulder residents",
+			"offer": "Morning flow classes, prenatal yoga and private sessions.", "voice": "Calm and warm.", "personality": "warm",
+			"services": ["Morning flow", "Prenatal yoga", "Private sessions"], "areas": ["Boulder"],
+			"primaryAction": { "label": "Email the studio", "target": "email" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L4", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "lora-nunito", "shape": "round", "buttons": "solid", "width": "6xl", "backdrop": "paper", "footerTone": "soft" },
+		"pages": [
+			{ "name": "Classes", "slug": "classes", "archetype": "services", "purpose": "Every class.", "keyword": "yoga classes Boulder", "inMenu": true, "opener": "page-hero:centered", "closer": "cta-band:centered", "photos": [], "sections": [
+				{ "layout": "page-hero:centered", "job": "Introduce the classes.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "bento-grid:numbered", "job": "The three ways to practise.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "process-steps:columns", "job": "Your first class.", "items": 3, "child": "none", "surface": "soft", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:boxed", "job": "Questions.", "items": 5, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "cta-band:centered", "job": "Email to book.", "items": 0, "child": "none", "surface": "inverse", "tweaks": [], "images": [] }
+			] },
+			{ "name": "Contact", "slug": "contact", "archetype": "contact", "purpose": "Reach the studio.", "keyword": "yoga studio Boulder contact", "inMenu": true, "opener": "page-hero:compact", "closer": "none", "photos": [], "sections": [
+				{ "layout": "page-hero:compact", "job": "Invite an email.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+				{ "layout": "faq-accordion:stacked", "job": "Booking questions.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+			] }
+		],
+		"chrome": { "header": "bar", "footer": "centered", "cta": { "label": "Email the studio", "target": "email" }, "menu": [] }
+	}
+}

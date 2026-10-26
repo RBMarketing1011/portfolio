@@ -1,7 +1,5 @@
-import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
-import { isPlatformAdmin } from '@/lib/admin'
-import { currentMembership } from '@/lib/workspace/current'
+import { requireAccountMembership } from '@/lib/workspace/current'
 import { AccountShell } from './account-shell'
 import type { NavItem } from './account-nav'
 
@@ -15,18 +13,10 @@ export default async function AccountLayout({
 }: {
 	children: React.ReactNode
 }) {
-	const session = await auth()
-	if (!session?.user?.id) redirect('/sign-in?next=/account')
-
-	const membership = await currentMembership()
-	// An admin has no account of their own: with none selected they belong in
-	// the admin area, not bounced to sign-in.
-	if (!membership)
-		redirect(
-			(await isPlatformAdmin(session.user.id))
-				? '/admin'
-				: '/sign-in?next=/account',
-		)
+	// An admin has no account of their own: with none being viewed they belong
+	// in the admin area, not bounced to sign-in.
+	const membership = await requireAccountMembership()
+	const session = (await auth())!
 
 	const email = session.user.email ?? 'Account'
 
@@ -47,9 +37,8 @@ export default async function AccountLayout({
 				] as NavItem[])
 			: []),
 		{ href: '/account/settings', label: 'Account settings', icon: 'settings' },
-		...((await isPlatformAdmin(session.user.id))
-			? ([{ href: '/admin', label: 'Admin', icon: 'admin' }] as NavItem[])
-			: []),
+		// No Admin link: an admin is only ever here viewing an account, and the
+		// banner's "Back to admin" is the way out.
 	]
 
 	return (

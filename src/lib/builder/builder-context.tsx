@@ -1,16 +1,8 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import {
-	defaultBackground,
-	globalBackground,
-	type BackgroundSettings,
-} from '@/app/builder/background-settings'
-import {
-	defaultSettings,
-	type ThemeSettings,
-} from '@/app/builder/theme-settings'
-import { LOCAL_SITE_ID } from './drivers'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { LOCAL_SITE_ID, LOOK_KEY } from './drivers'
+import { defaultLook, mergeLook, sanitizeLook, type BuilderLook } from './look'
 import {
 	invalidateMedia,
 	readMedia,
@@ -20,83 +12,48 @@ import {
 } from './media-store'
 import { useBuilderStore, type BuilderStore } from './store'
 
-const LOOK_KEY = 'reynoldsbuilt.builder.look.v1'
-
 export type { MediaItem }
 
-/** The site chrome carries its own surface, separate from the page surface. */
-export type BuilderLook = {
-	theme: ThemeSettings
-	page: BackgroundSettings
-	header: BackgroundSettings
-	footer: BackgroundSettings
-	/** Per-block surfaces, keyed by block id. */
-	blocks: Record<string, BackgroundSettings>
-}
+// The look model lives in look.ts; these names stay here for existing importers.
+export type { BuilderLook }
+export { defaultLook, mergeLook }
 
-const defaultLook = (): BuilderLook => ({
-	theme: defaultSettings,
-	page: defaultBackground,
-	// Chrome carries no surface of its own until it is deliberately given one.
-	header: globalBackground,
-	footer: globalBackground,
-	blocks: {},
-})
-
-// A saved look predates any setting added since, so every nested object is filled in
-// rather than spread wholesale — a missing glow would otherwise throw when painted.
-function mergeBackground(
-	value: unknown,
-	fallback: BackgroundSettings = defaultBackground,
-): BackgroundSettings {
-	const saved = (value ?? {}) as Partial<BackgroundSettings>
-	return {
-		...fallback,
-		...saved,
-		page: { ...fallback.page, ...saved.page },
-		menu: { ...fallback.menu, ...saved.menu },
-		panelGlow: { ...fallback.panelGlow, ...saved.panelGlow },
-		featureGlow: { ...fallback.featureGlow, ...saved.featureGlow },
-	}
-}
-
-export function mergeLook(value: unknown): BuilderLook {
-	const saved = (value ?? {}) as Partial<BuilderLook>
-	return {
-		theme: { ...defaultSettings, ...saved.theme },
-		page: mergeBackground(saved.page),
-		header: mergeBackground(saved.header, globalBackground),
-		footer: mergeBackground(saved.footer, globalBackground),
-		blocks: Object.fromEntries(
-			Object.entries(saved.blocks ?? {}).map(([id, surface]) => [
-				id,
-				mergeBackground(surface),
-			]),
-		),
-	}
-}
+/** An uploaded image, with its pixel size when the upload knew it. */
+export type UploadedMedia = MediaItem & { width?: number; height?: number }
 
 /** For surfaces that only render the built site and never edit it. */
 export function readLook(): BuilderLook {
 	try {
 		const raw = window.localStorage.getItem(LOOK_KEY)
-		return raw ? mergeLook(JSON.parse(raw)) : defaultLook()
+		return raw ? sanitizeLook(JSON.parse(raw)) : defaultLook()
 	} catch {
 		return defaultLook()
 	}
 }
 
+/** The store (site, look, history, saving) plus the media library around it. */
 export type BuilderContextValue = BuilderStore & {
-	look: BuilderLook
-	setLook: (patch: Partial<BuilderLook>) => void
-	setBlockLook: (id: string, value: BackgroundSettings) => void
 	/** Only images the user uploaded; the builder never offers repo assets. */
 	media: MediaItem[]
 	addMedia: (name: string, src: string) => MediaItem
-	/** Signed-in uploads go to Blob; throws with 'local' when there is no account. */
-	uploadMedia: (name: string, file: Blob) => Promise<MediaItem>
+	/**
+	 * Signed-in uploads go to Blob; throws with 'local' when there is no account. The
+	 * size, when given, is stored with the entry so the AI can place the photo by shape.
+	 */
+	uploadMedia: (
+		name: string,
+		file: Blob,
+		size?: { width: number; height: number },
+	) => Promise<UploadedMedia>
 	removeMedia: (id: string) => void
 	mediaError: string | null
+	/**
+	 * A block the canvas should scroll to and flash once it shows the page that holds it
+	 * (asked for before a navigation, so the canvas may not be mounted yet).
+	 */
+	scrollTarget: string | null
+	showBlock: (id: string) => void
+	clearScrollTarget: () => void
 }
 
 const BuilderContext = createContext<BuilderContextValue | null>(null)
@@ -109,33 +66,25 @@ export function BuilderProvider({
 	children: React.ReactNode
 }) {
 	const store = useBuilderStore(siteId)
-	const [look, setLookState] = useState<BuilderLook>(defaultLook)
 	const [media, setMedia] = useState<MediaItem[]>([])
 	const [mediaError, setMediaError] = useState<string | null>(null)
-	const [loaded, setLoaded] = useState(false)
+	const [scrollTarget, setScrollTarget] = useState<string | null>(null)
+	const clearScrollTarget = useCallback(() => setScrollTarget(null), [])
 	const remote = store.remote
 
 	useEffect(() => {
 		if (remote) return
-		try {
-			const raw = window.localStorage.getItem(LOOK_KEY)
-			if (raw) setLookState(mergeLook(JSON.parse(raw)))
-		} catch {
-			// Unreadable settings just fall back to the defaults.
-		}
 		try {
 			invalidateMedia()
 			setMedia(readMedia())
 		} catch {
 			// An unreadable library starts empty rather than blocking the builder.
 		}
-		setLoaded(true)
 	}, [remote])
 
-	// A signed-in site carries its own look and library, so they arrive with the load.
+	// A signed-in site carries its own library, so it arrives with the load.
 	useEffect(() => {
 		if (!remote || !store.hydrated) return
-		setLookState(mergeLook(store.remoteLook ?? {}))
 		setMediaIndex(store.remoteMedia)
 		setMedia(
 			store.remoteMedia.map((item) => ({
@@ -145,39 +94,13 @@ export function BuilderProvider({
 				addedAt: item.addedAt,
 			})),
 		)
-		setLoaded(true)
-	}, [remote, store.hydrated, store.remoteLook, store.remoteMedia])
+	}, [remote, store.hydrated, store.remoteMedia])
 
 	// Uploads and deletes move the library, so the index has to follow.
 	useEffect(() => {
 		if (!remote) return
 		setMediaIndex(media.map((item) => ({ id: item.id, url: item.src })))
 	}, [remote, media])
-
-	useEffect(() => {
-		if (!loaded || remote) return
-		try {
-			window.localStorage.setItem(LOOK_KEY, JSON.stringify(look))
-		} catch {
-			// Quota or private mode: the session keeps working, it just will not persist.
-		}
-	}, [look, loaded, remote])
-
-	// Remote looks ride along with the site's own debounced, revisioned save.
-	useEffect(() => {
-		if (!loaded || !remote || !store.hydrated) return
-		store.stageLook(look as unknown as Record<string, unknown>)
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [look, loaded, remote, store.hydrated])
-
-	const setLook = (patch: Partial<BuilderLook>) =>
-		setLookState((current) => ({ ...current, ...patch }))
-
-	const setBlockLook = (id: string, value: BackgroundSettings) =>
-		setLookState((current) => ({
-			...current,
-			blocks: { ...current.blocks, [id]: value },
-		}))
 
 	const persist = (next: MediaItem[]) => {
 		try {
@@ -209,7 +132,11 @@ export function BuilderProvider({
 	}
 
 	/** Signed in, the file goes straight to Blob and only its URL comes back. */
-	const uploadMedia = async (name: string, file: Blob) => {
+	const uploadMedia = async (
+		name: string,
+		file: Blob,
+		size?: { width: number; height: number },
+	) => {
 		if (!remote) throw new Error('local')
 		const { upload } = await import('@vercel/blob/client')
 		const blob = await upload(`sites/${siteId}/${name}.webp`, file, {
@@ -227,16 +154,18 @@ export function BuilderProvider({
 				pathname: blob.pathname,
 				bytes: file.size,
 				contentType: 'image/webp',
+				...(size ? { width: size.width, height: size.height } : {}),
 			}),
 		})
 		if (!response.ok) throw new Error('Could not save that image.')
 		const { media: entry } = await response.json()
 
-		const item: MediaItem = {
+		const item: UploadedMedia = {
 			id: entry.id,
 			name: entry.name,
 			src: entry.url,
 			addedAt: entry.addedAt,
+			...(size ? { width: size.width, height: size.height } : {}),
 		}
 		setMedia((current) => [item, ...current])
 		setMediaError(null)
@@ -261,14 +190,14 @@ export function BuilderProvider({
 		<BuilderContext.Provider
 			value={{
 				...store,
-				look,
-				setLook,
-				setBlockLook,
 				media,
 				addMedia,
 				uploadMedia,
 				removeMedia,
 				mediaError,
+				scrollTarget,
+				showBlock: setScrollTarget,
+				clearScrollTarget,
 			}}>
 			{children}
 		</BuilderContext.Provider>

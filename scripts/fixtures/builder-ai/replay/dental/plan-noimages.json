@@ -1,0 +1,490 @@
+{
+	"reply": {
+		"site": {
+			"name": "Bright Smiles Pediatric Dentistry",
+			"language": "en-US",
+			"businessType": "Dentist",
+			"tagline": "Gentle dental care for Tampa kids.",
+			"description": "A bright, friendly pediatric dental clinic in Tampa for cleanings, sealants and emergency visits. Most insurance plans accepted.",
+			"audience": "Tampa parents looking for a gentle dentist for their children",
+			"offer": "Cleanings, sealants and emergency dental visits for children.",
+			"voice": "Warm, calm, reassuring. Speak to parents plainly and never talk down to kids.",
+			"personality": "friendly",
+			"services": [
+				"Cleanings",
+				"Whitening",
+				"Invisalign",
+				"Implants",
+				"Emergency care",
+				"Sealants"
+			],
+			"areas": [
+				"Tampa"
+			],
+			"primaryAction": {
+				"label": "Book a visit",
+				"target": "page:contact"
+			}
+		},
+		"facts": [
+			{
+				"value": "Most insurance",
+				"label": "Plans accepted",
+				"quote": "We take most insurance plans"
+			}
+		],
+		"photos": [],
+		"design": {
+			"palette": "L3",
+			"custom": {
+				"background": "",
+				"accent": "",
+				"heading": "",
+				"body": ""
+			},
+			"fonts": "manrope",
+			"shape": "round",
+			"buttons": "solid",
+			"width": "6xl",
+			"backdrop": "paper",
+			"footerTone": "match"
+		},
+		"pages": [
+			{
+				"name": "Home",
+				"slug": "/",
+				"archetype": "home",
+				"purpose": "Reassure parents and book the first visit.",
+				"keyword": "pediatric dentist Tampa",
+				"inMenu": true,
+				"opener": "split-hero:split",
+				"closer": "cta-band:centered",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "split-hero:split",
+						"job": "Promise gentle care for kids and offer the first visit.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [
+							"fan"
+						],
+						"images": [
+							"img1"
+						]
+					},
+					{
+						"layout": "stat-band:divided",
+						"job": "Show the clinic's numbers.",
+						"items": 3,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:accent",
+						"job": "Show the main treatments, one tile each.",
+						"items": 6,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:timeline",
+						"job": "Explain a first visit step by step.",
+						"items": 4,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "media-mosaic:default",
+						"job": "Show the clinic.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:split",
+						"job": "Answer what parents ask before the first visit.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:centered",
+						"job": "Ask for the first visit.",
+						"items": 0,
+						"child": "none",
+						"surface": "brand",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Treatments",
+				"slug": "treatments",
+				"archetype": "services",
+				"purpose": "List every treatment and route parents to the right one.",
+				"keyword": "children's dental treatments Tampa",
+				"inMenu": true,
+				"opener": "page-hero:centered",
+				"closer": "cta-band:centered",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "page-hero:centered",
+						"job": "Introduce the treatments.",
+						"items": 0,
+						"child": "none",
+						"surface": "tinted",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "grid:centered",
+						"job": "Link to each treatment page.",
+						"items": 6,
+						"child": "related-card:list",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "tabs-showcase:side",
+						"job": "Walk through each treatment.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:boxed",
+						"job": "Answer questions about insurance and treatments.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:centered",
+						"job": "Ask for a visit.",
+						"items": 0,
+						"child": "none",
+						"surface": "inverse",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Cleanings",
+				"slug": "cleanings",
+				"archetype": "service",
+				"purpose": "Book a gentle cleaning.",
+				"keyword": "kids teeth cleaning Tampa",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "cta-band:split",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Promise a calm cleaning.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "feature-rows:alternating",
+						"job": "Show what a cleaning includes.",
+						"items": 3,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:columns",
+						"job": "Three steps of a cleaning visit.",
+						"items": 3,
+						"child": "none",
+						"surface": "tinted",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "check-list:columns",
+						"job": "List what is included.",
+						"items": 6,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:boxed",
+						"job": "Answer cleaning questions.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:split",
+						"job": "Book a cleaning.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Whitening",
+				"slug": "whitening",
+				"archetype": "service",
+				"purpose": "Explain whitening options for teens.",
+				"keyword": "teen teeth whitening Tampa",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "split-cta:cards",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Explain whitening for teens.",
+						"items": 0,
+						"child": "none",
+						"surface": "wash",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:numbered",
+						"job": "What whitening involves.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:timeline",
+						"job": "The steps of whitening.",
+						"items": 4,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "before-after:rows",
+						"job": "Worries and how the clinic handles them.",
+						"items": 3,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:stacked",
+						"job": "Whitening questions.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "split-cta:cards",
+						"job": "Book or ask a question.",
+						"items": 2,
+						"child": "none",
+						"surface": "inverse",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Invisalign",
+				"slug": "invisalign",
+				"archetype": "service",
+				"purpose": "Clear aligners for teens.",
+				"keyword": "Invisalign for teens Tampa",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "cta-band:card",
+				"photos": [],
+				"sections": []
+			},
+			{
+				"name": "Implants",
+				"slug": "implants",
+				"archetype": "service",
+				"purpose": "Implant consultations.",
+				"keyword": "dental implants Tampa",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "cta-band:split",
+				"photos": [],
+				"sections": []
+			},
+			{
+				"name": "Emergency Care",
+				"slug": "emergency-care",
+				"archetype": "service",
+				"purpose": "Get a child seen fast after a dental injury.",
+				"keyword": "emergency pediatric dentist Tampa",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "split-cta:cards",
+				"photos": [],
+				"sections": []
+			},
+			{
+				"name": "About",
+				"slug": "about",
+				"archetype": "about",
+				"purpose": "Introduce the clinic.",
+				"keyword": "pediatric dental clinic Tampa",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "split-cta:cards",
+				"photos": [],
+				"sections": []
+			},
+			{
+				"name": "Contact",
+				"slug": "contact",
+				"archetype": "contact",
+				"purpose": "Book a visit.",
+				"keyword": "book pediatric dentist Tampa",
+				"inMenu": true,
+				"opener": "page-hero:compact",
+				"closer": "none",
+				"photos": [],
+				"sections": []
+			}
+		],
+		"chrome": {
+			"header": "bar",
+			"footer": "columns",
+			"cta": {
+				"label": "Book a visit",
+				"target": "page:contact"
+			},
+			"menu": [
+				{
+					"label": "Treatments",
+					"kind": "group",
+					"target": "",
+					"style": "mega",
+					"links": [
+						{
+							"label": "All treatments",
+							"target": "page:treatments",
+							"description": "Every treatment we offer children and teens",
+							"icon": "Smile"
+						},
+						{
+							"label": "Cleanings",
+							"target": "page:cleanings",
+							"description": "Gentle cleanings that keep visits easy",
+							"icon": "Sparkles"
+						},
+						{
+							"label": "Whitening",
+							"target": "page:whitening",
+							"description": "Whitening options for teens",
+							"icon": "Smile"
+						},
+						{
+							"label": "Invisalign",
+							"target": "page:invisalign",
+							"description": "Clear aligners made for teenagers",
+							"icon": "Smile"
+						},
+						{
+							"label": "Implants",
+							"target": "page:implants",
+							"description": "Implant consultations, explained plainly",
+							"icon": "Stethoscope"
+						},
+						{
+							"label": "Emergency Care",
+							"target": "page:emergency-care",
+							"description": "Fast help after a chipped or knocked-out tooth",
+							"icon": "Siren"
+						}
+					],
+					"promo": {
+						"show": true,
+						"eyebrow": "First visit",
+						"title": "New patients welcome",
+						"body": "Book a calm first visit for your child and see the clinic before any treatment.",
+						"ctaLabel": "Book a visit",
+						"target": "page:contact",
+						"image": ""
+					}
+				},
+				{
+					"label": "About",
+					"kind": "page",
+					"target": "page:about",
+					"style": "mega",
+					"links": [],
+					"promo": {
+						"show": false,
+						"eyebrow": "",
+						"title": "",
+						"body": "",
+						"ctaLabel": "",
+						"target": "",
+						"image": ""
+					}
+				},
+				{
+					"label": "Contact",
+					"kind": "page",
+					"target": "page:contact",
+					"style": "mega",
+					"links": [],
+					"promo": {
+						"show": false,
+						"eyebrow": "",
+						"title": "",
+						"body": "",
+						"ctaLabel": "",
+						"target": "",
+						"image": ""
+					}
+				}
+			]
+		}
+	},
+	"usage": {
+		"input_tokens": 5200,
+		"output_tokens": 4300,
+		"cache_read_input_tokens": 11200,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

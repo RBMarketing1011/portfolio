@@ -1,0 +1,27 @@
+{
+	"about": "Legal pages are matched on the whole name (section 7.10 step 4): Privacy Policy, Terms of Service and Cookie Policy go, while a bakery's Cookies page, Legal Services and Payment Terms stay.",
+	"request": {
+		"prompt": "Bakery and law office sharing a website for a test: cookies, legal services and payment terms all matter here.",
+		"pins": { "pages": { "kind": "list", "names": ["Home", "Cookies", "Legal Services", "Payment Terms", "Privacy Policy", "Terms of Service"] }, "palette": { "kind": "ai", "polarity": "any" }, "fonts": { "kind": "ai" }, "shape": "ai", "header": "ai", "footer": "ai", "menu": "ai", "ctaLabel": "", "keepDesign": true, "updateMenu": true },
+		"business": { "name": "Crumb & Counsel", "type": "", "phone": "", "email": "", "city": "", "region": "", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Crumb & Counsel", "language": "en-US", "businessType": "LocalBusiness", "tagline": "", "description": "", "audience": "", "offer": "Cookies and legal services.",
+			"voice": "Plain.", "personality": "friendly", "services": [], "areas": [], "primaryAction": { "label": "", "target": "" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "L2", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "jakarta", "shape": "round", "buttons": "solid", "width": "6xl", "backdrop": "clean", "footerTone": "match" },
+		"pages": [
+			{ "name": "Home", "slug": "/", "archetype": "home", "purpose": "", "keyword": "", "inMenu": true, "opener": "none", "closer": "none", "photos": [], "sections": [] },
+			{ "name": "Cookies", "slug": "cookies", "archetype": "service", "purpose": "The cookies we bake.", "keyword": "cookies", "inMenu": true, "opener": "none", "closer": "none", "photos": [], "sections": [] },
+			{ "name": "Legal Services", "slug": "legal-services", "archetype": "service", "purpose": "Legal help.", "keyword": "legal services", "inMenu": true, "opener": "none", "closer": "none", "photos": [], "sections": [] },
+			{ "name": "Payment Terms", "slug": "payment-terms", "archetype": "pricing", "purpose": "How invoices work.", "keyword": "payment terms", "inMenu": true, "opener": "none", "closer": "none", "photos": [], "sections": [] },
+			{ "name": "Privacy Policy", "slug": "privacy", "archetype": "custom", "purpose": "Privacy.", "keyword": "privacy", "inMenu": false, "opener": "none", "closer": "none", "photos": [], "sections": [] },
+			{ "name": "Cookie Policy", "slug": "cookie-policy", "archetype": "custom", "purpose": "Cookies policy.", "keyword": "cookie policy", "inMenu": false, "opener": "none", "closer": "none", "photos": [], "sections": [] }
+		],
+		"chrome": { "header": "bar", "footer": "columns", "cta": { "label": "", "target": "" }, "menu": [] }
+	}
+}

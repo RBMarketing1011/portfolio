@@ -19,6 +19,9 @@ const internal = [
 const PRODUCTION_HOST = 'reynoldsbuilt.dev'
 
 const nextConfig: NextConfig = {
+	// A second dev server (a local end-to-end run) builds into its own folder, so it
+	// cannot overwrite the output of the one already running.
+	distDir: process.env.NEXT_DIST_DIR || '.next',
 	// Uploads live on Vercel Blob, whose subdomain is per store.
 	images: {
 		remotePatterns: [

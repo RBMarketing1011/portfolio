@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, ChevronDown, Menu } from 'lucide-react'
+import { ArrowRight, ChevronDown, Menu, Phone } from 'lucide-react'
 import {
 	Accordion,
 	AccordionContent,
@@ -32,13 +32,9 @@ import {
 	SheetTrigger,
 } from '@/components/ui/sheet'
 import { resolveIcon } from '@/lib/builder/icons'
+import { chromeHref, slugOfHref } from '@/lib/builder/links'
 import { resolveMediaSrc } from '@/lib/builder/media-store'
-import {
-	resolveHref,
-	type MenuItem,
-	type MenuLink,
-	type MenuPromo,
-} from '@/lib/builder/page-schema'
+import type { MenuItem, MenuLink, MenuPromo } from '@/lib/builder/page-schema'
 import { cn } from '@/lib/utils'
 
 /**
@@ -46,6 +42,9 @@ import { cn } from '@/lib/utils'
  * mega panel the section library shows (columns of titled links, plus an optional
  * featured card). The styling matches the library's header so the two read as one.
  */
+
+/** A link the mobile sheet carries below the menu: the header button or the phone, already resolved. */
+export type SheetLink = { label: string; href: string }
 
 const panelClass = 'w-full p-3 md:w-full'
 
@@ -55,12 +54,17 @@ const triggerClass =
 const plainLinkClass =
 	'inline-flex h-9 items-center whitespace-nowrap rounded-md px-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white focus:bg-white/5 focus:text-white'
 
-/** A group with nothing in it would open an empty panel, so it is a plain link. */
-const hasLinks = (item: MenuItem) =>
-	item.links.some((link) => link.label.trim() !== '')
-
+// Links with no title are half-finished rows in the editor. A menu that reached the page
+// without being parsed (an item with no list at all) reads as having none, not as a crash.
 const visibleLinks = (item: MenuItem) =>
-	item.links.filter((link) => link.label.trim() !== '')
+	(item.links ?? []).filter((link) => link.label.trim() !== '')
+
+/** A group with nothing in it would open an empty panel, so it is a plain link. */
+const hasLinks = (item: MenuItem) => visibleLinks(item).length > 0
+
+// An item with no label is a half-finished row in the editor, not a nav entry.
+const shownItems = (items: MenuItem[]) =>
+	items.filter((item) => item.label.trim() !== '')
 
 function MenuPanelLink({
 	link,
@@ -73,7 +77,7 @@ function MenuPanelLink({
 	return (
 		<NavigationMenuLink asChild>
 			<Link
-				href={resolveHref(linkBase, link.href)}
+				href={chromeHref(linkBase, link.href)}
 				className='flex flex-row items-start gap-3 rounded-lg p-3 transition-colors hover:bg-white/5 focus:bg-white/5'>
 				{Icon && (
 					<span className='mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md border border-brand/25 bg-brand/10'>
@@ -104,7 +108,7 @@ function PromoCard({
 	return (
 		<NavigationMenuLink asChild>
 			<Link
-				href={resolveHref(linkBase, promo.href)}
+				href={chromeHref(linkBase, promo.href)}
 				data-menu-feature
 				className='flex h-full flex-col justify-between rounded-lg border border-brand/20 bg-linear-to-br from-brand/15 via-panel to-panel p-5 transition-colors hover:border-brand/45'>
 				<div>
@@ -228,7 +232,7 @@ function HoverDropdown({
 				{visibleLinks(item).map((link) => (
 					<DropdownMenuItem key={link.id} asChild>
 						<Link
-							href={resolveHref(linkBase, link.href)}
+							href={chromeHref(linkBase, link.href)}
 							className='cursor-pointer text-slate-300 focus:bg-white/5 focus:text-white'>
 							{link.label}
 						</Link>
@@ -239,21 +243,116 @@ function HoverDropdown({
 	)
 }
 
+// Stored links are bare slugs or root-relative paths, so both forms light up the page.
 const isCurrent = (href: string, current?: string) =>
-	Boolean(current) && href === current
+	Boolean(current) && slugOfHref(href) === current
 
-function MobileMenu({
-	items,
-	current,
-	linkBase,
-}: {
+type MenuProps = {
 	items: MenuItem[]
 	current?: string
 	linkBase: string
-}) {
-	const [open, setOpen] = useState(false)
-	const close = () => setOpen(false)
+}
+
+type SheetProps = MenuProps & {
+	/** The header button, which the bar hides on phones. */
+	cta?: SheetLink | null
+	/** The business phone, when no menu entry already calls it. */
+	phone?: SheetLink | null
+}
+
+/**
+ * What the mobile sheet lists: every menu entry (groups open in place, with their
+ * descriptions), then the phone, then the header button full width.
+ */
+export function MobileMenuPanel({
+	items,
+	current,
+	linkBase,
+	cta,
+	phone,
+	onNavigate,
+}: SheetProps & { onNavigate?: () => void }) {
 	const row = 'block py-3 text-base font-medium text-slate-200'
+
+	return (
+		<div className='px-4 pb-6'>
+			<Accordion type='multiple'>
+				{shownItems(items).map((item) =>
+					hasLinks(item) ? (
+						<AccordionItem
+							key={item.id}
+							value={item.id}
+							className='border-white/10'>
+							<AccordionTrigger className='py-3 text-base font-medium text-slate-200 hover:no-underline'>
+								{item.label}
+							</AccordionTrigger>
+							<AccordionContent>
+								<ul className='space-y-1 pb-2'>
+									{visibleLinks(item).map((link) => (
+										<li key={link.id}>
+											<Link
+												href={chromeHref(linkBase, link.href)}
+												onClick={onNavigate}
+												aria-current={
+													isCurrent(link.href, current) ? 'page' : undefined
+												}
+												className='block rounded-md px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white'>
+												{link.label}
+												{link.description && (
+													<span className='block text-xs text-slate-500'>
+														{link.description}
+													</span>
+												)}
+											</Link>
+										</li>
+									))}
+								</ul>
+							</AccordionContent>
+						</AccordionItem>
+					) : (
+						<div key={item.id} className='border-b border-white/10'>
+							<Link
+								href={chromeHref(linkBase, item.href)}
+								onClick={onNavigate}
+								aria-current={
+									isCurrent(item.href, current) ? 'page' : undefined
+								}
+								className={row}>
+								{item.label}
+							</Link>
+						</div>
+					),
+				)}
+			</Accordion>
+			{phone && (
+				<div className='border-b border-white/10'>
+					<a
+						href={phone.href}
+						onClick={onNavigate}
+						className={cn(row, 'flex items-center gap-2')}>
+						<Phone aria-hidden className='size-4 text-brand' />
+						{phone.label}
+					</a>
+				</div>
+			)}
+			{cta && (
+				<Button
+					asChild
+					className='mt-6 h-auto min-h-10 w-full whitespace-normal bg-brand py-2.5 text-center font-bold text-ink hover:bg-brand-strong'>
+					<Link href={cta.href} onClick={onNavigate}>
+						{cta.label}
+					</Link>
+				</Button>
+			)}
+		</div>
+	)
+}
+
+/** The menu below the `lg` breakpoint: a button that opens the sheet. Nothing when there is nothing to list. */
+export function MobileMenu(props: SheetProps) {
+	const [open, setOpen] = useState(false)
+	if (shownItems(props.items).length === 0 && !props.cta && !props.phone)
+		return null
 
 	return (
 		<Sheet open={open} onOpenChange={setOpen}>
@@ -262,7 +361,7 @@ function MobileMenu({
 					variant='ghost'
 					size='icon'
 					aria-label='Open menu'
-					className='text-slate-200 hover:bg-white/5 hover:text-white lg:hidden'>
+					className='shrink-0 text-slate-200 hover:bg-white/5 hover:text-white lg:hidden'>
 					<Menu />
 				</Button>
 			</SheetTrigger>
@@ -270,121 +369,71 @@ function MobileMenu({
 				<SheetHeader>
 					<SheetTitle>Menu</SheetTitle>
 				</SheetHeader>
-				<div className='px-4 pb-6'>
-					<Accordion type='multiple'>
-						{items.map((item) =>
-							hasLinks(item) ? (
-								<AccordionItem
-									key={item.id}
-									value={item.id}
-									className='border-white/10'>
-									<AccordionTrigger className='py-3 text-base font-medium text-slate-200 hover:no-underline'>
-										{item.label}
-									</AccordionTrigger>
-									<AccordionContent>
-										<ul className='space-y-1 pb-2'>
-											{visibleLinks(item).map((link) => (
-												<li key={link.id}>
-													<Link
-														href={resolveHref(linkBase, link.href)}
-														onClick={close}
-														className='block rounded-md px-2 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white'>
-														{link.label}
-														{link.description && (
-															<span className='block text-xs text-slate-500'>
-																{link.description}
-															</span>
-														)}
-													</Link>
-												</li>
-											))}
-										</ul>
-									</AccordionContent>
-								</AccordionItem>
-							) : (
-								<div key={item.id} className='border-b border-white/10'>
-									<Link
-										href={resolveHref(linkBase, item.href)}
-										onClick={close}
-										aria-current={
-											isCurrent(item.href, current) ? 'page' : undefined
-										}
-										className={row}>
-										{item.label}
-									</Link>
-								</div>
-							),
-						)}
-					</Accordion>
-				</div>
+				<MobileMenuPanel {...props} onNavigate={() => setOpen(false)} />
 			</SheetContent>
 		</Sheet>
 	)
 }
 
-export function BuiltMenu({
-	items,
-	current,
-	linkBase,
-}: {
-	items: MenuItem[]
-	current?: string
-	linkBase: string
-}) {
-	// An item with no label is a half-finished row in the editor, not a nav entry.
-	const shown = items.filter((item) => item.label.trim() !== '')
-
+/** The menu from the `lg` breakpoint up: plain links, hover dropdowns and mega panels. */
+export function DesktopMenu({ items, current, linkBase }: MenuProps) {
 	return (
-		<>
-			<NavigationMenu className='static hidden lg:block'>
-				<NavigationMenuList className='gap-0'>
-					{shown.map((item) => {
-						const grouped = hasLinks(item)
-						const active = grouped
-							? item.links.some((link) => isCurrent(link.href, current))
-							: isCurrent(item.href, current)
+		<NavigationMenu className='static hidden lg:block'>
+			<NavigationMenuList className='gap-0'>
+				{shownItems(items).map((item) => {
+					const grouped = hasLinks(item)
+					const active = grouped
+						? visibleLinks(item).some((link) => isCurrent(link.href, current))
+						: isCurrent(item.href, current)
 
-						if (!grouped)
-							return (
-								<NavigationMenuItem key={item.id}>
-									<NavigationMenuLink asChild>
-										<Link
-											href={resolveHref(linkBase, item.href)}
-											aria-current={active ? 'page' : undefined}
-											className={cn(plainLinkClass, active && 'text-brand')}>
-											{item.label}
-										</Link>
-									</NavigationMenuLink>
-								</NavigationMenuItem>
-							)
-
-						if (item.style === 'dropdown')
-							return (
-								<NavigationMenuItem key={item.id}>
-									<HoverDropdown
-										item={item}
-										linkBase={linkBase}
-										active={active}
-									/>
-								</NavigationMenuItem>
-							)
-
+					if (!grouped)
 						return (
 							<NavigationMenuItem key={item.id}>
-								<NavigationMenuTrigger
-									className={cn(triggerClass, active && 'text-brand')}>
-									{item.label}
-								</NavigationMenuTrigger>
-								<NavigationMenuContent className={panelClass}>
-									<MegaPanel item={item} linkBase={linkBase} />
-								</NavigationMenuContent>
+								<NavigationMenuLink asChild>
+									<Link
+										href={chromeHref(linkBase, item.href)}
+										aria-current={active ? 'page' : undefined}
+										className={cn(plainLinkClass, active && 'text-brand')}>
+										{item.label}
+									</Link>
+								</NavigationMenuLink>
 							</NavigationMenuItem>
 						)
-					})}
-				</NavigationMenuList>
-			</NavigationMenu>
 
-			<MobileMenu items={shown} current={current} linkBase={linkBase} />
+					if (item.style === 'dropdown')
+						return (
+							<NavigationMenuItem key={item.id}>
+								<HoverDropdown item={item} linkBase={linkBase} active={active} />
+							</NavigationMenuItem>
+						)
+
+					return (
+						<NavigationMenuItem key={item.id}>
+							<NavigationMenuTrigger
+								className={cn(triggerClass, active && 'text-brand')}>
+								{item.label}
+							</NavigationMenuTrigger>
+							<NavigationMenuContent className={panelClass}>
+								<MegaPanel item={item} linkBase={linkBase} />
+							</NavigationMenuContent>
+						</NavigationMenuItem>
+					)
+				})}
+			</NavigationMenuList>
+		</NavigationMenu>
+	)
+}
+
+/** Both halves in one slot, for a layout that keeps the sheet's button beside the desktop menu. */
+export function BuiltMenu(props: SheetProps) {
+	return (
+		<>
+			<DesktopMenu
+				items={props.items}
+				current={props.current}
+				linkBase={props.linkBase}
+			/>
+			<MobileMenu {...props} />
 		</>
 	)
 }

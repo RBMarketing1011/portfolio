@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { del } from '@vercel/blob'
 import { errorResponse, requireSitePermission } from '@/lib/auth/guards'
+import { buildsOf } from '@/lib/builder/ai/builds'
 import { detachDomain } from '@/lib/builder/vercel-domains'
 import {
 	sitePatchSchema,
@@ -92,6 +93,14 @@ export async function DELETE(_request: Request, { params }: Params) {
 		if (urls.length) await del(urls).catch(() => {})
 
 		await db.collection<SiteDoc>('sites').deleteOne({ _id: site._id })
+		// Its AI builds hold the brief, the business details and pasted reviews: they go
+		// with the site rather than waiting out their 24 hours. A build still running sees
+		// its document gone through the watchdog and stops.
+		await buildsOf(db)
+			.deleteMany({ siteId: site._id })
+			.catch((error) =>
+				console.error('[ai-build]', JSON.stringify({ siteDelete: 'builds', name: error instanceof Error ? error.name : 'unknown' })),
+			)
 		return NextResponse.json({ ok: true })
 	} catch (error) {
 		return errorResponse(error)

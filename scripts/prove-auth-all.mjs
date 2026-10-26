@@ -20,6 +20,7 @@ const steps = [
 	'scripts/prove-rate-limit.mjs',
 	'scripts/prove-account-bootstrap.mjs',
 	'scripts/prove-auth-guards.mjs',
+	'scripts/prove-admin-landing.mjs',
 ]
 
 for (const step of steps) {

@@ -1,0 +1,650 @@
+{
+	"about": "The roofer of sections 2.1, 7.12 and 9.10 (scripts/fixtures/builder-ai/plan-roofer.json): seven pages, six outlined by the plan, Contact by outline.json. The write fixtures cover the slots with the six photos and without them. Use the brief and business details of plan-roofer.json so the facts gate passes the copy.",
+	"reply": {
+		"site": {
+			"name": "Summit Roofing Co.",
+			"language": "en-US",
+			"businessType": "RoofingContractor",
+			"tagline": "Austin roofs, done right by a family crew.",
+			"description": "Family-owned Austin roofers since 2004: roof repair, full replacements and storm damage, with free inspections.",
+			"audience": "Austin homeowners with an ageing or storm-damaged roof",
+			"offer": "Roof repair, replacement and storm-damage work with free inspections.",
+			"voice": "Plain-spoken, confident, neighbourly. Talk like the owner on a site visit, not like an ad.",
+			"personality": "rugged",
+			"services": [
+				"Roof replacement",
+				"Roof repair",
+				"Storm damage",
+				"Insurance claims",
+				"Free inspections"
+			],
+			"areas": [
+				"Austin",
+				"Round Rock",
+				"Cedar Park",
+				"Pflugerville"
+			],
+			"primaryAction": {
+				"label": "Free inspection",
+				"target": "page:contact"
+			}
+		},
+		"facts": [
+			{
+				"value": "Since 2004",
+				"label": "Family-owned",
+				"quote": "Family-owned roofing company in Austin since 2004"
+			},
+			{
+				"value": "2,000+",
+				"label": "Roofs replaced",
+				"quote": "over 2,000 roofs replaced"
+			}
+		],
+		"photos": [
+			{
+				"ref": "img1",
+				"description": "Two roofers laying architectural shingles on a two-storey house",
+				"subject": "crew at work",
+				"shape": "landscape",
+				"pair": "none",
+				"pairKey": ""
+			},
+			{
+				"ref": "img2",
+				"description": "A finished charcoal shingle roof on a brick family home",
+				"subject": "new roof",
+				"shape": "landscape",
+				"pair": "none",
+				"pairKey": ""
+			},
+			{
+				"ref": "img3",
+				"description": "A crew tearing off old shingles down to the decking",
+				"subject": "tear-off",
+				"shape": "landscape",
+				"pair": "none",
+				"pairKey": ""
+			},
+			{
+				"ref": "img4",
+				"description": "New underlayment and drip edge going on before the shingles",
+				"subject": "underlayment",
+				"shape": "landscape",
+				"pair": "none",
+				"pairKey": ""
+			},
+			{
+				"ref": "img5",
+				"description": "Hail-damaged shingles with each impact circled in chalk",
+				"subject": "hail damage",
+				"shape": "landscape",
+				"pair": "none",
+				"pairKey": ""
+			},
+			{
+				"ref": "img6",
+				"description": "A roofer's tool belt and a stack of ridge caps",
+				"subject": "tools",
+				"shape": "square",
+				"pair": "none",
+				"pairKey": ""
+			}
+		],
+		"design": {
+			"palette": "L5",
+			"custom": {
+				"background": "",
+				"accent": "",
+				"heading": "",
+				"body": ""
+			},
+			"fonts": "oswald-barlow",
+			"shape": "sharp",
+			"buttons": "solid",
+			"width": "6xl",
+			"backdrop": "blueprint",
+			"footerTone": "inverse"
+		},
+		"pages": [
+			{
+				"name": "Home",
+				"slug": "/",
+				"archetype": "home",
+				"purpose": "Win the free inspection: who the crew is, what they do and why Austin homeowners trust them.",
+				"keyword": "roofing company Austin",
+				"inMenu": true,
+				"opener": "split-hero:split",
+				"closer": "cta-band:centered",
+				"photos": [
+					"img1"
+				],
+				"sections": [
+					{
+						"layout": "split-hero:split",
+						"job": "Promise a roof done right by a local family crew and offer the free inspection.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": [
+							"img1"
+						]
+					},
+					{
+						"layout": "chips:inline",
+						"job": "Name the places served.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "grid:beside",
+						"job": "Show the four roofing services in one line each, ending with inspections.",
+						"items": 4,
+						"child": "feature-card:inline",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:columns",
+						"job": "Explain the three steps from the first call to a finished roof.",
+						"items": 3,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "before-after:columns",
+						"job": "Contrast a rushed roofing job with how this crew works.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "carousel:bars",
+						"job": "Let three homeowners say what working with the crew was like.",
+						"items": 3,
+						"child": "testimonial-card:card",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:split",
+						"job": "Answer what homeowners ask before booking an inspection.",
+						"items": 5,
+						"child": "none",
+						"surface": "pattern",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:centered",
+						"job": "Ask for the free inspection, with the phone as the second way in.",
+						"items": 0,
+						"child": "none",
+						"surface": "brand",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Services",
+				"slug": "services",
+				"archetype": "services",
+				"purpose": "Show every roofing service and send each visitor to the right page.",
+				"keyword": "roofing services Austin",
+				"inMenu": true,
+				"opener": "page-hero:centered",
+				"closer": "cta-band:centered",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "page-hero:centered",
+						"job": "Introduce the full range of roofing services.",
+						"items": 0,
+						"child": "none",
+						"surface": "tinted",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "grid:centered",
+						"job": "Link to each service page with one line on what it covers.",
+						"items": 3,
+						"child": "related-card:list",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:numbered",
+						"job": "Give four reasons homeowners choose this crew, from the brief only.",
+						"items": 4,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:timeline",
+						"job": "Walk through a job from inspection to clean-up in four steps.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:boxed",
+						"job": "Answer questions about choosing between repair and replacement.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:centered",
+						"job": "Ask for the free inspection.",
+						"items": 0,
+						"child": "none",
+						"surface": "inverse",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Roof Replacement",
+				"slug": "roof-replacement",
+				"archetype": "service",
+				"purpose": "Explain a full replacement and win the inspection that starts one.",
+				"keyword": "roof replacement Austin",
+				"inMenu": true,
+				"opener": "split-hero:reversed",
+				"closer": "cta-band:split",
+				"photos": [
+					"img2",
+					"img3",
+					"img4"
+				],
+				"sections": [
+					{
+						"layout": "split-hero:reversed",
+						"job": "Promise a complete new roof without the mess, and offer the inspection.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": [
+							"img2"
+						]
+					},
+					{
+						"layout": "feature-rows:alternating",
+						"job": "Show the tear-off and the new layers that go on, one row each.",
+						"items": 2,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": [
+							"img3",
+							"img4"
+						]
+					},
+					{
+						"layout": "process-steps:cards",
+						"job": "Lay out the three stages of a replacement day.",
+						"items": 3,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "before-after:rows",
+						"job": "Pair each worry about a replacement with how the crew handles it.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:stacked",
+						"job": "Answer questions about timing, materials and clean-up.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:split",
+						"job": "Ask for the inspection that starts a replacement.",
+						"items": 0,
+						"child": "none",
+						"surface": "inverse",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Roof Repair",
+				"slug": "roof-repair",
+				"archetype": "service",
+				"purpose": "Get leaks and damaged shingles fixed before they spread.",
+				"keyword": "roof repair Austin",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "split-cta:cards",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Promise a leak found and fixed, with the crew's track record.",
+						"items": 0,
+						"child": "none",
+						"surface": "wash",
+						"tweaks": [
+							"hero-stats"
+						],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:accent",
+						"job": "Show the four kinds of repair the crew handles.",
+						"items": 4,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:columns",
+						"job": "Explain how a repair visit goes in three steps.",
+						"items": 3,
+						"child": "none",
+						"surface": "tinted",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "faq-accordion:boxed",
+						"job": "Answer what people ask when the roof starts to leak.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "split-cta:cards",
+						"job": "Offer two paths: an urgent leak, or planning ahead.",
+						"items": 2,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Storm Damage",
+				"slug": "storm-damage",
+				"archetype": "service",
+				"purpose": "Help homeowners after hail and wind, including the insurance claim.",
+				"keyword": "storm damage roof repair Austin",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "cta-band:card",
+				"photos": [
+					"img5"
+				],
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Promise help after the storm, from inspection to the insurance claim.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "before-after:stacked",
+						"job": "Contrast filing a claim alone with having the crew document it.",
+						"items": 3,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "process-steps:timeline",
+						"job": "List the claim steps from the first call to the finished roof.",
+						"items": 4,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "spotlight:split",
+						"job": "Feature the documented inspection that supports the claim.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": [
+							"img5"
+						]
+					},
+					{
+						"layout": "faq-accordion:split",
+						"job": "Answer questions about insurance and timing after a storm.",
+						"items": 5,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "cta-band:card",
+						"job": "Ask for a storm inspection.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "About",
+				"slug": "about",
+				"archetype": "about",
+				"purpose": "Introduce the family crew and how they work.",
+				"keyword": "family roofing company Austin",
+				"inMenu": true,
+				"opener": "page-hero:left",
+				"closer": "split-cta:cards",
+				"photos": [],
+				"sections": [
+					{
+						"layout": "page-hero:left",
+						"job": "Introduce the family business and its years in Austin.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "prose-block:plain",
+						"job": "Tell the story from the brief only: family-owned, Austin, since 2004.",
+						"items": 0,
+						"child": "none",
+						"surface": "plain",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "bento-grid:divided",
+						"job": "Set out the crew's working values in four tiles.",
+						"items": 4,
+						"child": "none",
+						"surface": "soft",
+						"tweaks": [],
+						"images": []
+					},
+					{
+						"layout": "split-cta:cards",
+						"job": "Offer the inspection or a call.",
+						"items": 2,
+						"child": "none",
+						"surface": "inverse",
+						"tweaks": [],
+						"images": []
+					}
+				]
+			},
+			{
+				"name": "Contact",
+				"slug": "contact",
+				"archetype": "contact",
+				"purpose": "Book the free inspection by phone and know what happens next.",
+				"keyword": "roof inspection Austin",
+				"inMenu": true,
+				"opener": "page-hero:compact",
+				"closer": "none",
+				"photos": [],
+				"sections": []
+			}
+		],
+		"chrome": {
+			"header": "bar",
+			"footer": "split",
+			"cta": {
+				"label": "Free Inspection",
+				"target": "page:contact"
+			},
+			"menu": [
+				{
+					"label": "Services",
+					"kind": "group",
+					"target": "",
+					"style": "mega",
+					"links": [
+						{
+							"label": "All services",
+							"target": "page:services",
+							"description": "Every roofing service we offer in one place",
+							"icon": "LayoutGrid"
+						},
+						{
+							"label": "Roof Replacement",
+							"target": "page:roof-replacement",
+							"description": "A complete tear-off and new roof, cleaned up the same day you sign off",
+							"icon": "House"
+						},
+						{
+							"label": "Roof Repair",
+							"target": "page:roof-repair",
+							"description": "Leaks, lifted shingles and failed flashing fixed before they spread",
+							"icon": "Hammer"
+						},
+						{
+							"label": "Storm Damage",
+							"target": "page:storm-damage",
+							"description": "Documented inspections to support your insurance claim",
+							"icon": "CloudHail"
+						}
+					],
+					"promo": {
+						"show": true,
+						"eyebrow": "No cost",
+						"title": "Book a free roof inspection",
+						"body": "We check every slope, photograph what we find and leave you a written estimate.",
+						"ctaLabel": "Schedule it",
+						"target": "page:contact",
+						"image": "img6"
+					}
+				},
+				{
+					"label": "Company",
+					"kind": "group",
+					"target": "",
+					"style": "dropdown",
+					"links": [
+						{
+							"label": "About us",
+							"target": "page:about",
+							"description": "A family business since 2004",
+							"icon": "Users"
+						}
+					],
+					"promo": {
+						"show": false,
+						"eyebrow": "",
+						"title": "",
+						"body": "",
+						"ctaLabel": "",
+						"target": "",
+						"image": ""
+					}
+				},
+				{
+					"label": "Contact",
+					"kind": "page",
+					"target": "page:contact",
+					"style": "mega",
+					"links": [],
+					"promo": {
+						"show": false,
+						"eyebrow": "",
+						"title": "",
+						"body": "",
+						"ctaLabel": "",
+						"target": "",
+						"image": ""
+					}
+				},
+				{
+					"label": "(512) 555-0142",
+					"kind": "phone",
+					"target": "tel",
+					"style": "mega",
+					"links": [],
+					"promo": {
+						"show": false,
+						"eyebrow": "",
+						"title": "",
+						"body": "",
+						"ctaLabel": "",
+						"target": "",
+						"image": ""
+					}
+				}
+			]
+		}
+	},
+	"usage": {
+		"input_tokens": 16400,
+		"output_tokens": 4300,
+		"cache_read_input_tokens": 0,
+		"cache_creation_input_tokens": 11200
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

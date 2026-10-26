@@ -48,11 +48,16 @@ export function siteMetadata(input: SeoInput): Metadata {
 	const page = pageFor(input.site, input.slug)
 	const name = brandName(input)
 	const isHome = !page || page.slug === HOME_SLUG
-	const title = isHome
-		? profile.seo.homeTitle || name
-		: `${page.name} | ${name}`
+	// A page's own search title and description win; the site's are the fallback.
+	const own = page?.seo
+	const title =
+		own?.title.trim() ||
+		(isHome ? profile.seo.homeTitle || name : `${page.name} | ${name}`)
 	const description =
-		profile.seo.description || profile.business.description || undefined
+		own?.description.trim() ||
+		profile.seo.description ||
+		profile.business.description ||
+		undefined
 	const path = isHome ? '/' : `/${page.slug}`
 	const url = `${origin}${path}`
 	const image = profile.seo.shareImage ?? profile.brand.logo ?? undefined

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { currentMembership } from '@/lib/workspace/current'
+import { requireAccountMembership } from '@/lib/workspace/current'
 import { appHost } from '@/lib/builder/hosting'
 import type { SiteDoc } from '@/lib/builder/site-doc'
 import { ProjectsTable, type ProjectRow } from './projects-table'
@@ -8,8 +8,8 @@ export const metadata = { title: 'Projects' }
 export const dynamic = 'force-dynamic'
 
 export default async function ProjectsPage() {
-	const membership = await currentMembership()
-	if (!membership?.permissions.has('projects.view')) notFound()
+	const membership = await requireAccountMembership()
+	if (!membership.permissions.has('projects.view')) notFound()
 
 	const docs = await membership.db
 		.collection<SiteDoc>('sites')

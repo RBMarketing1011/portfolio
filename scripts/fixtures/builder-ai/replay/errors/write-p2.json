@@ -1,0 +1,218 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Roofing Services in Austin | Summit Roofing Co.",
+			"description": "Roof repair, replacement, storm damage and free inspections from one family-owned Austin crew."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Our services"
+			},
+			{
+				"id": "s1.title",
+				"value": "Roofing services for [[Austin homes]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "Repair, replacement, storm damage and free inspections, all from the same family-owned crew."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See replacements"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "Find your service"
+			},
+			{
+				"id": "s2.title",
+				"value": "Pick the job your [[roof needs]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "Each page explains what is involved and how we work."
+			},
+			{
+				"id": "s2.c0.meta",
+				"value": "Full roof"
+			},
+			{
+				"id": "s2.c1.meta",
+				"value": "Leaks and wear"
+			},
+			{
+				"id": "s2.c2.meta",
+				"value": "Hail and wind"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "Why homeowners choose us"
+			},
+			{
+				"id": "s3.title",
+				"value": "Work you can [[check]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "What every job with us includes, whatever the size."
+			},
+			{
+				"id": "s3.tiles.0.title",
+				"value": "Photos of every slope"
+			},
+			{
+				"id": "s3.tiles.0.blurb",
+				"value": "You see what we see, with photos from the inspection."
+			},
+			{
+				"id": "s3.tiles.1.title",
+				"value": "A written estimate"
+			},
+			{
+				"id": "s3.tiles.1.blurb",
+				"value": "Every price is on paper before any work starts."
+			},
+			{
+				"id": "s3.tiles.2.title",
+				"value": "One family crew"
+			},
+			{
+				"id": "s3.tiles.2.blurb",
+				"value": "The same people from the first visit to the clean-up."
+			},
+			{
+				"id": "s3.tiles.3.title",
+				"value": "A tidy finish"
+			},
+			{
+				"id": "s3.tiles.3.blurb",
+				"value": "We sweep for nails and haul away the old roof."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Start to finish"
+			},
+			{
+				"id": "s4.title",
+				"value": "How a roofing job [[runs]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "Four steps, the same on every job."
+			},
+			{
+				"id": "s4.steps.0.title",
+				"value": "Inspection"
+			},
+			{
+				"id": "s4.steps.0.summary",
+				"value": "We look at the whole roof and photograph what we find."
+			},
+			{
+				"id": "s4.steps.1.title",
+				"value": "Estimate"
+			},
+			{
+				"id": "s4.steps.1.summary",
+				"value": "You get a written estimate with the options explained."
+			},
+			{
+				"id": "s4.steps.2.title",
+				"value": "Roof day"
+			},
+			{
+				"id": "s4.steps.2.summary",
+				"value": "The crew does the work and keeps you posted as it goes."
+			},
+			{
+				"id": "s4.steps.3.title",
+				"value": "Clean-up"
+			},
+			{
+				"id": "s4.steps.3.summary",
+				"value": "We clear the site and walk the yard with you before we go."
+			},
+			{
+				"id": "s5.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s5.title",
+				"value": "Repair or [[replace]]?"
+			},
+			{
+				"id": "s5.description",
+				"value": "How to choose the service your roof needs."
+			},
+			{
+				"id": "s5.faqs.0.question",
+				"value": "How do I know if I need a new roof?"
+			},
+			{
+				"id": "s5.faqs.0.answer",
+				"value": "Widespread damage, many missing shingles or repeated leaks usually point to a replacement. The inspection tells you which applies."
+			},
+			{
+				"id": "s5.faqs.1.question",
+				"value": "Can you repair just one section?"
+			},
+			{
+				"id": "s5.faqs.1.answer",
+				"value": "Often, yes. When the rest of the roof is sound, a repair is the sensible choice and we will say so."
+			},
+			{
+				"id": "s5.faqs.2.question",
+				"value": "What happens after a storm?"
+			},
+			{
+				"id": "s5.faqs.2.answer",
+				"value": "We inspect, photograph the damage and help you with the insurance claim before any repair starts."
+			},
+			{
+				"id": "s5.faqs.3.question",
+				"value": "Do I need to be home for the inspection?"
+			},
+			{
+				"id": "s5.faqs.3.answer",
+				"value": "It helps to meet us, but we can inspect the roof and send you the photos and estimate if you are away."
+			},
+			{
+				"id": "s5.faqs.4.question",
+				"value": "How do I get started?"
+			},
+			{
+				"id": "s5.faqs.4.answer",
+				"value": "Book a free inspection on the contact page or call us, and we will find a time that works."
+			},
+			{
+				"id": "s6.title",
+				"value": "Not sure which service you need?"
+			},
+			{
+				"id": "s6.description",
+				"value": "Start with a free inspection and we will show you the options."
+			},
+			{
+				"id": "s6.actions.0.label",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s6.actions.1.label",
+				"value": "Call (512) 555-0142"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

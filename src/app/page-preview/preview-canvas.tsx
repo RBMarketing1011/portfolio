@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Copy, Sparkles, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
 	BuiltFooter,
 	BuiltHeader,
@@ -19,14 +20,20 @@ export type PreviewMessage =
 			blocks: Block[]
 			selectedId?: string | null
 			nav?: NavPage[]
+			/** Every page, for the footer (the header shows only `nav`). */
+			footerPages?: NavPage[]
 			chrome?: Chrome
 			currentSlug?: string
 			surfaceCss?: string
+			/** Where page links point: the site's preview, never an app route. */
+			linkBase?: string
 			mediaIndex?: { id: string; url: string }[] | null
 			/** The site's logo and name; null for a browser-only site, which keeps the kit's wordmark. */
 			brand?: SiteBrand | null
 			/** Whether the pill offers AI writing for the selected section. */
 			ai?: boolean
+			/** Whether an empty page offers "Build this page with AI". */
+			aiBuild?: boolean
 	  }
 	| { kind: 'builder:select'; id: string | null }
 	| { kind: 'builder:scroll-to'; id: string }
@@ -58,12 +65,15 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 	const [blocks, setBlocks] = useState<Block[]>([])
 	const [selectedId, setSelectedId] = useState<string | null>(null)
 	const [nav, setNav] = useState<NavPage[]>([])
+	const [footerPages, setFooterPages] = useState<NavPage[] | null>(null)
 	const [currentSlug, setCurrentSlug] = useState<string | undefined>()
 	const [chrome, setChrome] = useState<Chrome>(defaultChrome)
 	const [brand, setBrand] = useState<SiteBrand | undefined>(undefined)
 	const [surfaceCss, setSurfaceCss] = useState('')
+	const [linkBase, setLinkBase] = useState<string | undefined>(undefined)
 	const [flashId, setFlashId] = useState<string | null>(null)
 	const [ai, setAi] = useState(false)
+	const [aiBuild, setAiBuild] = useState(false)
 	// Page coordinates of the selected section's top edge, for the action pill.
 	const [pill, setPill] = useState<{ top: number; left: number } | null>(null)
 
@@ -109,11 +119,14 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 				setBlocks(data.blocks ?? [])
 				if (data.selectedId !== undefined) setSelectedId(data.selectedId)
 				if (data.nav) setNav(data.nav)
+				if (data.footerPages) setFooterPages(data.footerPages)
 				if (data.chrome) setChrome(data.chrome)
 				if (data.brand !== undefined) setBrand(data.brand ?? undefined)
 				if (data.currentSlug !== undefined) setCurrentSlug(data.currentSlug)
 				if (data.surfaceCss !== undefined) setSurfaceCss(data.surfaceCss)
+				if (data.linkBase !== undefined) setLinkBase(data.linkBase)
 				if (data.ai !== undefined) setAi(data.ai)
+				if (data.aiBuild !== undefined) setAiBuild(data.aiBuild)
 			}
 		}
 		window.addEventListener('message', onMessage)
@@ -181,8 +194,9 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 		if (inert) return
 		function onClick(event: MouseEvent) {
 			const node = event.target as HTMLElement | null
-			// The pill sits over the page, so its own buttons must not reselect.
-			if (node?.closest('[data-builder-pill]')) return
+			// The pill sits over the page, so its own buttons must not reselect; nor must
+			// the empty page's own button.
+			if (node?.closest('[data-builder-pill], [data-builder-action]')) return
 			const target = node?.closest('[data-block-id]')
 			const id = target?.getAttribute('data-block-id') ?? null
 			event.preventDefault()
@@ -208,6 +222,19 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 					<p className='mt-3 leading-7 text-slate-400'>
 						Add a section from the left to start building this page.
 					</p>
+					{aiBuild && (
+						<Button
+							data-builder-action
+							onClick={() =>
+								window.parent?.postMessage(
+									{ kind: 'builder:ai-page' },
+									window.location.origin,
+								)
+							}
+							className='mt-6 bg-brand font-bold text-ink hover:bg-brand-strong'>
+							<Sparkles /> Build this page with AI
+						</Button>
+					)}
 				</div>
 			</div>
 		)
@@ -222,6 +249,7 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 				pages={nav}
 				current={currentSlug}
 				brand={brand}
+				linkBase={linkBase}
 			/>
 			<main>
 				<RenderBlocks
@@ -229,9 +257,15 @@ export function PreviewCanvas({ inert = false }: { inert?: boolean }) {
 					selectable={!inert}
 					selectedId={selectedId}
 					flashId={flashId}
+					linkBase={linkBase}
 				/>
 			</main>
-			<BuiltFooter chrome={chrome} pages={nav} brand={brand} />
+			<BuiltFooter
+				chrome={chrome}
+				pages={footerPages ?? nav}
+				brand={brand}
+				linkBase={linkBase}
+			/>
 
 			{/* Straddles the outline's top edge, so the border runs through its middle. */}
 			{pill && (

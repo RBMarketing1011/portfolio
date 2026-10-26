@@ -1,0 +1,43 @@
+{
+	"about": "Enums in the wrong case and with stray spacing or a slash: structured outputs do not guarantee casing, so the reader matches case-insensitively (section 3.4).",
+	"request": {
+		"prompt": "Neighbourhood bakery in Portland baking sourdough, pastries and custom cakes. Open Tuesday to Sunday.",
+		"business": { "name": "Rise Bakery", "type": "", "phone": "", "email": "", "city": "Portland", "region": "OR", "areas": [] }
+	},
+	"photos": [],
+	"reply": {
+		"site": {
+			"name": "Rise Bakery", "language": "EN-us", "businessType": "STORE", "tagline": "Bread worth the early start.",
+			"description": "Sourdough, pastries and custom cakes from a Portland neighbourhood bakery.", "audience": "Portland neighbours",
+			"offer": "Fresh sourdough, pastries and custom cakes.", "voice": "Warm and plain.", "personality": "WARM",
+			"services": ["Sourdough", "Pastries", "Custom cakes"], "areas": ["Portland"],
+			"primaryAction": { "label": "Order a cake", "target": "PAGE:Contact" }
+		},
+		"facts": [],
+		"photos": [],
+		"design": { "palette": "l9", "custom": { "background": "", "accent": "", "heading": "", "body": "" }, "fonts": "FRAUNCES-INTER", "shape": "Round", "buttons": "SOLID", "width": "6XL", "backdrop": "PAPER", "footerTone": "Soft" },
+		"pages": [
+			{
+				"name": "Home", "slug": "/", "archetype": "HOME", "purpose": "Bring neighbours in and take cake orders.", "keyword": "bakery Portland", "inMenu": true,
+				"opener": "PAGE-HERO:CENTERED", "closer": "CTA-BAND:SPLIT", "photos": [],
+				"sections": [
+					{ "layout": "PAGE-HERO:CENTERED", "job": "Promise fresh bread every morning.", "items": 0, "child": "NONE", "surface": "WASH", "tweaks": ["ONE-BUTTON"], "images": [] },
+					{ "layout": " Grid : Beside ", "job": "Show what the bakery makes.", "items": 4, "child": "Feature-Card:Inline", "surface": "Plain", "tweaks": [], "images": [] },
+					{ "layout": "process-steps/columns", "job": "How a custom cake order works.", "items": 3, "child": "none", "surface": "SOFT", "tweaks": ["NUMBERS-OUTLINE"], "images": [] },
+					{ "layout": "Before-After:Columns", "job": "Supermarket bread versus slow sourdough.", "items": 4, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "FAQ-ACCORDION:SPLIT", "job": "Answer ordering questions.", "items": 5, "child": "none", "surface": "PLAIN", "tweaks": ["MARKER-CHECK"], "images": [] },
+					{ "layout": "CTA-BAND:SPLIT", "job": "Ask for the cake order.", "items": 0, "child": "none", "surface": "Soft", "tweaks": [], "images": [] }
+				]
+			},
+			{
+				"name": "Contact", "slug": "Contact", "archetype": "CONTACT", "purpose": "Order a cake or find the bakery.", "keyword": "order custom cake Portland", "inMenu": true,
+				"opener": "Page-Hero:Compact", "closer": "None", "photos": [],
+				"sections": [
+					{ "layout": "PAGE-HERO:COMPACT", "job": "Invite the order.", "items": 0, "child": "none", "surface": "plain", "tweaks": [], "images": [] },
+					{ "layout": "PROCESS-STEPS:COLUMNS", "job": "Three steps to a custom cake.", "items": 3, "child": "none", "surface": "plain", "tweaks": [], "images": [] }
+				]
+			}
+		],
+		"chrome": { "header": "BAR", "footer": "Centered", "cta": { "label": "Order a cake", "target": "page:CONTACT" }, "menu": [{ "label": "Contact", "kind": "PAGE", "target": "page:contact", "style": "MEGA", "links": [], "promo": { "show": false, "eyebrow": "", "title": "", "body": "", "ctaLabel": "", "target": "", "image": "" } }] }
+	}
+}

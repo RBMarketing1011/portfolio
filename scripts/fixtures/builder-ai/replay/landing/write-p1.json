@@ -1,0 +1,218 @@
+{
+	"reply": {
+		"seo": {
+			"title": "AC Tune-Up Austin | Polar Air Heating & Cooling",
+			"description": "The AC tune-up special is $89 when you book by April 30. Call 512-555-0142 to book your visit."
+		},
+		"slots": [
+			{
+				"id": "s1.message",
+				"value": "AC tune-up special: $89 when you book by April 30."
+			},
+			{
+				"id": "s1.linkLabel",
+				"value": "Call to book"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "AC tune-up special"
+			},
+			{
+				"id": "s2.title",
+				"value": "A cooler summer for [[$89]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "Book your AC tune-up by April 30 and get the special price of $89. One call is all it takes."
+			},
+			{
+				"id": "s2.actions.0.label",
+				"value": "Call 512-555-0142"
+			},
+			{
+				"id": "s3.items.0",
+				"value": "One call to book"
+			},
+			{
+				"id": "s3.items.1",
+				"value": "A set price of $89"
+			},
+			{
+				"id": "s3.items.2",
+				"value": "Book by April 30"
+			},
+			{
+				"id": "s3.items.3",
+				"value": "Austin homes"
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "The tune-up"
+			},
+			{
+				"id": "s4.title",
+				"value": "What the visit [[covers]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "A look at the parts that keep your system cooling."
+			},
+			{
+				"id": "s4.tiles.0.title",
+				"value": "Filters"
+			},
+			{
+				"id": "s4.tiles.0.blurb",
+				"value": "We check the filter and tell you if it needs changing."
+			},
+			{
+				"id": "s4.tiles.0.icon",
+				"value": "Wind"
+			},
+			{
+				"id": "s4.tiles.1.title",
+				"value": "Coils"
+			},
+			{
+				"id": "s4.tiles.1.blurb",
+				"value": "We look at the coils for dirt that makes the system work harder."
+			},
+			{
+				"id": "s4.tiles.1.icon",
+				"value": "Snowflake"
+			},
+			{
+				"id": "s4.tiles.2.title",
+				"value": "Thermostat"
+			},
+			{
+				"id": "s4.tiles.2.blurb",
+				"value": "We test the thermostat so the system turns on when it should."
+			},
+			{
+				"id": "s4.tiles.2.icon",
+				"value": "Thermometer"
+			},
+			{
+				"id": "s4.tiles.3.title",
+				"value": "Wiring"
+			},
+			{
+				"id": "s4.tiles.3.blurb",
+				"value": "We check the connections the system relies on."
+			},
+			{
+				"id": "s4.tiles.3.icon",
+				"value": "Zap"
+			},
+			{
+				"id": "s5.eyebrow",
+				"value": "How it works"
+			},
+			{
+				"id": "s5.title",
+				"value": "Book, visit, [[done]]"
+			},
+			{
+				"id": "s5.description",
+				"value": "Getting the special is simple."
+			},
+			{
+				"id": "s5.steps.0.title",
+				"value": "Call to book"
+			},
+			{
+				"id": "s5.steps.0.summary",
+				"value": "Call 512-555-0142 and pick a time before April 30."
+			},
+			{
+				"id": "s5.steps.1.title",
+				"value": "We visit"
+			},
+			{
+				"id": "s5.steps.1.summary",
+				"value": "A technician tunes up your AC at your home."
+			},
+			{
+				"id": "s5.steps.2.title",
+				"value": "You stay cool"
+			},
+			{
+				"id": "s5.steps.2.summary",
+				"value": "You head into summer knowing your system has been checked."
+			},
+			{
+				"id": "s6.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s6.title",
+				"value": "About the [[special]]"
+			},
+			{
+				"id": "s6.description",
+				"value": "What to know before you book."
+			},
+			{
+				"id": "s6.faqs.0.question",
+				"value": "How much is the tune-up?"
+			},
+			{
+				"id": "s6.faqs.0.answer",
+				"value": "The special price is $89."
+			},
+			{
+				"id": "s6.faqs.1.question",
+				"value": "When do I need to book by?"
+			},
+			{
+				"id": "s6.faqs.1.answer",
+				"value": "Book by April 30 to get the special price."
+			},
+			{
+				"id": "s6.faqs.2.question",
+				"value": "How do I book?"
+			},
+			{
+				"id": "s6.faqs.2.answer",
+				"value": "Call 512-555-0142 and we will find a time that suits you."
+			},
+			{
+				"id": "s6.faqs.3.question",
+				"value": "Is the tune-up for homes in Austin?"
+			},
+			{
+				"id": "s6.faqs.3.answer",
+				"value": "Yes, the special is for Austin homes."
+			},
+			{
+				"id": "s6.faqs.4.question",
+				"value": "What does the visit include?"
+			},
+			{
+				"id": "s6.faqs.4.answer",
+				"value": "We check the filter, the coils, the thermostat and the wiring."
+			},
+			{
+				"id": "s7.title",
+				"value": "Book your $89 AC tune-up"
+			},
+			{
+				"id": "s7.description",
+				"value": "Call before April 30 to get the special price."
+			},
+			{
+				"id": "s7.actions.0.label",
+				"value": "Call to book"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 0,
+		"cache_creation_input_tokens": 3900
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

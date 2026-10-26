@@ -1,5 +1,6 @@
 import { requireAdminPage } from '@/lib/admin'
 import { AdminShell } from './admin-shell'
+import { EndAccountView } from './end-account-view'
 
 export const metadata = {
 	title: { default: 'Admin', template: '%s | Admin' },
@@ -16,6 +17,7 @@ export default async function AdminLayout({
 
 	return (
 		<AdminShell email={email} userName={email.replace(/@.*$/, '')}>
+			<EndAccountView />
 			{children}
 		</AdminShell>
 	)

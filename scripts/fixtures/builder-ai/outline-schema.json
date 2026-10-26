@@ -1,0 +1,50 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["pages"],
+  "properties": {
+    "pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key", "sections"],
+        "properties": {
+          "key": { "type": "string" },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["layout", "job", "items", "child", "surface", "tweaks", "images"],
+              "properties": {
+                "layout": {
+                  "type": "string",
+                  "enum": ["page-hero:centered", "page-hero:left", "page-hero:compact", "split-hero:split", "split-hero:reversed", "stat-hero:cards", "stat-hero:divided", "stat-hero:centered", "announcement-bar:strip", "announcement-bar:badge", "announcement-bar:ticker", "stat-band:divided", "stat-band:row", "stat-band:cards", "spotlight:split", "spotlight:stacked", "spotlight:overlap", "before-after:columns", "before-after:rows", "before-after:stacked", "feature-rows:alternating", "feature-rows:cards", "feature-rows:stacked", "process-steps:columns", "process-steps:timeline", "process-steps:cards", "bento-grid:accent", "bento-grid:divided", "bento-grid:numbered", "tabs-showcase:pills", "tabs-showcase:underline", "tabs-showcase:side", "chips:solid", "chips:outline", "chips:inline", "faq-accordion:split", "faq-accordion:stacked", "faq-accordion:boxed", "split-cta:cards", "split-cta:divided", "split-cta:rows", "cta-band:card", "cta-band:centered", "cta-band:split", "prose-block:plain", "prose-block:ruled", "prose-block:marked", "callout:card", "callout:rule", "callout:banner", "check-list:columns", "check-list:inline", "check-list:stacked", "media-gallery:bottom", "media-gallery:side", "media-gallery:top", "media-gallery:carousel", "media-mosaic:default", "figure:below", "figure:framed", "figure:beside", "image-compare:stacked", "image-compare:text-left", "image-compare:text-right", "grid:centered", "grid:above", "grid:beside", "masonry:centered", "masonry:above", "masonry:bare", "carousel:bars", "carousel:below", "carousel:overlay", "marquee:inline", "marquee:rule", "marquee:centered", "detail-card:card", "detail-card:rows", "detail-card:inline", "table-of-contents:rail", "table-of-contents:numbered", "table-of-contents:card"]
+                },
+                "job": { "type": "string" },
+                "items": { "type": "integer" },
+                "child": {
+                  "type": "string",
+                  "enum": ["none", "feature-card:card", "feature-card:inline", "feature-card:numbered", "testimonial-card:card", "testimonial-card:bare", "related-card:card", "related-card:list", "media-card:card", "media-card:overlay", "media-card:bare", "client-logo:wordmark"]
+                },
+                "surface": {
+                  "type": "string",
+                  "enum": ["plain", "soft", "tinted", "wash", "pattern", "inverse", "inverse-glow", "brand"]
+                },
+                "tweaks": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["one-button", "no-buttons", "hero-stats", "hero-link", "fan", "cols-2", "cols-3", "cols-4", "points", "details", "tile-images", "with-note", "full-width", "marker-plus", "marker-chevron", "marker-check", "marker-arrow", "numbers-solid", "numbers-outline", "numbers-muted", "size-md", "size-lg", "size-full"]
+                  }
+                },
+                "images": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

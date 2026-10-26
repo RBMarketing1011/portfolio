@@ -1,0 +1,286 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Storm Damage Roof Repair Austin | Summit Roofing",
+			"description": "Hail and wind damage inspected and documented for your insurance claim, then repaired. Book a storm inspection."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Storm damage"
+			},
+			{
+				"id": "s1.title",
+				"value": "Help after the [[storm]], claim included"
+			},
+			{
+				"id": "s1.description",
+				"value": "We inspect hail and wind damage, document it for your insurance claim and repair the roof once the claim is settled."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a storm check"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See all services"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "Your claim"
+			},
+			{
+				"id": "s2.title",
+				"value": "A claim with [[evidence]]"
+			},
+			{
+				"id": "s2.beforeLabel",
+				"value": "On your own"
+			},
+			{
+				"id": "s2.afterLabel",
+				"value": "With our crew"
+			},
+			{
+				"id": "s2.before.0.text",
+				"value": "Guessing which damage the policy covers"
+			},
+			{
+				"id": "s2.before.1.text",
+				"value": "Climbing the roof to take your own photos"
+			},
+			{
+				"id": "s2.before.2.text",
+				"value": "Waiting while the claim stalls"
+			},
+			{
+				"id": "s2.after.0.text",
+				"value": "Damage documented slope by slope"
+			},
+			{
+				"id": "s2.after.1.text",
+				"value": "Photos and notes your adjuster can use"
+			},
+			{
+				"id": "s2.after.2.text",
+				"value": "Repairs booked as soon as the claim settles"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "Claim steps"
+			},
+			{
+				"id": "s3.title",
+				"value": "From storm to [[sound roof]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "The claim, step by step."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Call us"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "Tell us when the storm hit and what you have noticed."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "Inspection"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "We photograph every slope and note each impact."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "Your claim"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "You send our report to your insurer, and we can talk to the adjuster."
+			},
+			{
+				"id": "s3.steps.3.title",
+				"value": "Repair"
+			},
+			{
+				"id": "s3.steps.3.summary",
+				"value": "Once the claim is settled, the crew repairs or replaces the roof."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Documented"
+			},
+			{
+				"id": "s4.title",
+				"value": "An inspection your [[adjuster]] can use"
+			},
+			{
+				"id": "s4.summary",
+				"value": "Every impact is circled, photographed and listed, so your claim starts with evidence instead of guesses."
+			},
+			{
+				"id": "s4.actions.0.label",
+				"value": "Get the inspection"
+			},
+			{
+				"id": "s4.mediaAlt",
+				"value": "Hail-damaged shingles with each impact circled in chalk"
+			},
+			{
+				"id": "s4.description",
+				"value": "What a storm inspection covers."
+			},
+			{
+				"id": "s4.tiles.0.title",
+				"value": "Hail impacts"
+			},
+			{
+				"id": "s4.tiles.0.blurb",
+				"value": "Dents and bruised shingles circled and photographed."
+			},
+			{
+				"id": "s4.tiles.0.icon",
+				"value": "CloudHail"
+			},
+			{
+				"id": "s4.tiles.1.title",
+				"value": "Wind damage"
+			},
+			{
+				"id": "s4.tiles.1.blurb",
+				"value": "Lifted and missing shingles noted slope by slope."
+			},
+			{
+				"id": "s4.tiles.1.icon",
+				"value": "Wind"
+			},
+			{
+				"id": "s4.tiles.2.title",
+				"value": "Flashing"
+			},
+			{
+				"id": "s4.tiles.2.blurb",
+				"value": "Seals around vents and chimneys checked for gaps."
+			},
+			{
+				"id": "s4.tiles.2.icon",
+				"value": "Wrench"
+			},
+			{
+				"id": "s4.tiles.3.title",
+				"value": "Decking"
+			},
+			{
+				"id": "s4.tiles.3.blurb",
+				"value": "Soft spots that suggest water got through."
+			},
+			{
+				"id": "s4.tiles.3.icon",
+				"value": "Ruler"
+			},
+			{
+				"id": "s4.tiles.4.title",
+				"value": "Vents"
+			},
+			{
+				"id": "s4.tiles.4.blurb",
+				"value": "Vents and caps checked for cracks and dents."
+			},
+			{
+				"id": "s4.tiles.4.icon",
+				"value": "Fan"
+			},
+			{
+				"id": "s4.tiles.5.title",
+				"value": "Your report"
+			},
+			{
+				"id": "s4.tiles.5.blurb",
+				"value": "Photos and notes you can send to your insurer."
+			},
+			{
+				"id": "s4.tiles.5.icon",
+				"value": "FileText"
+			},
+			{
+				"id": "s5.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s5.title",
+				"value": "Insurance [[questions]]"
+			},
+			{
+				"id": "s5.description",
+				"value": "What homeowners ask after hail or wind."
+			},
+			{
+				"id": "s5.faqs.0.question",
+				"value": "Should I call my insurer or a roofer first?"
+			},
+			{
+				"id": "s5.faqs.0.answer",
+				"value": "Call us for the inspection first. Our photos and notes give you the evidence your insurer will ask for."
+			},
+			{
+				"id": "s5.faqs.1.question",
+				"value": "Will you talk to my adjuster?"
+			},
+			{
+				"id": "s5.faqs.1.answer",
+				"value": "Yes. We can meet the adjuster on site and walk them through the damage we found."
+			},
+			{
+				"id": "s5.faqs.2.question",
+				"value": "What if the claim is denied?"
+			},
+			{
+				"id": "s5.faqs.2.answer",
+				"value": "We go through the report with you and explain your options, including a repair you pay for directly."
+			},
+			{
+				"id": "s5.faqs.3.question",
+				"value": "How soon should I get an inspection?"
+			},
+			{
+				"id": "s5.faqs.3.answer",
+				"value": "As soon as you can after the storm, so the damage is documented while it is fresh."
+			},
+			{
+				"id": "s5.faqs.4.question",
+				"value": "How do I book a storm inspection?"
+			},
+			{
+				"id": "s5.faqs.4.answer",
+				"value": "Call (512) 555-0142 or book on the contact page."
+			},
+			{
+				"id": "s6.title",
+				"value": "Had a storm come through?"
+			},
+			{
+				"id": "s6.description",
+				"value": "Book an inspection and start your claim with evidence."
+			},
+			{
+				"id": "s6.actions.0.label",
+				"value": "Book an inspection"
+			},
+			{
+				"id": "s6.actions.1.label",
+				"value": "Call (512) 555-0142"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

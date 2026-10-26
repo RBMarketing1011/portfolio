@@ -137,6 +137,18 @@ await db
 	.collection('mediaAiUsage')
 	.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 })
 
+// "Build with AI" runs, kept for a day. The app also creates these itself on first use
+// (src/lib/builder/ai/builds.ts, same names and options).
+const builds = db.collection('aiBuilds')
+await builds.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0, name: 'ttl' })
+// `active` exists only while a build can still change, so this allows one such build per site.
+await builds.createIndex(
+	{ siteId: 1 },
+	{ unique: true, partialFilterExpression: { active: true }, name: 'one_active_build_per_site' },
+)
+await builds.createIndex({ workspaceId: 1, active: 1 }, { name: 'active_by_workspace' })
+await builds.createIndex({ siteId: 1, userId: 1, createdAt: -1 }, { name: 'by_site_user' })
+
 const names = await db.listCollections().toArray()
 console.log(
 	'indexes ensured on:',

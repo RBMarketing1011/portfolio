@@ -43,7 +43,7 @@ const NOTICES: Record<string, string> = {
 export function SignInForm() {
 	const router = useRouter()
 	const params = useSearchParams()
-	const next = safeNext(params.get('next'))
+	const next = safeNext(params.get('next'), '/sign-in/landing')
 	const notice = NOTICES[params.get('notice') ?? ''] ?? null
 	const authError = params.get('error')
 

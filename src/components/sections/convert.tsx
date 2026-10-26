@@ -214,7 +214,7 @@ export function ContactSplit({
 	) : null
 
 	return (
-		<section className='px-6 pb-20 pt-36 sm:px-10 lg:px-16 lg:pt-44'>
+		<section className='px-6 pb-20 pt-[calc(9rem-var(--hero-trim,0rem))] sm:px-10 lg:px-16 lg:pt-[calc(11rem-var(--hero-trim-lg,0rem))]'>
 			<div
 				className={cn(
 					'mx-auto w-full max-w-[var(--content-max,72rem)] gap-14',

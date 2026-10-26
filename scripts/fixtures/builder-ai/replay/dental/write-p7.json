@@ -1,0 +1,174 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Emergency Pediatric Dentist in Tampa",
+			"description": "Help for children after a chipped, broken or knocked-out tooth in Tampa. Get in touch right away."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Emergency care"
+			},
+			{
+				"id": "s1.title",
+				"value": "Help fast after a [[dental injury]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "A chipped, broken or knocked-out tooth needs quick care. Get in touch and we will see your child as soon as we can."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Get help now"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See all treatments"
+			},
+			{
+				"id": "s2.items.0",
+				"value": "Stay calm and comfort your child"
+			},
+			{
+				"id": "s2.items.1",
+				"value": "Find any broken piece of tooth"
+			},
+			{
+				"id": "s2.items.2",
+				"value": "Hold a knocked-out tooth by the top, not the root"
+			},
+			{
+				"id": "s2.items.3",
+				"value": "Get in touch with us right away"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "When you get in touch"
+			},
+			{
+				"id": "s3.title",
+				"value": "What happens [[next]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "How we help after an injury."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Tell us what happened"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "We ask a few questions to understand the injury."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "We see your child"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "We see your child as soon as we can."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "Care and a plan"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "We treat the injury and explain any follow-up."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s4.title",
+				"value": "In an [[emergency]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "What to do and what to expect."
+			},
+			{
+				"id": "s4.faqs.0.question",
+				"value": "What counts as a dental emergency?"
+			},
+			{
+				"id": "s4.faqs.0.answer",
+				"value": "A knocked-out or broken tooth, a bad toothache, or swelling in the face or gums."
+			},
+			{
+				"id": "s4.faqs.1.question",
+				"value": "What do I do with a knocked-out tooth?"
+			},
+			{
+				"id": "s4.faqs.1.answer",
+				"value": "Hold it by the top, keep it moist in milk and get in touch with us right away."
+			},
+			{
+				"id": "s4.faqs.2.question",
+				"value": "Should I go to the emergency room?"
+			},
+			{
+				"id": "s4.faqs.2.answer",
+				"value": "For a head injury or heavy bleeding, yes. For a tooth injury on its own, get in touch with us."
+			},
+			{
+				"id": "s4.faqs.3.question",
+				"value": "Is emergency care covered?"
+			},
+			{
+				"id": "s4.faqs.3.answer",
+				"value": "We take most insurance plans and check your cover with you."
+			},
+			{
+				"id": "s4.faqs.4.question",
+				"value": "How fast can you see my child?"
+			},
+			{
+				"id": "s4.faqs.4.answer",
+				"value": "Get in touch and we will see your child as soon as we can."
+			},
+			{
+				"id": "s5.paths.0.eyebrow",
+				"value": "Right now"
+			},
+			{
+				"id": "s5.paths.0.title",
+				"value": "Get help for an injury"
+			},
+			{
+				"id": "s5.paths.0.body",
+				"value": "Get in touch and we will see your child as soon as we can."
+			},
+			{
+				"id": "s5.paths.0.cta",
+				"value": "Get help now"
+			},
+			{
+				"id": "s5.paths.1.eyebrow",
+				"value": "Not urgent"
+			},
+			{
+				"id": "s5.paths.1.title",
+				"value": "Look at our treatments"
+			},
+			{
+				"id": "s5.paths.1.body",
+				"value": "Read about everything we offer families."
+			},
+			{
+				"id": "s5.paths.1.cta",
+				"value": "See treatments"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

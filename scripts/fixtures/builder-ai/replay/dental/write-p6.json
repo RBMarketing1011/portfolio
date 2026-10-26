@@ -1,0 +1,190 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Dental Implants Consultation in Tampa",
+			"description": "Implant consultations for older teens in Tampa, explained plainly so you know every option."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Implant advice"
+			},
+			{
+				"id": "s1.title",
+				"value": "Implants, explained [[plainly]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "Consultations for older teens who may need an implant, with every option set out clearly."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a consultation"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See all treatments"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "Your worries"
+			},
+			{
+				"id": "s2.title",
+				"value": "What we do about [[them]]"
+			},
+			{
+				"id": "s2.beforeLabel",
+				"value": "Worry"
+			},
+			{
+				"id": "s2.afterLabel",
+				"value": "What we do"
+			},
+			{
+				"id": "s2.before.0.text",
+				"value": "We will not understand the options"
+			},
+			{
+				"id": "s2.before.1.text",
+				"value": "It will feel rushed"
+			},
+			{
+				"id": "s2.before.2.text",
+				"value": "Nobody will answer our questions"
+			},
+			{
+				"id": "s2.after.0.text",
+				"value": "We set out every option plainly"
+			},
+			{
+				"id": "s2.after.1.text",
+				"value": "We take the time you need"
+			},
+			{
+				"id": "s2.after.2.text",
+				"value": "We answer every question first"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "The consultation"
+			},
+			{
+				"id": "s3.title",
+				"value": "How a consultation [[goes]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "What happens when you come in."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Talk it through"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "We hear what happened and what you want to know."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "A careful look"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "We check the teeth and gums around the gap."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "The options"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "We explain each option and what it involves."
+			},
+			{
+				"id": "s3.steps.3.title",
+				"value": "Next steps"
+			},
+			{
+				"id": "s3.steps.3.summary",
+				"value": "You decide what to do next, with no pressure."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s4.title",
+				"value": "About [[implants]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "What families ask about implants."
+			},
+			{
+				"id": "s4.faqs.0.question",
+				"value": "Who is an implant consultation for?"
+			},
+			{
+				"id": "s4.faqs.0.answer",
+				"value": "Older teens who have lost a tooth, or whose dentist has suggested an implant."
+			},
+			{
+				"id": "s4.faqs.1.question",
+				"value": "Will we have to decide on the day?"
+			},
+			{
+				"id": "s4.faqs.1.answer",
+				"value": "No. We explain the options and you decide in your own time."
+			},
+			{
+				"id": "s4.faqs.2.question",
+				"value": "Are there other options?"
+			},
+			{
+				"id": "s4.faqs.2.answer",
+				"value": "Often, yes. We explain every option, not only implants."
+			},
+			{
+				"id": "s4.faqs.3.question",
+				"value": "Does insurance help?"
+			},
+			{
+				"id": "s4.faqs.3.answer",
+				"value": "Cover varies by plan. We check your cover with you."
+			},
+			{
+				"id": "s4.faqs.4.question",
+				"value": "How do we book?"
+			},
+			{
+				"id": "s4.faqs.4.answer",
+				"value": "Use the contact page to book a consultation."
+			},
+			{
+				"id": "s5.title",
+				"value": "Questions about implants?"
+			},
+			{
+				"id": "s5.description",
+				"value": "Book a consultation and get every option explained."
+			},
+			{
+				"id": "s5.actions.0.label",
+				"value": "Book a consultation"
+			},
+			{
+				"id": "s5.actions.1.label",
+				"value": "See all treatments"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

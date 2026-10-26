@@ -1,0 +1,250 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Teen Teeth Whitening in Tampa",
+			"description": "Whitening options for teens in Tampa, explained plainly so you can decide together. Book a consultation."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Whitening"
+			},
+			{
+				"id": "s1.title",
+				"value": "Whitening options for [[teens]]"
+			},
+			{
+				"id": "s1.description",
+				"value": "We explain what whitening can and cannot do for a teenager, so you can decide together."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a consultation"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See all treatments"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "What it involves"
+			},
+			{
+				"id": "s2.title",
+				"value": "Whitening, [[explained]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "What to know before you choose."
+			},
+			{
+				"id": "s2.tiles.0.title",
+				"value": "A check first"
+			},
+			{
+				"id": "s2.tiles.0.blurb",
+				"value": "We make sure teeth and gums are healthy before any whitening."
+			},
+			{
+				"id": "s2.tiles.1.title",
+				"value": "The right option"
+			},
+			{
+				"id": "s2.tiles.1.blurb",
+				"value": "We explain the options that suit your teen."
+			},
+			{
+				"id": "s2.tiles.2.title",
+				"value": "Clear aftercare"
+			},
+			{
+				"id": "s2.tiles.2.blurb",
+				"value": "Simple steps to keep the results."
+			},
+			{
+				"id": "s2.tiles.3.title",
+				"value": "Your decision"
+			},
+			{
+				"id": "s2.tiles.3.blurb",
+				"value": "You and your teen decide, with no pressure."
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "The steps"
+			},
+			{
+				"id": "s3.title",
+				"value": "From question to [[brighter smile]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "How whitening goes, step by step."
+			},
+			{
+				"id": "s3.steps.0.title",
+				"value": "Consultation"
+			},
+			{
+				"id": "s3.steps.0.summary",
+				"value": "We talk through what your teen wants and check their teeth."
+			},
+			{
+				"id": "s3.steps.1.title",
+				"value": "Plan"
+			},
+			{
+				"id": "s3.steps.1.summary",
+				"value": "We explain the option we suggest and what it involves."
+			},
+			{
+				"id": "s3.steps.2.title",
+				"value": "Whitening"
+			},
+			{
+				"id": "s3.steps.2.summary",
+				"value": "Treatment goes ahead once you have both agreed."
+			},
+			{
+				"id": "s3.steps.3.title",
+				"value": "Aftercare"
+			},
+			{
+				"id": "s3.steps.3.summary",
+				"value": "We share tips to keep teeth bright."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Your worries"
+			},
+			{
+				"id": "s4.title",
+				"value": "Common worries, [[answered]]"
+			},
+			{
+				"id": "s4.beforeLabel",
+				"value": "Worry"
+			},
+			{
+				"id": "s4.afterLabel",
+				"value": "What we do"
+			},
+			{
+				"id": "s4.before.0.text",
+				"value": "Whitening might harm young teeth"
+			},
+			{
+				"id": "s4.before.1.text",
+				"value": "We will not know what to expect"
+			},
+			{
+				"id": "s4.before.2.text",
+				"value": "Results will fade fast"
+			},
+			{
+				"id": "s4.after.0.text",
+				"value": "We check teeth before anything starts"
+			},
+			{
+				"id": "s4.after.1.text",
+				"value": "We explain each step first"
+			},
+			{
+				"id": "s4.after.2.text",
+				"value": "We share simple aftercare tips"
+			},
+			{
+				"id": "s5.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s5.title",
+				"value": "About [[whitening]]"
+			},
+			{
+				"id": "s5.description",
+				"value": "What parents and teens ask us."
+			},
+			{
+				"id": "s5.faqs.0.question",
+				"value": "Is whitening safe for teens?"
+			},
+			{
+				"id": "s5.faqs.0.answer",
+				"value": "We check your teen's teeth first and only suggest whitening when it suits them."
+			},
+			{
+				"id": "s5.faqs.1.question",
+				"value": "How long do the results last?"
+			},
+			{
+				"id": "s5.faqs.1.answer",
+				"value": "It depends on habits like diet and brushing. We share aftercare tips to help."
+			},
+			{
+				"id": "s5.faqs.2.question",
+				"value": "Will whitening hurt?"
+			},
+			{
+				"id": "s5.faqs.2.answer",
+				"value": "Some teens feel brief sensitivity. We explain what to expect before we start."
+			},
+			{
+				"id": "s5.faqs.3.question",
+				"value": "Is whitening covered by insurance?"
+			},
+			{
+				"id": "s5.faqs.3.answer",
+				"value": "Cover varies by plan. We check your cover with you before treatment."
+			},
+			{
+				"id": "s5.faqs.4.question",
+				"value": "How do we start?"
+			},
+			{
+				"id": "s5.faqs.4.answer",
+				"value": "Book a consultation and we will talk through the options together."
+			},
+			{
+				"id": "s6.paths.0.eyebrow",
+				"value": "Ready to start"
+			},
+			{
+				"id": "s6.paths.0.title",
+				"value": "Book a consultation"
+			},
+			{
+				"id": "s6.paths.0.body",
+				"value": "We check your teen's teeth and explain the options."
+			},
+			{
+				"id": "s6.paths.0.cta",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s6.paths.1.eyebrow",
+				"value": "Still deciding"
+			},
+			{
+				"id": "s6.paths.1.title",
+				"value": "See every treatment"
+			},
+			{
+				"id": "s6.paths.1.body",
+				"value": "Look through all the treatments we offer first."
+			},
+			{
+				"id": "s6.paths.1.cta",
+				"value": "See treatments"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

@@ -9,7 +9,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from '@/components/ui/card'
-import { currentMembership } from '@/lib/workspace/current'
+import { requireAccountMembership } from '@/lib/workspace/current'
 import { StatusPill } from './projects/projects-table'
 import { MEMBERS, type MemberDoc } from '@/lib/workspace/types'
 import type { SiteDoc } from '@/lib/builder/site-doc'
@@ -19,8 +19,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function AccountOverviewPage() {
 	const session = await auth()
-	const membership = await currentMembership()
-	if (!membership) return null
+	const membership = await requireAccountMembership()
 
 	const { db, workspace } = membership
 	const sites = await db

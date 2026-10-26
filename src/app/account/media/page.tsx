@@ -11,7 +11,7 @@ import {
 	type MediaSavedSearchDTO,
 	type MediaTaggingStatusDTO,
 } from '@/lib/media/types'
-import { currentMembership } from '@/lib/workspace/current'
+import { requireAccountMembership } from '@/lib/workspace/current'
 import { MediaLibrary } from './media-library'
 
 export const metadata = { title: 'Media' }
@@ -55,8 +55,8 @@ export default async function MediaPage({
 	// Next 15: searchParams is a Promise.
 	searchParams: Promise<SearchParams>
 }) {
-	const membership = await currentMembership()
-	if (!membership?.permissions.has('projects.view')) notFound()
+	const membership = await requireAccountMembership()
+	if (!membership.permissions.has('projects.view')) notFound()
 
 	const { db, workspace, userId } = membership
 	const workspaceId = workspace._id.toString()

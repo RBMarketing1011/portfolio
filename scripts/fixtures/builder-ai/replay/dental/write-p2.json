@@ -1,0 +1,182 @@
+{
+	"reply": {
+		"seo": {
+			"title": "Children's Dental Treatments in Tampa",
+			"description": "Cleanings, sealants, emergency visits and more for children and teens in Tampa. Most insurance plans accepted."
+		},
+		"slots": [
+			{
+				"id": "s1.eyebrow",
+				"value": "Treatments"
+			},
+			{
+				"id": "s1.title",
+				"value": "Every treatment, [[gently]] done"
+			},
+			{
+				"id": "s1.description",
+				"value": "Everything we offer children and teens, from first cleanings to emergency care."
+			},
+			{
+				"id": "s1.actions.0.label",
+				"value": "Book a visit"
+			},
+			{
+				"id": "s1.actions.1.label",
+				"value": "See cleanings"
+			},
+			{
+				"id": "s2.eyebrow",
+				"value": "Find a treatment"
+			},
+			{
+				"id": "s2.title",
+				"value": "Choose what your child [[needs]]"
+			},
+			{
+				"id": "s2.description",
+				"value": "Each page explains the treatment and what to expect."
+			},
+			{
+				"id": "s2.c0.meta",
+				"value": "Check-ups"
+			},
+			{
+				"id": "s2.c1.meta",
+				"value": "Teens"
+			},
+			{
+				"id": "s2.c2.meta",
+				"value": "Aligners"
+			},
+			{
+				"id": "s2.c3.meta",
+				"value": "Consults"
+			},
+			{
+				"id": "s2.c4.meta",
+				"value": "Urgent care"
+			},
+			{
+				"id": "s3.eyebrow",
+				"value": "How we treat kids"
+			},
+			{
+				"id": "s3.title",
+				"value": "Care that feels [[easy]]"
+			},
+			{
+				"id": "s3.description",
+				"value": "What every treatment with us includes."
+			},
+			{
+				"id": "s3.tiles.0.title",
+				"value": "Plain explanations"
+			},
+			{
+				"id": "s3.tiles.0.blurb",
+				"value": "We tell you and your child what happens before it happens."
+			},
+			{
+				"id": "s3.tiles.1.title",
+				"value": "Breaks when needed"
+			},
+			{
+				"id": "s3.tiles.1.blurb",
+				"value": "Treatment pauses whenever your child needs a moment."
+			},
+			{
+				"id": "s3.tiles.2.title",
+				"value": "Parents welcome"
+			},
+			{
+				"id": "s3.tiles.2.blurb",
+				"value": "Stay with your child for the whole visit."
+			},
+			{
+				"id": "s3.tiles.3.title",
+				"value": "Insurance help"
+			},
+			{
+				"id": "s3.tiles.3.blurb",
+				"value": "We take most insurance plans and check your cover with you."
+			},
+			{
+				"id": "s4.eyebrow",
+				"value": "Questions"
+			},
+			{
+				"id": "s4.title",
+				"value": "Choosing a [[treatment]]"
+			},
+			{
+				"id": "s4.description",
+				"value": "Answers about treatments and insurance."
+			},
+			{
+				"id": "s4.faqs.0.question",
+				"value": "Which treatment does my child need?"
+			},
+			{
+				"id": "s4.faqs.0.answer",
+				"value": "Start with a check-up. We look at your child's teeth and explain the options before any treatment."
+			},
+			{
+				"id": "s4.faqs.1.question",
+				"value": "Are sealants worth it?"
+			},
+			{
+				"id": "s4.faqs.1.answer",
+				"value": "Sealants protect the chewing surfaces of back teeth, where most decay starts. We explain whether they suit your child."
+			},
+			{
+				"id": "s4.faqs.2.question",
+				"value": "Do you take insurance for treatments?"
+			},
+			{
+				"id": "s4.faqs.2.answer",
+				"value": "We take most insurance plans and check your cover before treatment starts."
+			},
+			{
+				"id": "s4.faqs.3.question",
+				"value": "Can I stay with my child?"
+			},
+			{
+				"id": "s4.faqs.3.answer",
+				"value": "Yes. Parents are welcome for the whole visit."
+			},
+			{
+				"id": "s4.faqs.4.question",
+				"value": "What if my child needs urgent care?"
+			},
+			{
+				"id": "s4.faqs.4.answer",
+				"value": "Get in touch right away and we will see your child as soon as we can."
+			},
+			{
+				"id": "s5.title",
+				"value": "Not sure where to start?"
+			},
+			{
+				"id": "s5.description",
+				"value": "Book a check-up and we will explain the options for your child."
+			},
+			{
+				"id": "s5.actions.0.label",
+				"value": "Book a check-up"
+			},
+			{
+				"id": "s5.actions.1.label",
+				"value": "Read about cleanings"
+			}
+		]
+	},
+	"usage": {
+		"input_tokens": 2600,
+		"output_tokens": 3400,
+		"cache_read_input_tokens": 3900,
+		"cache_creation_input_tokens": 0
+	},
+	"model": "claude-opus-5-5",
+	"stop": "end_turn"
+}

@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { BackgroundSettings } from '@/app/builder/background-settings'
+import type { LandingPayload } from './ai/contract'
 import {
 	defaultChrome,
 	HOME_SLUG,
@@ -26,12 +28,20 @@ import {
 	StaleRevisionError,
 	type SaveState,
 } from './drivers'
+import {
+	commit,
+	initialHistory,
+	redo as redoStep,
+	undo as undoStep,
+	type History,
+	type Snapshot,
+} from './history'
+import { landAiResult, pruneSlug, rewriteHrefs, type LandSummary } from './land'
+import { sanitizeLook, type BuilderLook } from './look'
 import { isDataUrl, mediaRef, readMedia } from './media-store'
 import { brandFromProfile, type SiteProfile } from './site-profile'
 import type { MediaEntry } from './site-doc'
 import type { Block } from './types'
-
-const HISTORY_LIMIT = 50
 
 const emptySite = (): Site => ({
 	version: 1,
@@ -54,6 +64,17 @@ function normalizeSlugs(site: Site): Site {
 	return pages.every((page, i) => page === site.pages[i])
 		? site
 		: { ...site, pages }
+}
+
+/** Every slug a step changed, by page id, so links can follow the pages they point at. */
+function slugChanges(before: Site, after: Site) {
+	const renamed: Record<string, string> = {}
+	const was = new Map(before.pages.map((page) => [page.id, page.slug]))
+	for (const page of after.pages) {
+		const slug = was.get(page.id)
+		if (slug !== undefined && slug !== page.slug) renamed[slug] = page.slug
+	}
+	return renamed
 }
 
 /**
@@ -92,7 +113,10 @@ function dedupeMedia(site: Site, remote: MediaEntry[] = []): Site {
 }
 
 export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
-	const [site, setSite] = useState<Site>(emptySite)
+	// The history lives in a ref and is changed outside any state updater (StrictMode
+	// runs updaters twice); the present snapshot is state, so every change renders.
+	const history = useRef<History>(initialHistory)
+	const [present, setPresent] = useState<Snapshot>(initialHistory.present)
 	const [pageId, setPageId] = useState<string | null>(null)
 	const [selectedId, setSelectedId] = useState<string | null>(null)
 	const [hydrated, setHydrated] = useState(false)
@@ -103,18 +127,22 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 	const [siteName, setSiteName] = useState('My site')
 	const [remoteMedia, setRemoteMedia] = useState<MediaEntry[]>([])
 	const [profile, setProfile] = useState<SiteProfile | null>(null)
-	const [remoteLook, setRemoteLook] = useState<Record<string, unknown> | null>(
-		null,
-	)
 
-	const past = useRef<Site[]>([])
-	const future = useRef<Site[]>([])
+	const site = present.site
+	const look = present.look
+
 	const rev = useRef(0)
 	const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-	const pending = useRef<Site | null>(null)
-	// The look is owned by the provider but shares the site's revision, so it is
-	// staged here and written by the same flush.
-	const lookRef = useRef<Record<string, unknown> | undefined>(undefined)
+	/** The newest snapshot not yet saved. */
+	const pending = useRef<Snapshot | null>(null)
+	const inFlight = useRef(false)
+	/** The snapshot that was loaded, until the first change: opening a site saves nothing. */
+	const loaded = useRef<Snapshot | null>(null)
+	/** The next save skips the debounce (a landing is large and already marked landed). */
+	const saveNow = useRef(false)
+	/** One number per snapshot the history has held, so a mark can tell "still this step". */
+	const marks = useRef(new WeakMap<Snapshot, number>())
+	const nextMark = useRef(0)
 
 	const driver = useMemo(() => driverFor(siteId), [siteId])
 
@@ -123,19 +151,24 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 		setHydrated(false)
 		driver
 			.load()
-			.then((loaded) => {
+			.then((result) => {
 				if (!live) return
-				const next = loaded.site
-					? dedupeMedia(normalizeSlugs(loaded.site), loaded.media)
-					: emptySite()
-				rev.current = loaded.rev
+				const snapshot: Snapshot = {
+					site: result.site
+						? dedupeMedia(normalizeSlugs(result.site), result.media)
+						: emptySite(),
+					look: sanitizeLook(result.look),
+				}
+				history.current = { ...initialHistory, present: snapshot }
+				loaded.current = snapshot
+				pending.current = null
+				rev.current = result.rev
 				setLoadError(null)
-				setSiteName(loaded.name)
-				setRemoteMedia(loaded.media)
-				setProfile(loaded.profile)
-				setRemoteLook(loaded.look)
-				setSite(next)
-				setPageId(next.pages[0]?.id ?? null)
+				setSiteName(result.name)
+				setRemoteMedia(result.media)
+				setProfile(result.profile)
+				setPresent(snapshot)
+				setPageId(snapshot.site.pages[0]?.id ?? null)
 				setHydrated(true)
 			})
 			.catch(() => {
@@ -152,78 +185,95 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 		}
 	}, [driver])
 
-	const flush = useCallback(
-		async (next: Site) => {
-			setSaveState('saving')
-			try {
-				rev.current = await driver.save({
-					site: next,
-					look: lookRef.current,
-					rev: rev.current,
-				})
-				setSaveError(null)
-				setSaveState('saved')
-			} catch (error) {
-				setSaveState('error')
-				setSaveError(
-					error instanceof StaleRevisionError
-						? error.message
-						: driver.remote
-							? 'Your changes could not be saved. They are still here — retry when you are back online.'
-							: 'Your changes could not be saved: browser storage is full. Remove or re-upload a large image.',
-				)
-			}
-		},
-		[driver],
-	)
+	// One save at a time: a second debounced save that started before the first returned
+	// would send the same revision and be refused as a conflict.
+	const flush = useCallback(async () => {
+		if (inFlight.current) return
+		const snap = pending.current
+		if (!snap) return
+		inFlight.current = true
+		setSaveState('saving')
+		try {
+			rev.current = await driver.save({
+				site: snap.site,
+				look: snap.look,
+				rev: rev.current,
+			})
+			if (pending.current === snap) pending.current = null
+			setSaveError(null)
+			setSaveState('saved')
+		} catch (error) {
+			setSaveState('error')
+			setSaveError(
+				error instanceof StaleRevisionError
+					? error.message
+					: driver.remote
+						? 'Your changes could not be saved. They are still here — retry when you are back online.'
+						: 'Your changes could not be saved: browser storage is full. Remove or re-upload a large image.',
+			)
+		} finally {
+			inFlight.current = false
+			// A newer change arrived while this one was saving. A failed save is not
+			// retried in a loop: the banner offers Retry and the next change tries again.
+			if (pending.current && pending.current !== snap) void flush()
+		}
+	}, [driver])
 
 	// Remote saves are debounced so a drag does not fire a request per frame.
 	useEffect(() => {
 		if (!hydrated || loadError) return
-		pending.current = site
-		if (!driver.remote) {
-			void flush(site)
+		if (loaded.current) {
+			if (present === loaded.current) return
+			loaded.current = null
+		}
+		pending.current = present
+		if (!driver.remote || saveNow.current) {
+			saveNow.current = false
+			if (timer.current) clearTimeout(timer.current)
+			void flush()
 			return
 		}
 		if (timer.current) clearTimeout(timer.current)
-		timer.current = setTimeout(() => {
-			if (pending.current) void flush(pending.current)
-		}, 900)
+		timer.current = setTimeout(() => void flush(), 900)
 		return () => {
 			if (timer.current) clearTimeout(timer.current)
 		}
-	}, [site, hydrated, driver, flush])
+	}, [present, hydrated, loadError, driver, flush])
 
 	const retrySave = useCallback(() => {
-		if (pending.current) void flush(pending.current)
+		if (pending.current) void flush()
 	}, [flush])
 
-	/** Stages the provider's look and rides the same debounced, revisioned save. */
-	const stageLook = useCallback(
-		(look: Record<string, unknown>) => {
-			lookRef.current = look
-			if (!hydrated) return
-			const next = pending.current ?? site
-			pending.current = next
-			if (!driver.remote) {
-				void flush(next)
-				return
-			}
-			if (timer.current) clearTimeout(timer.current)
-			timer.current = setTimeout(() => {
-				if (pending.current) void flush(pending.current)
-			}, 900)
+	/** Every change goes through here: computed from the history, never inside an updater. */
+	const apply = useCallback(
+		(fn: (snapshot: Snapshot) => Snapshot, coalesce?: string) => {
+			const next = fn(history.current.present)
+			history.current = commit(history.current, next, {
+				coalesce,
+				now: Date.now(),
+			})
+			setPresent(history.current.present)
 		},
-		[driver, flush, hydrated, site],
+		[],
 	)
 
-	const mutate = useCallback((fn: (site: Site) => Site) => {
-		setSite((current) => {
-			past.current = [...past.current.slice(-HISTORY_LIMIT), current]
-			future.current = []
-			return normalizeSlugs(fn(current))
-		})
-	}, [])
+	const mutate = useCallback(
+		(fn: (site: Site) => Site, coalesce?: string) =>
+			apply((snapshot) => {
+				const next = normalizeSlugs(fn(snapshot.site))
+				return next === snapshot.site ? snapshot : { ...snapshot, site: next }
+			}, coalesce),
+		[apply],
+	)
+
+	const mutateLook = useCallback(
+		(fn: (look: BuilderLook) => BuilderLook, coalesce?: string) =>
+			apply((snapshot) => {
+				const next = fn(snapshot.look)
+				return next === snapshot.look ? snapshot : { ...snapshot, look: next }
+			}, coalesce),
+		[apply],
+	)
 
 	const page = useMemo(
 		() => site.pages.find((p) => p.id === pageId) ?? null,
@@ -231,22 +281,25 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 	)
 
 	const patchPage = useCallback(
-		(fn: (page: Page) => Page) => {
-			mutate((current) => ({
-				...current,
-				pages: current.pages.map((p) =>
-					p.id === pageId
-						? { ...fn(p), updatedAt: new Date().toISOString() }
-						: p,
-				),
-			}))
+		(fn: (page: Page) => Page, coalesce?: string) => {
+			mutate(
+				(current) => ({
+					...current,
+					pages: current.pages.map((p) =>
+						p.id === pageId
+							? { ...fn(p), updatedAt: new Date().toISOString() }
+							: p,
+					),
+				}),
+				coalesce,
+			)
 		},
 		[mutate, pageId],
 	)
 
 	const patchBlocks = useCallback(
-		(fn: (blocks: Block[]) => Block[]) => {
-			patchPage((p) => ({ ...p, blocks: fn(p.blocks) }))
+		(fn: (blocks: Block[]) => Block[], coalesce?: string) => {
+			patchPage((p) => ({ ...p, blocks: fn(p.blocks) }), coalesce)
 		},
 		[patchPage],
 	)
@@ -280,53 +333,91 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 		[mutate],
 	)
 
+	/**
+	 * Deletes a page, and in the same step everything in the chrome that pointed at it:
+	 * menu links, groups left empty, plain items and the header button's target. When
+	 * the home page goes, the next page takes '/', and links to it follow.
+	 */
 	const removePage = useCallback(
 		(id: string) => {
-			mutate((current) => ({
-				...current,
-				pages: current.pages.filter((p) => p.id !== id),
-			}))
-			setPageId((current) => {
-				if (current !== id) return current
-				const remaining = site.pages.filter((p) => p.id !== id)
-				return remaining[0]?.id ?? null
+			mutate((current) => {
+				const removed = current.pages.find((p) => p.id === id)
+				if (!removed) return current
+				const next = normalizeSlugs({
+					...current,
+					chrome: pruneSlug(current.chrome, removed.slug),
+					pages: current.pages.filter((p) => p.id !== id),
+				})
+				return rewriteHrefs(next, slugChanges(current, next))
 			})
+			const first = history.current.present.site.pages[0]?.id ?? null
+			setPageId((current) => (current === id ? first : current))
 			setSelectedId(null)
 		},
-		[mutate, site.pages],
+		[mutate],
 	)
 
+	/**
+	 * A page's own settings (name, address, header, search title and description). A new
+	 * slug takes every menu and section link to the old one with it, in the same step.
+	 */
 	const renamePage = useCallback(
-		(id: string, patch: Partial<Pick<Page, 'name' | 'slug' | 'inHeader'>>) => {
-			mutate((current) => ({
-				...current,
-				pages: current.pages.map((p) =>
-					p.id === id
-						? {
-								...p,
-								...patch,
-								slug: uniqueSlug(
-									(patch.slug ?? p.slug).replace(/^\/+/, '') ||
-										slugify(patch.name ?? p.name),
-									current.pages.filter((x) => x.id !== id).map((x) => x.slug),
-								),
-								updatedAt: new Date().toISOString(),
-							}
-						: p,
-				),
-			}))
+		(id: string, patch: Partial<Pick<Page, 'name' | 'slug' | 'inHeader' | 'seo'>>) => {
+			mutate((current) => {
+				const next = normalizeSlugs({
+					...current,
+					pages: current.pages.map((p) =>
+						p.id === id
+							? {
+									...p,
+									...patch,
+									slug: uniqueSlug(
+										(patch.slug ?? p.slug).replace(/^\/+/, '') ||
+											slugify(patch.name ?? p.name),
+										current.pages.filter((x) => x.id !== id).map((x) => x.slug),
+									),
+									updatedAt: new Date().toISOString(),
+								}
+							: p,
+					),
+				})
+				return rewriteHrefs(next, slugChanges(current, next))
+			})
 		},
 		[mutate],
 	)
 
 	const setChrome = useCallback(
 		(patch: Partial<Site['chrome']>) => {
-			mutate((current) => ({
-				...current,
-				chrome: { ...current.chrome, ...patch },
-			}))
+			const keys = Object.keys(patch)
+			mutate(
+				(current) => ({
+					...current,
+					chrome: { ...current.chrome, ...patch },
+				}),
+				// Typing the header button's text is one step per burst.
+				keys.length === 1 && keys[0] === 'ctaLabel' ? 'chrome:cta' : undefined,
+			)
 		},
 		[mutate],
+	)
+
+	const setLook = useCallback(
+		(patch: Partial<BuilderLook>) =>
+			mutateLook(
+				(current) => ({ ...current, ...patch }),
+				`look:${Object.keys(patch).sort().join(',')}`,
+			),
+		[mutateLook],
+	)
+
+	const setBlockLook = useCallback(
+		(id: string, value: BackgroundSettings) =>
+			mutateLook(
+				(current) => ({ ...current, blocks: { ...current.blocks, [id]: value } }),
+				`look:block:${id}`,
+			),
+		[mutateLook],
 	)
 
 	const addSection = useCallback(
@@ -438,21 +529,52 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 	)
 
 	const undo = useCallback(() => {
-		const previous = past.current.pop()
-		if (!previous) return
-		setSite((current) => {
-			future.current = [...future.current, current]
-			return previous
-		})
+		const next = undoStep(history.current)
+		if (next === history.current) return
+		history.current = next
+		setPresent(next.present)
 	}, [])
 
 	const redo = useCallback(() => {
-		const next = future.current.pop()
-		if (!next) return
-		setSite((current) => {
-			past.current = [...past.current, current]
-			return next
+		const next = redoStep(history.current)
+		if (next === history.current) return
+		history.current = next
+		setPresent(next.present)
+	}, [])
+
+	/**
+	 * Lands a finished AI build as one undo step and saves it at once (the server has
+	 * already marked it landed, so closing the tab must not lose it). Throws `LandError`
+	 * and changes nothing when the payload does not apply.
+	 */
+	const applyAiResult = useCallback((landing: LandingPayload): LandSummary => {
+		const result = landAiResult({
+			current: history.current.present,
+			landing,
+			now: new Date().toISOString(),
 		})
+		const { site: nextSite, look: nextLook, ...summary } = result
+		saveNow.current = true
+		history.current = commit(
+			history.current,
+			{ site: nextSite, look: nextLook },
+			{ now: Date.now() },
+		)
+		setPresent(history.current.present)
+		setPageId(summary.firstPageId)
+		setSelectedId(null)
+		return summary
+	}, [])
+
+	/** A number for the step the history is on now; it differs after any later change. */
+	const historyMark = useCallback(() => {
+		const current = history.current.present
+		let mark = marks.current.get(current)
+		if (mark === undefined) {
+			mark = ++nextMark.current
+			marks.current.set(current, mark)
+		}
+		return mark
 	}, [])
 
 	return {
@@ -461,20 +583,26 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 		loadError,
 		saveState,
 		retrySave,
-		stageLook,
 		siteId,
 		siteName,
 		remote: driver.remote,
 		remoteMedia,
-		remoteLook,
 		/** The site's logo and name for its header and footer; none for a browser-only site. */
 		brand: profile ? brandFromProfile(profile, siteName) : undefined,
+		/** Brand, SEO and business details; none for a browser-only site. */
+		profile,
+		/** The profile the build route returned; not an undo step (it is business data). */
+		setProfile: setProfile as (profile: SiteProfile) => void,
 		inspectorOpen,
 		setInspectorOpen,
 		site,
 		pages: site.pages,
 		chrome: site.chrome,
 		setChrome,
+		/** Theme, backdrop, header, footer and per-section surfaces: undoable with the site. */
+		look,
+		setLook,
+		setBlockLook,
 		page,
 		pageId,
 		selectedId,
@@ -502,14 +630,17 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 			patchBlocks((blocks) =>
 				updateBlock(blocks, id, (block) => ({ ...block, variant })),
 			),
+		// Typing in one field is one step per burst, not one per keystroke.
 		setProp: (id: string, key: string, value: unknown) =>
-			patchBlocks((blocks) =>
-				updateBlock(blocks, id, (block) => {
-					const props = { ...(block.props ?? {}) }
-					if (value === undefined || value === '') delete props[key]
-					else props[key] = value
-					return { ...block, props }
-				}),
+			patchBlocks(
+				(blocks) =>
+					updateBlock(blocks, id, (block) => {
+						const props = { ...(block.props ?? {}) }
+						if (value === undefined || value === '') delete props[key]
+						else props[key] = value
+						return { ...block, props }
+					}),
+				`prop:${id}:${key}`,
 			),
 		replaceBlocks: (blocks: Block[]) => patchBlocks(() => blocks),
 		/**
@@ -529,10 +660,12 @@ export function useBuilderStore(siteId: string = LOCAL_SITE_ID) {
 						: p,
 				),
 			})),
+		applyAiResult,
+		historyMark,
 		undo,
 		redo,
-		canUndo: past.current.length > 0,
-		canRedo: future.current.length > 0,
+		canUndo: history.current.past.length > 0,
+		canRedo: history.current.future.length > 0,
 	}
 }
 
