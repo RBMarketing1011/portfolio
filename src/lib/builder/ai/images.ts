@@ -2,8 +2,9 @@
  * Photos for the planner and for the pages (section 6.9). `mediaDigest` describes the
  * build's photo pool to the planner in text, `visionBlocks` attaches the photos it may
  * look at, and `assignImages` places photos across the whole site at once: the home
- * opener first, every photo once where the pool allows, never twice on a page, and only
- * where its shape fits the slot.
+ * opener first, every photo once before any photo twice, never twice on a page, and only
+ * where its shape fits the slot (every frame crops to fill, so a square photo may fill a
+ * wide one; a portrait one only goes where its shape is kept).
  *
  * Pure: no network, no database. The pool itself comes from `pool.ts` (server).
  */
@@ -19,9 +20,16 @@ import type { AssignedImage, BrandLogo, ImagePlan, NormalizedPage, NormalizedSec
 const PHOTO_KINDS = new Set<PhotoCandidate['kind']>(['photo', 'illustration', 'graphic', 'unknown'])
 const SCREENSHOT_ROLES = new Set<ImageRole>(['panel', 'gallery'])
 
-/** Hero and feature photos are shown large; smaller files look soft (section 7.7). */
+/**
+ * Hero and feature photos are shown large (section 7.7): narrower than SMALL_MIN once
+ * cropped to their frame they look broken, narrower than LARGE_MIN a little soft.
+ */
+const SMALL_MIN = 640
 const LARGE_MIN = 1200
 const SIZE_BONUS_MIN = 1600
+const FRAME_RATIO: Record<Exclude<Aspect, 'any'>, number> = { '16:9': 16 / 9, '21:9': 21 / 9 }
+/** The frame of an image-led opener or feature row. */
+const WIDE_FRAME = { role: 'feature', aspect: '16:9' } as const
 
 // ---------------------------------------------------------------- what the planner is shown
 
@@ -109,6 +117,8 @@ export type PlannedImageSlot = {
 	priority: number
 	/** The section's job, the page's purpose and keyword: what the photo should be about. */
 	context: string
+	/** The photos the planner allocated to the page: preferred for a slot it named no photo for. */
+	pageRefs: string[]
 }
 
 const OPENERS = new Set<string>(OPENER_LAYOUTS)
@@ -154,6 +164,7 @@ export function sectionImageSlots(page: NormalizedPage, section: NormalizedSecti
 		pick: section.images[index] ?? null,
 		priority,
 		context,
+		pageRefs: page.photoAllocation,
 	}))
 }
 
@@ -171,22 +182,33 @@ export function shapeOf(photo: PhotoCandidate, notes: Map<string, PhotoNote>): S
 	return notes.get(photo.ref)?.shape ?? 'unknown'
 }
 
-/** 1 for a fit, 0.5 when the shape is not known (the planner has seen it), 0 for a photo that must not go there. */
-function fitOf(photo: PhotoCandidate, slot: Pick<PlannedImageSlot, 'role' | 'aspect'>, notes: Map<string, PhotoNote>): number {
+/**
+ * How well a photo fills a slot: 1 for a fit; less for one its frame crops hard (a square
+ * photo in a wide frame) or shows a little soft; 0.5 when the shape is not known (the
+ * planner has seen it); 0 for a photo that must not go there. A portrait photo never
+ * fills a wide frame, since the crop would keep a thin band of it: galleries, mosaics,
+ * fans and before/after pairs keep its shape.
+ */
+export function photoFit(photo: PhotoCandidate, slot: Pick<PlannedImageSlot, 'role' | 'aspect'>, notes: Map<string, PhotoNote>): number {
 	if (!PHOTO_KINDS.has(photo.kind) && !(photo.kind === 'screenshot' && SCREENSHOT_ROLES.has(slot.role))) return 0
-	if ((slot.role === 'hero' || slot.role === 'feature') && photo.width && photo.height && Math.max(photo.width, photo.height) < LARGE_MIN)
-		return 0
 	if (slot.role === 'gallery' || slot.role === 'backdrop' || slot.role === 'pair') return 1
-	const shape = shapeOf(photo, notes)
-	if (shape === 'unknown') return 0.5
-	if (slot.aspect === '21:9') {
-		if (shape === 'panorama') return 1
-		if (shape !== 'landscape') return 0
-		const ratio = ratioOf(photo)
-		return ratio === null ? 0.5 : ratio >= 1.6 ? 1 : 0
+	let size = 1
+	if ((slot.role === 'hero' || slot.role === 'feature') && photo.width && photo.height) {
+		// The width the frame shows once the photo is cropped to the frame's shape.
+		const shown = slot.aspect === 'any' ? photo.width : Math.min(photo.width, photo.height * FRAME_RATIO[slot.aspect])
+		if (shown < SMALL_MIN) return 0
+		if (shown < LARGE_MIN) size = 0.7
 	}
-	if (slot.role === 'panel') return shape === 'portrait' ? 0 : 1
-	return shape === 'landscape' || shape === 'panorama' ? 1 : 0
+	const shape = shapeOf(photo, notes)
+	if (shape === 'unknown') return 0.5 * size
+	if (shape === 'portrait') return 0
+	if (slot.role === 'panel') return size
+	if (slot.aspect === '21:9') {
+		const ratio = ratioOf(photo)
+		if (shape === 'panorama' || (ratio !== null && ratio >= 1.6)) return size
+		return (shape === 'landscape' ? 0.6 : 0.3) * size
+	}
+	return (shape === 'square' ? 0.6 : 1) * size
 }
 
 const STOP = new Set([
@@ -219,13 +241,18 @@ const showsOf = (photo: PhotoCandidate, note: PhotoNote | undefined) => note?.de
 
 /**
  * Places photos on the given pages (section 6.9), replacing whatever they were given
- * before and keeping every other page's photos. Slots are filled in priority order across
- * all the pages: the planner's pick when it is free and fits, otherwise the best-scoring
- * photo (`3 × fit + 2 × relevance + source + size − 4 × uses`) with a positive score. A
- * required slot nothing fits marks its section unsatisfied, so it can fall back.
+ * before and keeping every other page's photos. First every planner's pick that is free
+ * and fits, across all the pages; then the other slots in priority order, each the
+ * best-scoring photo (`3 × fit + 2 × relevance + source + size + page − 4 × uses`, `page`
+ * for a photo the planner allocated to the slot's page) with a positive score, among the
+ * least-used ones, so every photo shows once before any shows twice. An optional slot (a
+ * bento tile) only takes a photo nothing else shows. A required slot nothing fits marks
+ * its section unsatisfied, so it can fall back. Photos in `hold` are never placed: they
+ * are kept for pages laid out later.
  */
-export function assignImages(input: { pages: NormalizedPage[]; images: ImagePlan; homeKey?: string }): AssignResult {
+export function assignImages(input: { pages: NormalizedPage[]; images: ImagePlan; homeKey?: string; hold?: ReadonlySet<string> }): AssignResult {
 	const pool = input.images.pool
+	const hold = input.hold ?? new Set<string>()
 	const notes = new Map(input.images.notes.map((note) => [note.ref, note]))
 	const byRef = new Map(pool.map((photo) => [photo.ref, photo]))
 	const keys = new Set(input.pages.map((page) => page.key))
@@ -276,7 +303,7 @@ export function assignImages(input: { pages: NormalizedPage[]; images: ImagePlan
 			const note = ref ? notes.get(ref) : undefined
 			return photo && note?.pair === side && note.pairKey ? { photo, key: note.pairKey } : null
 		}
-		const free = (photo: PhotoCandidate) => !usedHere(slot, photo.ref) && fitOf(photo, slot, notes) > 0
+		const free = (photo: PhotoCandidate) => !hold.has(photo.ref) && !usedHere(slot, photo.ref) && photoFit(photo, slot, notes) > 0
 		const planned = [halfOf(beforeRef, 'before'), halfOf(afterRef, 'after')]
 		if (planned[0] && planned[1] && planned[0].key === planned[1].key && free(planned[0].photo) && free(planned[1].photo))
 			return [planned[0].photo, planned[1].photo]
@@ -312,30 +339,43 @@ export function assignImages(input: { pages: NormalizedPage[]; images: ImagePlan
 		take(after, pair[1])
 	}
 
+	// The planner's picks first, wherever they are: a slot it named a free, fitting photo for keeps
+	// it, so a slot it named none for, though filled earlier, never takes another slot's pick.
+	const open: PlannedImageSlot[] = []
 	for (const slot of slots) {
 		if (slot.role === 'pair') continue
 		const picked = slot.pick ? byRef.get(slot.pick) : undefined
 		if (
 			picked &&
+			!hold.has(picked.ref) &&
 			!usedHere(slot, picked.ref) &&
-			((uses[picked.ref] ?? 0) === 0 || scarce) &&
-			fitOf(picked, slot, notes) > 0
-		) {
+			((uses[picked.ref] ?? 0) === 0 || (scarce && slot.required)) &&
+			photoFit(picked, slot, notes) > 0
+		)
 			take(slot, picked)
-			continue
-		}
-		let best: { photo: PhotoCandidate; score: number } | null = null
+		else open.push(slot)
+	}
+
+	for (const slot of open) {
+		let best: { photo: PhotoCandidate; score: number; used: number } | null = null
+		// Galleries and fans keep any shape, so they take the photos a wide frame cannot (portraits, not screenshots).
+		const anyShape = slot.role === 'gallery' || slot.role === 'backdrop'
 		for (const photo of pool) {
-			if (usedHere(slot, photo.ref)) continue
-			const fit = fitOf(photo, slot, notes)
+			if (hold.has(photo.ref) || usedHere(slot, photo.ref)) continue
+			const used = uses[photo.ref] ?? 0
+			if (used > 0 && !slot.required) continue
+			const fit = photoFit(photo, slot, notes)
 			if (fit <= 0) continue
 			const score =
 				3 * fit +
 				2 * relevance(photo, notes.get(photo.ref), slot.context) +
 				SOURCE_BONUS[photo.source] +
-				((photo.width ?? 0) >= SIZE_BONUS_MIN ? 1 : 0) -
-				4 * (uses[photo.ref] ?? 0)
-			if (score > 0 && (!best || score > best.score)) best = { photo, score }
+				((photo.width ?? 0) >= SIZE_BONUS_MIN ? 1 : 0) +
+				(slot.pageRefs.includes(photo.ref) ? 2 : 0) +
+				(anyShape && PHOTO_KINDS.has(photo.kind) && photoFit(photo, WIDE_FRAME, notes) === 0 ? 2 : 0) -
+				4 * used
+			if (score <= 0) continue
+			if (!best || used < best.used || (used === best.used && score > best.score)) best = { photo, score, used }
 		}
 		if (best) take(slot, best.photo)
 		else miss(slot)

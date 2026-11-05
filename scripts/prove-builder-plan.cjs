@@ -12,7 +12,10 @@
  *    every composition rule (7.3), variety rule (7.6), owner-data rule (7.9) and plan rule
  *    (7.10) on every page; each fixture's own point is checked too;
  *  - normalizeOutlined outlines the remaining pages without touching the planned ones,
- *    and falls back to recipes; outlineFromRecipe makes a valid page for every archetype.
+ *    and falls back to recipes; outlineFromRecipe makes a valid page for every archetype;
+ *  - the owner's photos always show: a typographic plan given a content folder opens home
+ *    on a photo and puts one on every page that suits it, a portrait never fills a wide
+ *    frame, no photo repeats, and library images nobody chose are never added.
  */
 const assert = require('node:assert/strict')
 const crypto = require('node:crypto')
@@ -300,7 +303,7 @@ check('the loose schemas swap only the layout enums for strings (BUILDER_AI_LOOS
 })
 
 // Pinned: changing a schema or the prompt is deliberate (it also invalidates the prompt cache).
-const PINNED = { plan: '3dc025db82b2b501', outline: 'a8726519ef958f57', write: '5fa4f5fe15efda57', planner: '6d6d49ae50f20a34' }
+const PINNED = { plan: '3dc025db82b2b501', outline: 'a8726519ef958f57', write: '5fa4f5fe15efda57', planner: '2ffb2c6e50220b14' }
 check('snapshot hashes of the schemas and the planner prompt', () => {
 	assert.equal(schemaHash(planner.PLAN_SCHEMA), PINNED.plan, 'PLAN_SCHEMA')
 	assert.equal(schemaHash(outline.OUTLINE_SCHEMA), PINNED.outline, 'OUTLINE_SCHEMA')
@@ -620,7 +623,10 @@ check('roofer: the worked example of section 7.12', () => {
 	assert.deepEqual(imagePlan.byPage.p3.s2.map((image) => image.ref), ['img3', 'img4'])
 	assert.equal(storm.sections[0].layout, 'page-hero:left', 'the storm page keeps its photo for the spotlight')
 	assert.deepEqual(imagePlan.byPage.p5[storm.sections.find((section) => section.type === 'spotlight').key].map((image) => image.ref), ['img5'])
-	assert.ok(!imagePlan.uses.img6, 'the square photo is never forced into a 16:9 slot')
+	assert.deepEqual(Object.entries(imagePlan.uses).sort(), [1, 2, 3, 4, 5, 6].map((n) => [`img${n}`, 1]), 'every photo shows, none twice')
+	const tiles = repair.sections.find((section) => section.type === 'bento-grid')
+	assert.ok(tiles.tweaks.includes('tile-images'))
+	assert.deepEqual(imagePlan.byPage.p4[tiles.key].map((image) => image.ref), ['img6'], 'the photo the plan left out goes to the one service page without a photo')
 	assert.ok(repair.sections[0].tweaks.includes('hero-stats'))
 	assert.ok(!allSections(get('roofer')).some((section) => section.type === 'stat-band'), 'two facts make no stat band')
 	assert.equal(allSections(get('roofer')).filter((section) => section.surface === 'brand').length, 1, 'one brand band on the site')
@@ -857,7 +863,9 @@ check('photos: signatures once, pairs together, the portrait never in a 16:9 slo
 	assert.equal(sections.filter((section) => section.type === 'split-hero' && section.tweaks.includes('fan')).length, 1)
 	assert.ok(sections.filter((section) => section.layout === 'spotlight:overlap').length <= 1)
 	assert.ok(sections.filter((section) => section.type === 'media-mosaic').length <= 1)
-	assert.ok(!result.plan.pages.find((page) => page.archetype === 'contact').sections.some((section) => section.type === 'figure'), 'the portrait is never forced into the 16:9 figure')
+	const contact = result.plan.pages.find((page) => page.archetype === 'contact')
+	const figure = contact.sections.find((section) => section.type === 'figure')
+	assert.ok(!figure || !(result.images.byPage[contact.key]?.[figure.key] ?? []).some((image) => image.ref === 'img8'), 'the portrait is never forced into the 16:9 figure')
 	const compare = result.plan.pages[0].sections.find((section) => section.type === 'image-compare')
 	assert.ok(compare, 'the before and after pair is used')
 	assert.deepEqual(result.images.byPage.p1[compare.key].map((image) => [image.path, image.ref]), [['before.src', 'img6'], ['after.src', 'img7']])
@@ -875,6 +883,339 @@ check('photos: signatures once, pairs together, the portrait never in a 16:9 slo
 	const fan = result.images.byPage.p1.s1.map((image) => image.ref)
 	assert.equal(fan.length, 6, 'the hero and its five fan photos')
 	assert.equal(new Set(fan).size, 6)
+})
+
+// ---------------------------------------------------------------- the owner's photos always show (section 6.9)
+
+const shapeFrom = (width, height) => (width / height >= 2 ? 'panorama' : width / height >= 1.2 ? 'landscape' : width / height <= 0.83 ? 'portrait' : 'square')
+/** A content folder: photos the owner chose for this build, as the pool lists them. */
+const folder = (sizes, extra = {}) =>
+	sizes.map(([width, height], index) => ({
+		ref: `img${index + 1}`, value: `media:md_f${index + 1}`, width, height, orientation: shapeFrom(width, height), caption: `Folder photo ${index + 1}`, ...extra,
+	}))
+/** Four landscapes (one 1024 px wide, one 1280), two squares and four portraits, like a phone's camera roll. */
+const FOLDER = folder([[1600, 1067], [1024, 683], [2000, 2000], [3000, 4000], [1800, 1200], [3000, 4000], [1280, 853], [3000, 4000], [1200, 1200], [3000, 4000]])
+const PHOTO_PAGES = new Set(['home', 'service', 'about', 'landing', 'services', 'work', 'area', 'process', 'article', 'custom'])
+const showsPhoto = (result, page) => Object.values(result.images.byPage[page.key] ?? {}).some((list) => list.length > 0)
+const onceEach = (result) => Object.values(result.images.uses).every((count) => count === 1)
+
+/** A fixture's plan reply given other photos, through normalization exactly as the plan route runs it. */
+function runWith(name, photos) {
+	const fixture = { ...loadFixture(name), photos }
+	const built = fixtureContext(fixture)
+	const reply = planner.readPlanReply(fixture.reply)
+	return { fixture, ...built, reply, ...normalize.normalizePlan(reply, built.ctx) }
+}
+
+check('photoFit: frames crop to fill, so a square photo fills a wide frame; a portrait one never does; a small one only where it stays sharp', () => {
+	const notes = new Map()
+	const photo = (width, height) => ({
+		ref: 'x', source: 'upload', value: 'v', url: '', kind: 'photo', width, height, orientation: shapeFrom(width, height),
+		light: 'mid', caption: '', tags: [], colors: [], vision: false,
+	})
+	const hero = { role: 'hero', aspect: '16:9' }
+	const panorama = { role: 'feature', aspect: '21:9' }
+	assert.equal(images.photoFit(photo(1600, 1067), hero, notes), 1)
+	assert.equal(images.photoFit(photo(1024, 683), hero, notes), 0.7, 'a 1024 px photo fills a hero, a little soft')
+	assert.equal(images.photoFit(photo(600, 400), hero, notes), 0, 'too small for a hero')
+	assert.equal(images.photoFit(photo(1200, 1200), hero, notes), 0.6, 'a square photo is cropped to fill')
+	assert.equal(images.photoFit(photo(3000, 4000), hero, notes), 0, 'a portrait photo never fills a wide frame')
+	assert.equal(images.photoFit(photo(3000, 4000), { role: 'panel', aspect: '16:9' }, notes), 0)
+	assert.equal(images.photoFit(photo(3000, 4000), { role: 'gallery', aspect: 'any' }, notes), 1)
+	assert.equal(images.photoFit(photo(600, 400), { role: 'gallery', aspect: 'any' }, notes), 1)
+	assert.equal(images.photoFit(photo(2400, 1000), panorama, notes), 1)
+	assert.equal(images.photoFit(photo(1600, 1067), panorama, notes), 0.6)
+	assert.equal(images.photoFit(photo(2000, 2000), panorama, notes), 0.3)
+	assert.equal(images.photoFit({ ...photo(null, null), orientation: 'unknown' }, hero, notes), 0.5)
+	assert.equal(images.photoFit({ ...photo(1600, 1067), kind: 'screenshot' }, hero, notes), 0)
+})
+
+check("a typographic plan given the owner's photos: home opens on one, every outlined page that suits one shows one, none twice", () => {
+	for (const name of ['no-facts', 'rebuild', 'append', 'duplicate-slugs']) {
+		const result = runWith(name, FOLDER)
+		const found = violations(result, result.ctx)
+		assert.deepEqual(found, [], `${name}: ${found.slice(0, 3).join(' | ')}`)
+		const pages = result.plan.pages.filter((page) => page.outlined && PHOTO_PAGES.has(page.archetype))
+		assert.ok(pages.length, name)
+		for (const page of pages) assert.ok(showsPhoto(result, page), `${name}: ${page.name} shows a photo`)
+		const home = result.plan.pages.find((page) => page.slug === '/' && page.outlined)
+		if (home) assert.ok(home.sections[0].type === 'split-hero' && result.images.byPage[home.key][home.sections[0].key]?.length, `${name}: home opens on a photo`)
+		assert.ok(onceEach(result), `${name}: no photo twice`)
+	}
+	const noFacts = runWith('no-facts', FOLDER)
+	assert.equal(Object.keys(noFacts.images.uses).length, FOLDER.length, 'a site with room shows every photo')
+	assert.ok(noFacts.issues.some((issue) => /owner's photos/.test(issue.message)), 'the review says what changed for the photos')
+})
+
+check('a portrait photo only fills a gallery, a mosaic, a fan or a pair: a wide frame would crop it to a strip', () => {
+	const portraits = new Set(FOLDER.filter((photo) => photo.orientation === 'portrait').map((photo) => photo.ref))
+	for (const name of ['no-facts', 'rebuild', 'append', 'duplicate-slugs']) {
+		const result = runWith(name, FOLDER)
+		for (const page of result.plan.pages) {
+			for (const section of page.sections) {
+				const slots = images.sectionImageSlots(page, section, page.slug === '/')
+				for (const image of result.images.byPage[page.key]?.[section.key] ?? []) {
+					if (!portraits.has(image.ref)) continue
+					assert.ok(['gallery', 'backdrop', 'pair'].includes(slots.find((slot) => slot.path === image.path).role), `${name}: ${image.ref} in ${section.layout}`)
+				}
+			}
+		}
+	}
+})
+
+check('a folder of portraits alone: no wide layout is offered, and a gallery shows every one', () => {
+	const portraits = folder(Array.from({ length: 8 }, () => [3000, 4000]))
+	const result = runWith('no-facts', portraits)
+	assert.deepEqual(violations(result, result.ctx), [])
+	for (const type of ['split-hero', 'spotlight', 'feature-rows', 'tabs-showcase', 'figure'])
+		assert.ok(result.ctx.availability.unavailable.includes(`${type}:* (only portrait photos)`), type)
+	assert.equal(Object.keys(result.images.uses).length, portraits.length)
+	assert.ok(onceEach(result))
+})
+
+check('a single page built with photos opens on one and gains a photo section, none twice', () => {
+	const result = runWith('replace-page', FOLDER.slice(0, 6))
+	assert.deepEqual(violations(result, result.ctx), [])
+	const [page] = result.plan.pages
+	assert.equal(page.sections[0].type, 'split-hero')
+	assert.ok(Object.values(result.images.byPage[page.key]).filter((list) => list.length).length >= 2)
+	assert.ok(onceEach(result))
+})
+
+check('a one-page landing given photos opens on one and shows the rest; no note promises tile photos the tiles lack', () => {
+	for (const [photos, least] of [[FOLDER.slice(0, 6), 4], [folder(Array.from({ length: 6 }, () => [1600, 1067])), 6], [FOLDER, 9]]) {
+		const result = runWith('landing', photos)
+		assert.deepEqual(violations(result, result.ctx), [])
+		const [page] = result.plan.pages
+		const placed = result.images.byPage[page.key]
+		const opener = page.sections.find(normalize.isOpener)
+		assert.equal(opener.type, 'split-hero')
+		assert.ok(placed[opener.key]?.length)
+		assert.ok(Object.keys(result.images.uses).length >= least, `${Object.keys(result.images.uses).length} of ${photos.length} photos shown`)
+		assert.ok(Object.values(placed).filter((list) => list.length).length >= 2, 'the photos are spread over more than the opener')
+		assert.ok(onceEach(result))
+		const tiles = page.sections.filter((item) => item.tweaks.includes('tile-images'))
+		for (const section of tiles) assert.ok(placed[section.key]?.length, 'tiles marked for photos show photos')
+		if (!tiles.length) assert.ok(!result.issues.some((issue) => /wide tiles/.test(issue.message)))
+	}
+})
+
+check('the outline stage spreads the photos the planned pages left over, none twice', () => {
+	const result = runWith('duplicate-slugs', FOLDER)
+	const later = new Set(result.plan.pages.filter((page) => !page.outlined && PHOTO_PAGES.has(page.archetype)).map((page) => page.key))
+	assert.ok(later.size, 'pages are left to the outline call')
+	assert.ok(FOLDER.length - Object.keys(result.images.uses).length >= later.size, 'the plan keeps a photo for each of them')
+	const outlined = normalize.normalizeOutlined({ pages: [] }, result.plan, result.images, result.ctx)
+	const found = violations(outlined, result.ctx)
+	assert.deepEqual(found, [], found.slice(0, 3).join(' | '))
+	assert.ok(outlined.plan.pages.some((page) => later.has(page.key) && showsPhoto(outlined, page)))
+	assert.equal(Object.keys(outlined.images.uses).length, FOLDER.length, 'every photo shows')
+	assert.ok(onceEach(outlined))
+})
+
+check('photos the planner set aside for a page outlined later stay unplaced until that page is laid out', () => {
+	const fixture = loadFixture('duplicate-slugs')
+	const reply = JSON.parse(JSON.stringify(fixture.reply))
+	reply.pages[1].photos = ['img1', 'img5']
+	const built = fixtureContext({ ...fixture, photos: FOLDER })
+	const result = normalize.normalizePlan(planner.readPlanReply(reply), built.ctx)
+	const page = result.plan.pages.find((item) => item.photoAllocation.includes('img1'))
+	assert.ok(page && !page.outlined, 'the page is left to the outline call')
+	assert.ok(!result.images.uses.img1 && !result.images.uses.img5, 'the planned pages leave them alone')
+	const outlined = normalize.normalizeOutlined({ pages: [] }, result.plan, result.images, built.ctx)
+	assert.deepEqual(violations(outlined, built.ctx), [])
+	assert.ok(outlined.images.uses.img1 && outlined.images.uses.img5, 'the outline stage places them')
+	assert.ok(onceEach(outlined))
+})
+
+check('a large folder fills the pages without repeating a photo, a photo section type on a page, or a layout across the site', () => {
+	const many = folder(Array.from({ length: 40 }, (_, index) => (index % 3 === 2 ? [3000, 4000] : index % 4 === 3 ? [2000, 2000] : [1600, 1067])))
+	for (const name of ['no-facts', 'rebuild', 'append', 'roofer']) {
+		const result = runWith(name, many)
+		assert.deepEqual(violations(result, result.ctx), [], name)
+		assert.ok(onceEach(result), `${name}: no photo twice`)
+		assert.ok(Object.keys(result.images.uses).length >= 15, `${name}: ${Object.keys(result.images.uses).length} photos shown`)
+		for (const page of result.plan.pages) {
+			const types = page.sections.map((section) => section.type).filter((type) => ['feature-rows', 'spotlight', 'media-gallery', 'media-mosaic', 'masonry', 'figure'].includes(type))
+			assert.equal(new Set(types).size, types.length, `${name}: ${page.name} repeats a photo section type`)
+		}
+	}
+})
+
+check('library images the owner did not choose are never added to show more photos', () => {
+	const result = runWith('duplicate-slugs', folder([[1600, 1067], [1600, 1067], [1600, 1067], [1600, 1067]], { source: 'library' }))
+	assert.deepEqual(result.images.uses, {})
+	assert.ok(!result.issues.some((issue) => /owner's photos/.test(issue.message)))
+})
+
+/** A plan run on through the outline stage, laying out the pages it left from their recipes. */
+const throughOutline = (result) =>
+	result.plan.pages.some((page) => !page.outlined)
+		? { ...normalize.normalizeOutlined({ pages: [] }, result.plan, result.images, result.ctx), ctx: result.ctx }
+		: result
+const photosOn = (result, page) => Object.values(result.images.byPage[page.key] ?? {}).reduce((total, list) => total + list.length, 0)
+
+check('scarce photos go to home first, then to the pages laid out later in rank order, one each', () => {
+	for (const count of [1, 2, 3, 4]) {
+		const result = runWith('duplicate-slugs', folder(Array.from({ length: count }, () => [1600, 1067])))
+		const home = result.plan.pages.find((page) => page.slug === '/')
+		assert.ok(showsPhoto(result, home), `${count}: home shows a photo`)
+		const outlined = throughOutline(result)
+		const showing = outlined.plan.pages.filter((page) => showsPhoto(outlined, page))
+		assert.equal(showing.length, count, `${count}: one photo per page`)
+		assert.deepEqual(showing.map((page) => page.key), outlined.plan.pages.slice(0, count).map((page) => page.key), `${count}: in sitemap order`)
+		assert.ok(onceEach(outlined))
+	}
+})
+
+check('each page takes its share: one photo on every page before any page takes a second', () => {
+	const result = throughOutline(runWith('many-pages', folder(Array.from({ length: 9 }, () => [1600, 1067]))))
+	assert.deepEqual(violations(result, result.ctx), [])
+	const counts = result.plan.pages.filter((page) => PHOTO_PAGES.has(page.archetype)).map((page) => photosOn(result, page))
+	assert.equal(counts.filter((count) => count === 1).length, 9, counts.join(' '))
+	// Portraits fill no wide frame, so the landscapes are shared out by the pages that need them.
+	const roofer = runWith('roofer', folder(Array.from({ length: 10 }, (_, index) => (index % 3 === 2 ? [3000, 4000] : [1600, 1067]))))
+	assert.deepEqual(violations(roofer, roofer.ctx), [])
+	for (const name of ['Home', 'Roof Replacement', 'Roof Repair', 'Storm Damage', 'About'])
+		assert.ok(showsPhoto(roofer, roofer.plan.pages.find((page) => page.name === name)), `${name} shows a photo`)
+	assert.ok(onceEach(roofer))
+})
+
+check('pages laid out later from their recipes still show the library images the owner allowed', () => {
+	for (const name of ['many-pages', 'duplicate-slugs']) {
+		const fixture = { ...loadFixture(name), photos: folder(Array.from({ length: 12 }, () => [1600, 1067]), { source: 'library' }) }
+		fixture.request = { ...fixture.request, useLibrary: true }
+		const built = fixtureContext(fixture)
+		const planned = normalize.normalizePlan(planner.readPlanReply(fixture.reply), built.ctx)
+		const later = planned.plan.pages.filter((page) => !page.outlined && PHOTO_PAGES.has(page.archetype)).map((page) => page.key)
+		const outlined = normalize.normalizeOutlined({ pages: [] }, planned.plan, planned.images, built.ctx)
+		assert.deepEqual(violations(outlined, built.ctx), [])
+		assert.ok(later.filter((key) => showsPhoto(outlined, outlined.plan.pages.find((page) => page.key === key))).length >= 3, name)
+		assert.ok(onceEach(outlined))
+	}
+})
+
+check('the photo pass only adds: every photo already placed stays on its page, and every pick the planner made that fits stays put', () => {
+	// The same photos as library images the owner did not pick: the plan without the photo pass, placed alike.
+	const onPage = (result) => new Map(result.plan.pages.map((page) => [page.key, new Set(Object.values(result.images.byPage[page.key] ?? {}).flat().map((image) => image.ref))]))
+	const many = folder(Array.from({ length: 40 }, (_, index) => (index % 3 === 2 ? [3000, 4000] : index % 4 === 3 ? [2000, 2000] : [1600, 1067])))
+	for (const name of fixtureNames) {
+		for (const photos of [loadFixture(name).photos ?? [], FOLDER, many]) {
+			if (!photos.length) continue
+			const shown = runWith(name, photos.map((photo) => ({ ...photo, source: 'upload' })))
+			const plain = runWith(name, photos.map((photo) => ({ ...photo, source: 'library' })))
+			const [before, after] = [onPage(plain), onPage(shown)]
+			for (const [key, refs] of before) for (const ref of refs) assert.ok(after.get(key)?.has(ref), `${name} with ${photos.length} photos: ${ref} left ${key}`)
+		}
+	}
+	// The roofer's five picks, with three more uploads the planner never saw.
+	const roofer = loadFixture('roofer')
+	const result = runWith('roofer', [...roofer.photos, ...folder(Array.from({ length: 3 }, () => [1600, 1067])).map((photo, index) => ({ ...photo, ref: `img${index + 7}`, value: `media:md_x${index}` }))])
+	assert.deepEqual(result.images.byPage.p1.s1.map((image) => image.ref), ['img1'])
+	assert.deepEqual(result.images.byPage.p3.s1.map((image) => image.ref), ['img2'])
+	assert.deepEqual(result.images.byPage.p3.s2.map((image) => image.ref), ['img3', 'img4'])
+	const storm = result.plan.pages[4]
+	assert.deepEqual(result.images.byPage.p5[storm.sections.find((section) => section.type === 'spotlight').key].map((image) => image.ref), ['img5'])
+})
+
+check("the owner's photos still show when library images or a screenshot share the pool", () => {
+	// Relevant library images outscore the owner's photos on captions alone; a new slot still takes only the owner's.
+	const owner = folder(Array.from({ length: 6 }, () => [1600, 1067]))
+	const library = folder(Array.from({ length: 8 }, () => [1600, 1067]), { source: 'library', caption: 'Bike repair shop in Minneapolis', tags: ['bike', 'repair', 'shop'], vision: false })
+		.map((photo, index) => ({ ...photo, ref: `img${index + 7}`, value: `media:md_l${index + 1}` }))
+	for (const name of ['no-facts', 'rebuild', 'append']) {
+		const fixture = { ...loadFixture(name), photos: [...owner, ...library] }
+		fixture.request = { ...fixture.request, useLibrary: true }
+		const built = fixtureContext(fixture)
+		const result = throughOutline({ ...normalize.normalizePlan(planner.readPlanReply(fixture.reply), built.ctx), ctx: built.ctx })
+		assert.deepEqual(violations(result, built.ctx), [], name)
+		assert.equal(owner.filter((photo) => result.images.uses[photo.ref]).length, owner.length, `${name}: every photo of the owner's shows`)
+		assert.ok(onceEach(result), name)
+	}
+	// A screenshot in the content folder is the owner's, but no gallery is added for it.
+	const shot = [{ ...folder([[1600, 1000]])[0], kind: 'screenshot' }, ...folder(Array.from({ length: 6 }, () => [3000, 4000])).map((photo, index) => ({ ...photo, ref: `img${index + 2}`, value: `media:md_p${index + 1}` }))]
+	for (const name of ['no-facts', 'roofer', 'rebuild', 'home-late']) {
+		const result = throughOutline(runWith(name, shot))
+		assert.deepEqual(violations(result, result.ctx), [], name)
+		assert.equal(shot.slice(1).filter((photo) => result.images.uses[photo.ref]).length, 6, `${name}: the six portraits show`)
+		assert.ok(!result.images.uses.img1, `${name}: the screenshot is not added`)
+	}
+})
+
+check('photos only a gallery shows go by rank, a gallery each, before any page takes more', () => {
+	const portraits = (count, from) => folder(Array.from({ length: count }, () => [3000, 4000])).map((photo, index) => ({ ...photo, ref: `img${from + index}`, value: `media:md_p${from + index}` }))
+	const landscapes = (count) => folder(Array.from({ length: count }, () => [1600, 1067]))
+	// A mosaic (five) or masonry (six) waits until every page has had a gallery's share.
+	const noFacts = throughOutline(runWith('no-facts', portraits(8, 1)))
+	assert.deepEqual(noFacts.plan.pages.filter((page) => page.archetype !== 'contact').map((page) => photosOn(noFacts, page)), [4, 4])
+	const sixteen = runWith('roofer', portraits(16, 1))
+	assert.equal(sixteen.plan.pages.filter((page) => photosOn(sixteen, page) === 4).length, 4, 'four pages show a gallery of four')
+	const homeLate = throughOutline(runWith('home-late', [...landscapes(1), ...portraits(4, 2)]))
+	assert.equal(photosOn(homeLate, homeLate.plan.pages.find((page) => page.name === 'Private Dining')), 4, 'the service page gets the gallery, not home a second section')
+	const roofer = runWith('roofer', [...landscapes(4), ...portraits(4, 5)])
+	assert.equal(photosOn(roofer, roofer.plan.pages.find((page) => page.name === 'Roof Repair')), 4, 'Roof Repair outranks About')
+	// Pages laid out later that no wide photo is left for keep a gallery's worth each.
+	const dental = throughOutline(runWith('dental', [...landscapes(2), ...portraits(30, 3)]))
+	assert.deepEqual(violations(dental, dental.ctx), [])
+	assert.equal(Object.keys(dental.images.uses).length, 32)
+	assert.ok(onceEach(dental))
+	for (const page of dental.plan.pages.filter((item) => ['service', 'about', 'home'].includes(item.archetype)))
+		assert.ok(showsPhoto(dental, page), `${page.name} shows photos`)
+})
+
+check('the outline stage never repeats a photo the planned pages show', () => {
+	for (const count of [1, 2]) {
+		const result = throughOutline(runWith('append', folder(Array.from({ length: count }, () => [1600, 1067]))))
+		assert.deepEqual(violations(result, result.ctx), [])
+		assert.ok(onceEach(result), `${count}: ${JSON.stringify(result.images.uses)}`)
+		assert.ok(!result.issues.some((issue) => issue.code === 'photo-reused'), `${count}: no photo is reused`)
+	}
+})
+
+check('showing the photos never repeats a recurring variant on consecutive pages (section 7.6 rules 3 and 6)', () => {
+	// The same photos as library images the owner did not pick: the plan without the photo pass.
+	const ROTATING = new Set(['faq-accordion', 'process-steps', 'cta-band', 'bento-grid', 'grid'])
+	const repeats = (result) => {
+		const last = new Map()
+		let count = 0
+		for (const page of result.plan.pages.filter((item) => item.outlined && item.sections.length)) {
+			for (const section of page.sections) {
+				const variant = section.variant ?? 'default'
+				if (ROTATING.has(section.type) && !normalize.isOpener(section) && !normalize.isCloser(section) && last.get(section.type) === variant) count++
+				last.set(section.type, variant)
+			}
+		}
+		return count
+	}
+	const many = folder(Array.from({ length: 40 }, (_, index) => (index % 3 === 2 ? [3000, 4000] : index % 4 === 3 ? [2000, 2000] : [1600, 1067])))
+	for (const name of fixtureNames) {
+		for (const photos of [FOLDER, many]) {
+			const shown = runWith(name, photos)
+			const plain = runWith(name, photos.map((photo) => ({ ...photo, source: 'library' })))
+			assert.ok(repeats(shown) <= repeats(plain), `${name} with ${photos.length} photos: ${repeats(shown)} repeats, ${repeats(plain)} without the photo pass`)
+		}
+	}
+})
+
+check('every fixture given every kind of folder keeps every rule, planned and outlined', () => {
+	const sets = {
+		one: folder([[1600, 1067]]),
+		mixed: FOLDER,
+		portraits: folder(Array.from({ length: 7 }, () => [3000, 4000])),
+		small: folder(Array.from({ length: 6 }, () => [1024, 683])),
+		many: folder(Array.from({ length: 40 }, (_, index) => (index % 3 === 2 ? [3000, 4000] : index % 4 === 3 ? [2000, 2000] : [1600, 1067]))),
+	}
+	for (const name of fixtureNames) {
+		for (const [label, photos] of Object.entries(sets)) {
+			const result = runWith(name, photos)
+			let found = violations(result, result.ctx)
+			assert.deepEqual(found, [], `${name} with ${label}: ${found.slice(0, 2).join(' | ')}`)
+			if (!result.plan.pages.some((page) => !page.outlined)) continue
+			const outlined = normalize.normalizeOutlined({ pages: [] }, result.plan, result.images, result.ctx)
+			found = violations(outlined, result.ctx)
+			assert.deepEqual(found, [], `${name} with ${label}, outlined: ${found.slice(0, 2).join(' | ')}`)
+		}
+	}
 })
 
 check('spanish: the language reads as es, an invented client count goes', () => {

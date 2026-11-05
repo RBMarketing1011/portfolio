@@ -8,6 +8,8 @@
  * Pure: the routes and the proofs share it.
  */
 import type Anthropic from '@anthropic-ai/sdk'
+import { PHOTO_KINDS } from './brief'
+import { shapeOf } from './images'
 import type { ImagePlan, NormalizedPlan } from './types'
 import { LOOSE_SECTION_ITEM, SECTION_ITEM, readSection, type SectionPlan } from './planner'
 import { arr, obj, str } from './schema-kit'
@@ -45,11 +47,12 @@ export function readOutlineReply(value: unknown): OutlineReply | null {
 }
 
 const INSTRUCTION =
-	'Outline the sections of the pages listed under "pages", for a site that is already planned. Use the same section kit and rules, give each page its own opener and closer (different from the pages already outlined, listed under "usedOnOtherPages"), and reply with one entry per page key.'
+	'Outline the sections of the pages listed under "pages", for a site that is already planned. Use the same section kit and rules, give each page its own opener and closer (different from the pages already outlined, listed under "usedOnOtherPages"), and reply with one entry per page key. The owner\'s photos no page shows yet are listed under "photosLeft": spread them over these pages in image-led sections, each photo once.'
 
 /**
  * The outline call's user message (section 11.4): the pages still to outline with their
- * hints and photos, what the outlined pages already use, and what the owner's data supports.
+ * hints and photos, what the outlined pages already use, the owner's photos no page shows
+ * yet, and what the owner's data supports.
  */
 export function outlineUserContent(input: {
 	plan: NormalizedPlan
@@ -83,6 +86,9 @@ export function outlineUserContent(input: {
 		usedOnOtherPages: plan.pages
 			.filter((page) => page.outlined)
 			.map((page) => `${page.name}: ${page.sections.map((section) => section.layout).join(' ')}`),
+		photosLeft: images.pool
+			.filter((photo) => photo.source !== 'library' && PHOTO_KINDS.includes(photo.kind) && !images.uses[photo.ref])
+			.map((photo) => ({ ref: photo.ref, shape: shapeOf(photo, notes), shows: shows(photo.ref) })),
 		availability: input.availability,
 	}
 	return [{ type: 'text', text: `${INSTRUCTION}\n${JSON.stringify(message)}` }]

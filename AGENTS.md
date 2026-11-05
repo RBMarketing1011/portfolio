@@ -142,6 +142,14 @@ in `aiBuilds` for 24 hours. Code: `src/lib/builder/ai/**` (pipeline),
   there is saved to the brand before the plan, and the planner sees the logo so the
   colours suit it. Logos, icons and patterns are never placed as photos. The section
   writer (`…/ai/write`) picks from the same folder. Code: `src/lib/builder/library*.ts`.
+- The owner's photos (uploads and the content folder) always show. After the plan's
+  own photo sections are filled, `showPhotos` in `plan-normalize.ts` places the ones
+  left over: a photo opener, bento tile photos, or an added photo section (feature
+  rows, spotlight, gallery, mosaic, masonry, a grid of photo cards). It gives one to
+  each page that suits a photo (home first), then a second and third per page, then
+  what is left to any page. No photo repeats to do it. Frames crop to fill, so square
+  photos fill wide frames; portrait photos only go in galleries, mosaics and the fan.
+  Other library images are never added this way.
 - `BUILDER_AI_MODEL` (default `claude-opus-5-5`), `BUILDER_AI_PLAN_EFFORT`,
   `BUILDER_AI_WRITE_EFFORT`, `BUILDER_AI_DAILY_LIMIT` (units per account per day,
   default 100; a site costs 1 + its pages), `BUILDER_AI_DAILY_OUTPUT_TOKENS`.

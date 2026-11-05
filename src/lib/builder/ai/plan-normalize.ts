@@ -30,7 +30,7 @@ import { ANNOUNCEMENT, cleanText, pageCapOf, PHOTO_KINDS } from './brief'
 import { matchPageTarget } from './chrome'
 import type { Issue, OwnerReview } from './contract'
 import { normalizeForMatch, scanClaims } from './facts'
-import { assignImages, sectionImageSlots, shapeOf } from './images'
+import { assignImages, photoFit, sectionImageSlots, type AssignResult, type PlannedImageSlot } from './images'
 import type { OutlineReply } from './outline'
 import { clampText, guessArchetype, type PlanReply, type SectionPlan } from './planner'
 import type {
@@ -165,9 +165,15 @@ function dataOf(ctx: PlanContext): PlanData {
 
 const usablePhotos = (ctx: PlanContext) => ctx.pool.filter((photo) => PHOTO_KINDS.includes(photo.kind))
 
-function wideCount(ctx: PlanContext, data: PlanData) {
-	const notes = new Map(data.notes.map((note) => [note.ref, note]))
-	return usablePhotos(ctx).filter((photo) => ['landscape', 'panorama', 'unknown'].includes(shapeOf(photo, notes))).length
+const notesOf = (data: PlanData) => new Map(data.notes.map((note) => [note.ref, note]))
+
+/** A page opener's photo frame: large and 16:9. */
+const HERO_FRAME = { role: 'hero', aspect: '16:9' } as const
+
+/** Photos that can fill a page opener's frame (section 7.4). */
+function heroCount(ctx: PlanContext, data: PlanData) {
+	const notes = notesOf(data)
+	return usablePhotos(ctx).filter((photo) => photoFit(photo, HERO_FRAME, notes) > 0).length
 }
 
 function pairCount(ctx: PlanContext, data: PlanData) {
@@ -252,15 +258,23 @@ function needsOf(section: NormalizedSection): (Need | 'pages')[] {
 }
 
 /**
- * Enough photos of the right shape for one section: a photo never repeats on a page, so
- * the section's required slots need as many different photos, and its large 16:9 slots as
- * many landscape ones. Assignment across the site has the last word (section 6.9).
+ * Enough photos that fit one section: a photo never repeats on a page, so the section's
+ * required slots need as many different photos, and each kind of slot (a 16:9 hero, a
+ * 21:9 feature, a gallery tile) as many photos that can fill it. Assignment across the
+ * site has the last word (section 6.9).
  */
 function photosFit(section: NormalizedSection, page: NormalizedPage, ctx: PlanContext, data: PlanData) {
 	const slots = sectionImageSlots(page, section, false).filter((slot) => slot.required)
-	if (!slots.length) return usablePhotos(ctx).length > 0
-	const large = slots.filter((slot) => slot.role === 'hero' || slot.role === 'feature' || (slot.role === 'panel' && slot.aspect === '16:9')).length
-	return wideCount(ctx, data) >= large && usablePhotos(ctx).length >= slots.length
+	const photos = usablePhotos(ctx)
+	if (!slots.length) return photos.length > 0
+	if (photos.length < slots.length) return false
+	const notes = notesOf(data)
+	const kinds = new Map<string, { slot: PlannedImageSlot; count: number }>()
+	for (const slot of slots) {
+		const key = `${slot.role} ${slot.aspect}`
+		kinds.set(key, { slot, count: (kinds.get(key)?.count ?? 0) + 1 })
+	}
+	return [...kinds.values()].every(({ slot, count }) => photos.filter((photo) => photoFit(photo, slot, notes) > 0).length >= count)
 }
 
 function needMet(need: Need | 'pages', section: NormalizedSection, page: NormalizedPage, ctx: PlanContext, data: PlanData): boolean {
@@ -470,10 +484,10 @@ const TINTED_BAND = new Set<PersonalityId>(['bold', 'playful', 'friendly'])
 
 type Choice = { layout: Layout; tweaks?: Tweak[]; surface?: SurfaceTone; child?: ChildLayout }
 
-/** The opener an archetype gets when the page has none (section 7.4): a photo-led one when a landscape photo exists. */
+/** The opener an archetype gets when the page has none (section 7.4): a photo-led one when a photo can fill its frame. */
 function openerChoices(page: NormalizedPage, ctx: PlanContext): Choice[] {
 	const data = dataOf(ctx)
-	const photo = wideCount(ctx, data) > 0
+	const photo = heroCount(ctx, data) > 0
 	const persona = data.personality
 	switch (page.archetype) {
 		case 'home':
@@ -938,20 +952,64 @@ export function ledgerAllows(layout: Layout, ledger: string[], page: Pick<Normal
 }
 
 /**
+ * The variety rules across the site (section 7.6) a change to one page could break,
+ * counted: a layout on more than three pages (service openers aside), a signature on more
+ * than one, two pages other than service pages on one opener, consecutive pages ending
+ * on the same closer and surface, consecutive service pages on the same closer, and a
+ * recurring type repeating the variant it had last time (rules 3 and 6).
+ */
+function siteProblems(pages: NormalizedPage[]): number {
+	const outlined = pages.filter((page) => page.outlined && page.sections.length)
+	const perLayout = new Map<string, number>()
+	const signatures = new Map<string, number>()
+	const openers = new Map<string, number>()
+	const lastVariant = new Map<string, string>()
+	const count = (map: Map<string, number>, key: string) => map.set(key, (map.get(key) ?? 0) + 1)
+	let problems = 0
+	let serviceCloser: string | null = null
+	outlined.forEach((page, index) => {
+		const service = page.archetype === 'service'
+		for (const layout of new Set(page.sections.filter((section) => !(service && isOpener(section))).map((section) => section.layout)))
+			count(perLayout, layout)
+		for (const section of page.sections) {
+			const signature = signatureOf(section)
+			if (signature) count(signatures, signature)
+			const variant = section.variant ?? 'default'
+			if (ROTATIONS[section.type] && !isOpener(section) && !isCloser(section) && lastVariant.get(section.type) === variant) problems++
+			lastVariant.set(section.type, variant)
+		}
+		const opener = page.sections.find(isOpener)
+		if (opener && !service) count(openers, opener.layout)
+		const before = outlined[index - 1]?.sections.at(-1)
+		const last = page.sections.at(-1)
+		if (before && last && isCloser(before) && before.layout === last.layout && before.surface === last.surface) problems++
+		const closer = [...page.sections].reverse().find(isCloser)
+		if (service && closer) {
+			if (serviceCloser === closer.layout) problems++
+			serviceCloser = closer.layout
+		}
+	})
+	for (const total of perLayout.values()) problems += Math.max(0, total - 3)
+	for (const total of signatures.values()) problems += Math.max(0, total - 1)
+	for (const total of openers.values()) problems += Math.max(0, total - 1)
+	return problems
+}
+
+/**
  * The photo a service page's opener can carry (section 7.6 rule 1, "if its photo exists"):
- * the opener's own pick, else a landscape photo allocated to the page that none of its
- * other sections uses.
+ * the opener's own pick, else a photo allocated to the page that can fill the opener's
+ * frame and none of its other sections uses.
  */
 function openerPhoto(page: NormalizedPage, at: number, ctx: PlanContext): string | null {
 	const opener = page.sections[at]
 	if (opener.type === 'split-hero' && opener.images[0]) return opener.images[0]
 	const taken = new Set(page.sections.filter((_, index) => index !== at).flatMap((section) => section.images))
-	const notes = new Map(dataOf(ctx).notes.map((note) => [note.ref, note]))
+	const notes = notesOf(dataOf(ctx))
 	const byRef = new Map(ctx.pool.map((photo) => [photo.ref, photo]))
 	return (
 		page.photoAllocation.find((ref) => {
 			const photo = byRef.get(ref)
-			return photo && !taken.has(ref) && PHOTO_KINDS.includes(photo.kind) && ['landscape', 'panorama', 'unknown'].includes(shapeOf(photo, notes))
+			return photo && !taken.has(ref) && PHOTO_KINDS.includes(photo.kind) && photoFit(photo, HERO_FRAME, notes) > 0
 		}) ?? null
 	)
 }
@@ -1517,10 +1575,460 @@ function composeFromPlan(page: NormalizedPage, plans: SectionPlan[], ctx: PlanCo
 	return composed.page
 }
 
+// ---------------------------------------------------------------- the owner's photos on the pages (section 6.9)
+
+/**
+ * Photo-led sections a page may gain, by kind in preference order, each kind at most once
+ * per page and in the variant fewest pages use yet. Each is offered only on the archetypes
+ * its layout suits, and only while enough of the owner's photos that fit its frames are
+ * left to fill it without repeating one. A grid of photo cards suits any page, so it comes
+ * last: the pages no other photo layout suits.
+ */
+const PHOTO_SECTIONS: Choice[][] = [
+	[{ layout: 'feature-rows:alternating' }, { layout: 'feature-rows:stacked' }],
+	[{ layout: 'spotlight:split' }, { layout: 'spotlight:stacked' }],
+	[{ layout: 'media-mosaic:default' }],
+	[{ layout: 'media-gallery:bottom' }, { layout: 'media-gallery:side' }, { layout: 'media-gallery:carousel' }],
+	[{ layout: 'masonry:above', child: 'media-card:bare' }],
+	[{ layout: 'figure:below' }],
+	[{ layout: 'grid:above', child: 'media-card:card' }, { layout: 'grid:centered', child: 'media-card:card' }],
+]
+
+/** One photo section of a kind per page: a grid of photo cards is not a grid of feature cards. */
+const photoKind = (section: { type: string; child?: string | null }) =>
+	section.type === 'grid' ? `grid+${(section.child ?? '').split(':')[0]}` : section.type
+
+/** A frame that crops to 16:9: the photos it takes are the ones a page's first photo section needs. */
+const WIDE_PANEL = { role: 'panel', aspect: '16:9' } as const
+
+/** How many more of the owner's photos a page may take, in all and of those a wide frame takes. */
+type Room = { all: number; wide: number }
+
+/** The frames of a photo section that need a photo a wide frame takes (all but galleries, fans and pairs). */
+const wideSlots = (slots: PlannedImageSlot[]) => slots.filter((slot) => slot.role !== 'gallery' && slot.role !== 'backdrop' && slot.role !== 'pair').length
+
+/** The most photos a photo-led section grows to: feature rows, gallery photos, masonry tiles. */
+const PHOTO_ITEMS: Record<string, number> = { 'feature-rows': 4, 'media-gallery': 8, masonry: 12 }
+
+/** Pages in the order they get the owner's photos: the front door, the services, then the rest. */
+const PHOTO_PAGES: Archetype[] = ['home', 'service', 'about', 'landing', 'services', 'work', 'area', 'process', 'article', 'custom']
+
+/** Middle sections a full page gives up for a photo-led one, the most expendable first. */
+const EXPENDABLE = ['check-list', 'callout', 'marquee', 'chips', 'before-after', 'bento-grid', 'stat-band', 'grid']
+
+function suits(type: string, archetype: Archetype) {
+	const pages = metaOf(type)?.pages
+	return pages === 'all' || Boolean(pages?.includes(archetype))
+}
+
+/** Sections that keep each photo's own shape, so a page they suit can show portraits. */
+const SHAPE_KEEPING = ['media-gallery', 'media-mosaic', 'masonry']
+
+/** The fewest photos a gallery shows. */
+const GALLERY_MIN = SECTION_META['media-gallery'].items?.count.min ?? 4
+
+/** The copywriter's job for an added photo section, where the default would not fit the page. */
+function photoJob(type: string, page: NormalizedPage): string | undefined {
+	const base =
+		type === 'feature-rows'
+			? page.archetype === 'service'
+				? 'Show what this service includes, one row each with its photo.'
+				: page.archetype === 'about'
+					? 'Show how the business works and who does the work, one row each with its photo.'
+					: null
+			: type === 'spotlight'
+				? page.archetype === 'service'
+					? 'Feature the heart of this service with its best photo.'
+					: page.archetype === 'about'
+						? 'Feature the people or the place behind the business with its photo.'
+						: null
+				: null
+	return base ? clampText(`${base}${page.purpose ? ` The page: ${page.purpose}` : ''}`, 160) : undefined
+}
+
+/**
+ * The owner's photos (their uploads and the content folder's images, never other library
+ * images) still unplaced go where the pages can show them (section 6.9): first a photo on
+ * every page that shows none, then a second and a third photo-led section per page, then
+ * any page takes the photos no page could take within its share (such as portraits only a
+ * gallery shows; the fan, mosaics and masonry only then), and the photo sections there
+ * grow. Pages take turns by rank: home, the service pages, then the rest, each page
+ * outlined now before one the outline call lays out later. A page gains a photo opener
+ * (alternate service pages keep a plain one, section 7.6 rule 1), photos on its bento
+ * tiles, or a photo-led section its archetype suits, inserted, or in place of an
+ * expendable section on a full page. A change stands only when the page keeps every
+ * composition rule, the site every variety rule, every photo already placed stays where it
+ * is, and more of the owner's photos show, within the page's share, with none repeated and
+ * nothing else added. A page laid out later keeps the photos the planner set aside for it,
+ * or one wide photo if it was given none and outranks the page taking photos (or that page
+ * already shows one).
+ */
+function showPhotos(
+	state: { pages: NormalizedPage[]; images: ImagePlan },
+	ctx: PlanContext,
+	mutable: Set<string>,
+	issues: Issue[],
+): { pages: NormalizedPage[]; images: ImagePlan } {
+	const later = state.pages.filter((page) => !page.outlined)
+	const held = new Set(later.flatMap((page) => page.photoAllocation).filter((ref) => !state.images.uses[ref]))
+	const sitemap = new Map(state.pages.map((page, index) => [page.key, index]))
+	const rankOf = (page: NormalizedPage) =>
+		PHOTO_PAGES.indexOf(page.archetype) * 10_000 + (page.outlined ? 0 : 5_000) + (sitemap.get(page.key) ?? 0)
+	// Pages laid out later that the planner gave no photo: each waits for one of the free photos,
+	// and one a gallery suits waits for a gallery's worth when no wide photo is left for it.
+	const waiting = later
+		.filter((page) => PHOTO_PAGES.includes(page.archetype) && !page.photoAllocation.some((ref) => held.has(ref)))
+		.map((page) => ({ rank: rankOf(page), gallery: SHAPE_KEEPING.some((type) => suits(type, page.archetype)) }))
+		.sort((a, b) => a.rank - b.rank)
+	const owned = usablePhotos(ctx).filter((photo) => photo.source !== 'library' && !held.has(photo.ref))
+	const order = state.pages
+		.filter((page) => mutable.has(page.key) && page.outlined && page.sections.length && PHOTO_PAGES.includes(page.archetype))
+		.sort((a, b) => rankOf(a) - rankOf(b))
+		.map((page) => page.key)
+	if (!owned.length || !order.length) return state
+
+	const notes = notesOf(dataOf(ctx))
+	const mine = new Set(owned.map((photo) => photo.ref))
+	// Photos a wide frame takes: almost every page's first photo needs one (an opener, a row, a spotlight).
+	const wide = new Set(owned.filter((photo) => photoFit(photo, WIDE_PANEL, notes) > 0).map((photo) => photo.ref))
+	const homeKey = state.pages.find((page) => page.slug === '/')?.key
+	const placeable = state.pages.filter((page) => mutable.has(page.key) && page.outlined).map((page) => page.key)
+	const place = (pages: NormalizedPage[], images: ImagePlan, hold: ReadonlySet<string>) =>
+		assignImages({ pages: pages.filter((page) => mutable.has(page.key) && page.outlined), images, homeKey, hold })
+	const start = place(state.pages, state.images, held)
+	// A slot this pass adds takes the owner's photos only: never a library image or a screenshot nothing shows yet.
+	const hold = new Set([...held, ...state.images.pool.filter((photo) => !mine.has(photo.ref) && !start.images.uses[photo.ref]).map((photo) => photo.ref)])
+	let current = { pages: state.pages, images: start.images }
+	let unsatisfied = start.unsatisfied
+	// Bento tiles given photos here, with the note that says so.
+	const tiled = new Map<string, Issue>()
+	// While pages take their fair shares (levels 1 to 3) a gallery starts small; past them (0) it takes what is left.
+	let stage = 1
+
+	const pageOf = (key: string) => current.pages.find((page) => page.key === key)!
+	const pagesUsing = (layout: string) => current.pages.filter((page) => page.sections.some((section) => section.layout === layout)).length
+	const free = () => owned.filter((photo) => !current.images.uses[photo.ref])
+	const showing = (images: ImagePlan, key: string) => Object.values(images.byPage[key] ?? {}).filter((list) => list.length).length
+	const photoSections = (page: NormalizedPage) => showing(current.images, page.key)
+	const missingOn = (list: AssignResult['unsatisfied'], key: string) => list.filter((miss) => miss.pageKey === key).length
+	const tally = (images: ImagePlan) => {
+		let shown = 0
+		let wides = 0
+		let repeats = 0
+		let others = 0
+		for (const [ref, count] of Object.entries(images.uses)) {
+			if (count > 1) repeats += count - 1
+			if (count > 0 && mine.has(ref)) {
+				shown++
+				if (wide.has(ref)) wides++
+			} else if (!mine.has(ref)) others += count
+		}
+		return { shown, wides, repeats, others }
+	}
+
+	/**
+	 * How many more of the owner's photos one page may take while pages are short of `level`
+	 * photo sections, in all and of those a wide frame takes. Every page's first photo section
+	 * needs a wide photo (an opener, a row, a spotlight, a tile), so of those the page leaves
+	 * one for each page laid out later that outranks it (at the first level; after it, every
+	 * such page) and one for each page after it still short of the level, but takes at least
+	 * one. Other photos (portraits) only fill galleries, which start small while pages take
+	 * their shares, so those go by rank, less a gallery's worth for each waiting page no wide
+	 * photo is left for. Past the levels (`level` 0) any page takes what no waiting page needs.
+	 */
+	const roomFor = (key: string, level: number): Room => {
+		const rank = rankOf(pageOf(key))
+		const ahead = level === 1 ? waiting.filter((other) => other.rank < rank) : waiting
+		const behind =
+			level === 0
+				? 0
+				: order.slice(order.indexOf(key) + 1).filter((other) => photoSections(pageOf(other)) < level).length +
+					(level === 1 ? waiting.filter((other) => other.rank > rank).length : 0)
+		const photos = free()
+		const wides = photos.filter((photo) => wide.has(photo.ref)).length
+		const avail = wides - ahead.length
+		// The waiting pages ranked first get the wide photos; the rest that a gallery suits need one.
+		const galleries = ahead.slice(Math.max(0, wides)).filter((other) => other.gallery).length
+		return {
+			all: Math.max(0, photos.length - Math.min(wides, ahead.length) - galleries * GALLERY_MIN),
+			wide: avail <= 0 ? 0 : level === 0 ? avail : Math.max(1, avail - behind),
+		}
+	}
+
+	/**
+	 * The sections with the photos placed on them as their picks, so placing again keeps
+	 * every photo where it is: this pass only ever adds photos. A section without a key (just
+	 * added) has nothing placed yet.
+	 */
+	const pinned = (page: NormalizedPage, sections: NormalizedSection[]) => {
+		const placed = current.images.byPage[page.key] ?? {}
+		return sections.map((section) => {
+			const list = section.key ? placed[section.key] : undefined
+			if (!list?.length) return section
+			const slots = sectionImageSlots(page, section, page.key === homeKey)
+			return { ...section, images: slots.map((slot) => list.find((image) => image.path === slot.path)?.ref ?? '') }
+		})
+	}
+
+	/** One change to one page, kept only when more of the owner's photos show, within the page's room, and nothing breaks. */
+	const attempt = (
+		page: NormalizedPage,
+		sections: NormalizedSection[],
+		kept: (list: NormalizedSection[]) => boolean,
+		room: Room,
+		code: Issue['code'],
+		message: string,
+	) => {
+		const composed = enforceComposition({ ...page, sections: pinned(page, sections) }, ctx)
+		if (composed.page.sections.length < sections.length || !kept(composed.page.sections)) return false
+		const pages = current.pages.map((item) => (item.key === page.key ? composed.page : item))
+		if (siteProblems(pages) > siteProblems(current.pages)) return false
+		const placed = place(
+			pages.map((item) => (item.key === page.key ? item : { ...item, sections: pinned(item, item.sections) })),
+			current.images,
+			hold,
+		)
+		// No page loses a photo section, and none gains a section left without its photo.
+		for (const key of placeable) {
+			if (showing(placed.images, key) < showing(current.images, key)) return false
+			if (missingOn(placed.unsatisfied, key) > missingOn(unsatisfied, key)) return false
+		}
+		const [before, after] = [tally(current.images), tally(placed.images)]
+		if (after.shown <= before.shown || after.shown - before.shown > room.all || after.wides - before.wides > room.wide) return false
+		if (after.repeats > before.repeats || after.others > before.others) return false
+		issues.push(...composed.issues, { level: 'info', code, message, pageKey: page.key })
+		current = { pages, images: placed.images }
+		unsatisfied = placed.unsatisfied
+		return true
+	}
+	const swap = (page: NormalizedPage, at: number, next: NormalizedSection) =>
+		page.sections.map((section, index) => (index === at ? { ...next, key: section.key } : section))
+
+	/** 1 for the first service page, 2 for the second…, counted as section 7.6 rule 1 counts them. */
+	const serviceTurn = (page: NormalizedPage) => {
+		let turn = 0
+		for (const item of current.pages) {
+			if (!item.outlined || item.archetype !== 'service' || !item.sections.some(isOpener)) continue
+			turn++
+			if (item.key === page.key) break
+		}
+		return turn
+	}
+
+	const photoOpener = (page: NormalizedPage, room: Room) => {
+		const at = page.sections.findIndex(isOpener)
+		const opener = page.sections[at]
+		if (!opener || opener.type !== 'page-hero' || !suits('split-hero', page.archetype)) return false
+		const service = page.archetype === 'service'
+		if (service && serviceTurn(page) % 2 === 0) return false
+		const taken = new Set(
+			current.pages
+				.filter((item) => item.key !== page.key && item.outlined && item.archetype !== 'service')
+				.map((item) => item.sections.find(isOpener)?.layout),
+		)
+		const layouts: Layout[] = service
+			? ['split-hero:reversed']
+			: page.archetype === 'services'
+				? ['split-hero:reversed', 'split-hero:split']
+				: ['split-hero:split', 'split-hero:reversed']
+		for (const layout of layouts) {
+			if (!service && taken.has(layout)) continue
+			const next = retarget({ ...opener, images: [] }, layout, page, ctx)
+			if (!next) continue
+			const message = `${opener.label} became ${next.label}, so the page opens on one of the owner's photos.`
+			if (attempt(page, swap(page, at, next), (list) => list.some((item) => item.layout === layout), room, 'variant-rotated', message))
+				return true
+		}
+		return false
+	}
+
+	const photoTiles = (page: NormalizedPage, room: Room) => {
+		if (page.sections.some((section) => section.tweaks.includes('tile-images'))) return false
+		const at = page.sections.findIndex((section) => section.type === 'bento-grid' && section.variant !== 'numbered')
+		const bento = page.sections[at]
+		const next = bento ? retarget(bento, bento.layout, page, ctx, ['tile-images']) : null
+		if (!bento || !next?.tweaks.includes('tile-images')) return false
+		const kept = (list: NormalizedSection[]) => list.some((item) => item.type === 'bento-grid' && item.tweaks.includes('tile-images'))
+		if (!attempt(page, swap(page, at, next), kept, room, 'variant-rotated', `${bento.label} shows the owner's photos on its wide tiles.`)) return false
+		tiled.set(page.key, issues[issues.length - 1])
+		return true
+	}
+
+	const photoFan = (page: NormalizedPage, room: Room) => {
+		const at = page.key === homeKey ? page.sections.findIndex((section) => section.type === 'split-hero' && !section.tweaks.includes('fan')) : -1
+		const hero = page.sections[at]
+		const next = hero ? retarget(hero, hero.layout, page, ctx, ['fan']) : null
+		if (!hero || !next?.tweaks.includes('fan')) return false
+		const kept = (list: NormalizedSection[]) => list.some((item) => item.type === 'split-hero' && item.tweaks.includes('fan'))
+		return attempt(page, swap(page, at, next), kept, room, 'variant-rotated', `${hero.label} fans five more of the owner's photos behind the main one.`)
+	}
+
+	/** The middle section a full page gives up: the most expendable one that shows no photo. */
+	const expendableAt = (page: NormalizedPage) => {
+		const placed = current.images.byPage[page.key] ?? {}
+		for (const type of EXPENDABLE) {
+			for (let index = page.sections.length - 1; index >= 0; index--) {
+				const section = page.sections[index]
+				if (section.type !== type || isOpener(section) || isCloser(section) || isTestimonials(section)) continue
+				if (section.type === 'grid' && !section.child?.startsWith('feature-card')) continue
+				if (!placed[section.key]?.length) return index
+			}
+		}
+		return -1
+	}
+
+	/** Rows and spotlights after the first explanation (or the opener), galleries before the proof and the ask. */
+	const placeAt = (list: NormalizedSection[], section: NormalizedSection) => {
+		const first = Math.max(list.findIndex(isOpener), list.findIndex(isTopBar)) + 1
+		if (section.type === 'feature-rows' || section.type === 'spotlight') {
+			const explain = list.findIndex((item, index) => index >= first && isExplain(item))
+			return explain === -1 ? first : explain + 1
+		}
+		const end = list.findIndex((item, index) => index >= first && (isTestimonials(item) || isFaq(item) || isCloser(item)))
+		return end === -1 ? list.length : end
+	}
+
+	const photoSection = (page: NormalizedPage, room: Room) => {
+		const rules = ARCHETYPE_RULES[page.archetype] ?? ARCHETYPE_RULES.custom
+		const kinds = new Set(page.sections.map(photoKind))
+		const unused = free()
+		let groups = PHOTO_SECTIONS.filter((group) => {
+			const { type } = splitLayout(group[0].layout)
+			// A mosaic or masonry wall takes more photos than a gallery, so it waits until every page has had its share.
+			if (stage > 0 && (type === 'media-mosaic' || type === 'masonry')) return false
+			return suits(type, page.archetype) && !kinds.has(photoKind({ type, child: group[0].child }))
+		})
+		// Service pages each lead with a different photo section, so they do not share one skeleton.
+		if (page.archetype === 'service' && groups.length) {
+			const turn = (serviceTurn(page) - 1 + groups.length) % groups.length
+			groups = [...groups.slice(turn), ...groups.slice(0, turn)]
+		}
+		// Each kind in the variants fewest pages use first.
+		const choices = groups.flatMap((group) =>
+			group
+				.map((choice, index) => ({ choice, index }))
+				.sort((a, b) => pagesUsing(a.choice.layout) - pagesUsing(b.choice.layout) || a.index - b.index)
+				.map(({ choice }) => choice),
+		)
+		const ranked: { section: NormalizedSection; tier: number }[] = []
+		for (const choice of choices) {
+			const { type } = splitLayout(choice.layout)
+			const wanted =
+				type === 'feature-rows' || type === 'grid' ? 3 : type === 'media-gallery' ? (stage === 0 ? 8 : GALLERY_MIN) : type === 'masonry' ? 9 : 0
+			let section: NormalizedSection | null = null
+			let slots: PlannedImageSlot[] = []
+			const fits = (list: PlannedImageSlot[]) => list.length <= room.all && wideSlots(list) <= room.wide
+			for (let items = Math.min(wanted, room.all); items >= 0; items--) {
+				section = buildSection({ ...choice, items, job: photoJob(type, page) }, page, ctx)
+				slots = section ? sectionImageSlots(page, section, false).filter((slot) => slot.required) : []
+				if (!section || fits(slots) || items === 0) break
+			}
+			if (!section || !slots.length || !fits(slots)) continue
+			// Enough unplaced photos for every kind of frame, well fitting (tier 0) or at all (tier 1).
+			const frames = new Map<string, { slot: PlannedImageSlot; count: number }>()
+			for (const slot of slots) frames.set(`${slot.role} ${slot.aspect}`, { slot, count: (frames.get(`${slot.role} ${slot.aspect}`)?.count ?? 0) + 1 })
+			const enough = (least: number) =>
+				[...frames.values()].every(({ slot, count }) => unused.filter((photo) => photoFit(photo, slot, notes) >= least).length >= count)
+			if (enough(0.6)) ranked.push({ section, tier: 0 })
+			else if (enough(0.01)) ranked.push({ section, tier: 1 })
+		}
+		for (const { section } of ranked.sort((a, b) => a.tier - b.tier)) {
+			const kept = (list: NormalizedSection[]) => list.some((item) => item.layout === section.layout && photoKind(item) === photoKind(section))
+			if (page.sections.length < rules.max) {
+				const at = placeAt(page.sections, section)
+				const sections = [...page.sections.slice(0, at), section, ...page.sections.slice(at)]
+				if (attempt(page, sections, kept, room, 'section-added', `${section.label} was added, so the owner's photos appear on the page.`)) return true
+				continue
+			}
+			const at = expendableAt(page)
+			if (at === -1) return false
+			const message = `${page.sections[at].label} made way for ${section.label}, so the owner's photos appear on the page.`
+			if (attempt(page, swap(page, at, section), kept, room, 'section-replaced', message)) return true
+		}
+		return false
+	}
+
+	const photoMore = (page: NormalizedPage, room: Room) => {
+		for (const [at, section] of page.sections.entries()) {
+			// A mosaic holds five photos; a gallery in its place holds the ones left too.
+			if (section.type === 'media-mosaic') {
+				if (page.sections.some((item) => item.type === 'media-gallery')) continue
+				const layout = (['media-gallery:bottom', 'media-gallery:side', 'media-gallery:top'] as const)
+					.map((item, index) => ({ item, index }))
+					.sort((a, b) => pagesUsing(a.item) - pagesUsing(b.item) || a.index - b.index)[0].item
+				const next = buildSection({ layout, surface: section.surface, job: section.job, items: Math.min(8, 5 + room.all) }, page, ctx)
+				if (!next || next.items <= 5) continue
+				const message = `${section.label} became ${next.label}, so ${next.items} of the owner's photos appear there instead of 5.`
+				if (attempt(page, swap(page, at, next), (list) => list.some((item) => item.layout === next.layout), room, 'variant-rotated', message))
+					return true
+				continue
+			}
+			const most = PHOTO_ITEMS[section.type]
+			if (!most || section.items >= most || (section.type === 'masonry' && !section.child?.startsWith('media-card'))) continue
+			const next = buildSection(
+				{ layout: section.layout, child: section.child, tweaks: section.tweaks, surface: section.surface, job: section.job, items: Math.min(most, section.items + room.all), images: section.images, reviews: section.reviews },
+				page,
+				ctx,
+			)
+			if (!next || next.items <= section.items) continue
+			const kept = (list: NormalizedSection[]) => list.some((item) => item.layout === section.layout && item.items === next.items)
+			const message = `${section.label} grew from ${section.items} to ${next.items}, so more of the owner's photos appear.`
+			if (attempt(page, swap(page, at, next), kept, room, 'count-adjusted', message)) return true
+		}
+		return false
+	}
+
+	// Fair shares first: a photo on every page, then a second and a third (the fan only as a
+	// third). Then (`level` 0) the photos no page could take within its share, such as
+	// portraits only a gallery shows, to any page, the pages that show the fewest photo
+	// sections first; mosaics and masonry, which take five or more at once, only then.
+	const fewestFirst = () => [...order].sort((a, b) => photoSections(pageOf(a)) - photoSections(pageOf(b)))
+	for (const level of [1, 2, 3, 0]) {
+		stage = level
+		const steps: ((page: NormalizedPage, room: Room) => boolean)[] =
+			level === 1
+				? [photoOpener, photoTiles, photoSection]
+				: level === 2
+					? [photoOpener, photoSection, photoTiles]
+					: [photoOpener, photoSection, photoFan, photoTiles]
+		for (let sweep = 0; sweep < 3; sweep++) {
+			let changed = false
+			for (const key of level === 0 ? fewestFirst() : order) {
+				const page = pageOf(key)
+				if (level > 0 && photoSections(page) >= level) continue
+				const room = roomFor(key, level)
+				if (room.all > 0 && steps.some((step) => step(page, room))) changed = true
+			}
+			if (!changed) break
+		}
+	}
+	for (const key of fewestFirst()) {
+		let grew = true
+		while (grew && roomFor(key, 0).all > 0) grew = photoMore(pageOf(key), roomFor(key, 0))
+	}
+
+	// Tiles whose photos a later change placed elsewhere go back to plain tiles, and the note goes.
+	for (const [key, note] of tiled) {
+		const page = pageOf(key)
+		const at = page.sections.findIndex((section) => section.type === 'bento-grid' && section.tweaks.includes('tile-images'))
+		if (at !== -1 && current.images.byPage[key]?.[page.sections[at].key]?.length) continue
+		if (at !== -1) {
+			const sections = page.sections.map((section, index) =>
+				index === at ? { ...section, tweaks: section.tweaks.filter((tweak) => tweak !== 'tile-images') } : section,
+			)
+			current = { ...current, pages: current.pages.map((item) => (item.key === key ? { ...item, sections } : item)) }
+		}
+		const index = issues.indexOf(note)
+		if (index !== -1) issues.splice(index, 1)
+	}
+	return current
+}
+
 /**
  * Composes, varies, allocates reviews and places photos on the pages in `mutable`, with the
  * other pages' layouts, reviews and photos as the ledger; sections whose photos cannot be
- * found fall back and their page is composed again (section 7.10 steps 5 to 8).
+ * found fall back and their page is composed again (section 7.10 steps 5 to 8). The
+ * owner's photos still unplaced then go where the pages can show them (`showPhotos`).
  */
 function settle(
 	pages: NormalizedPage[],
@@ -1571,6 +2079,7 @@ function settle(
 	}
 	// The last round changed pages: place their photos once more (anything still missing is dropped when written).
 	if (dirty) plan = place().images
+	;({ pages: current, images: plan } = showPhotos({ pages: current, images: plan }, ctx, mutable, issues))
 	// A photo these pages share with another page, because the pool ran out.
 	const placedHere = new Set(
 		[...mutable].flatMap((key) => Object.values(plan.byPage[key] ?? {}).flatMap((list) => list.map((image) => image.ref))),
@@ -1638,7 +2147,8 @@ export function normalizePlan(reply: PlanReply, ctx: PlanContext): { plan: Norma
  * The pages the outline call returned, normalized like the plan's (section 7.10, last
  * paragraph): unknown keys are ignored, a page left empty or with fewer than two usable
  * sections is laid out from its recipe, and pages already outlined (perhaps being written)
- * never change: they are the ledger the new pages vary against.
+ * never change: they are the ledger the new pages vary against. The photos those pages
+ * show are theirs, so the new pages compose from the rest and none repeats.
  */
 export function normalizeOutlined(
 	reply: OutlineReply,
@@ -1649,12 +2159,16 @@ export function normalizeOutlined(
 	const issues: Issue[] = []
 	const composing: PlanContext = {
 		...ctx,
-		pool: images.pool,
+		pool: images.pool.filter((photo) => !images.uses[photo.ref]),
 		plan: ctx.plan ?? planDataOf(plan, images, ctx.request.placement === 'replace-site' ? null : ctx.existing),
 	}
 	const frozen = plan.pages.filter((page) => page.outlined)
 	const byKey = new Map(reply.pages.map((page) => [page.key, page]))
 	let ledger = ledgerOf(frozen)
+	// A page laid out from its recipe here plans no photo sections for the owner's photos: the
+	// ones the planned pages left over are spread over the new pages afterwards, each once
+	// (`showPhotos`). Other library images it may still plan for, as before.
+	const recipeCtx: PlanContext = { ...composing, pool: composing.pool.filter((photo) => photo.source === 'library') }
 
 	const pages = plan.pages.map((page) => {
 		if (page.outlined) return page
@@ -1662,7 +2176,7 @@ export function normalizeOutlined(
 		let next = entry?.sections.length ? composeFromPlan({ ...page, sections: [] }, entry.sections, composing, issues) : null
 		if (!next || next.sections.length < 2) {
 			issues.push({ level: 'info', code: 'outline-fallback', message: `${page.name} was laid out from a proven pattern instead.`, pageKey: page.key })
-			next = outlineFromRecipe(page, composing, ledger)
+			next = outlineFromRecipe(page, recipeCtx, ledger)
 		}
 		ledger = [...ledger, ...ledgerOf([next])]
 		return { ...next, outlined: true }

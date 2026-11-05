@@ -693,7 +693,12 @@ export function availability(input: {
 			'media-gallery:* (no photos)', 'media-mosaic:default (no photos)', 'figure:* (no photos)', 'media-card:* (no photos)',
 		)
 	} else {
-		if (!photos.landscape && !photos.panorama && seen === 0) unavailable.push('split-hero:* (no landscape photo)')
+		// A portrait photo never fills a wide frame (section 6.9), so a pool of portraits alone fills galleries only.
+		if (!photos.landscape && !photos.panorama && !photos.square && !count('unknown'))
+			unavailable.push(
+				'split-hero:* (only portrait photos)', 'spotlight:* (only portrait photos)', 'feature-rows:* (only portrait photos)',
+				'tabs-showcase:* (only portrait photos)', 'figure:* (only portrait photos)',
+			)
 		if (photos.eligible < 5) unavailable.push('media-mosaic:default (fewer than 5 photos)')
 		if (photos.eligible < 4) unavailable.push('media-gallery:* (fewer than 4 photos)')
 	}

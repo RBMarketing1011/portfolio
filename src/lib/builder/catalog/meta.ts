@@ -265,7 +265,7 @@ export const SECTION_META: Record<string, SectionMeta> = {
 		surfaces: ['plain', 'wash', 'pattern', 'inverse-glow'],
 		fallback: 'page-hero:left',
 		variants: [
-			variant('split', 'media', 'copy left, 16:9 photo card right; with fan, five photos fanned behind it from tablet up', 'the default image-led opener when a strong landscape photo exists'),
+			variant('split', 'media', 'copy left, 16:9 photo card right; with fan, five photos fanned behind it from tablet up', 'the default image-led opener whenever the owner gave photos'),
 			variant('reversed', 'media', 'photo left, copy right-aligned on desktop, the fan mirrored', 'a second image-led opener in the same site, typically service pages'),
 		],
 		design(spec, ctx) {
@@ -1189,17 +1189,17 @@ export function clampWords(value: string, max: number): string {
 
 /** Planner-facing notes on what satisfies a section's needs (catalogText). */
 export const NEED_NOTES: Record<string, string> = {
-	'split-hero': 'photo (1 landscape; fan needs 5 more)',
+	'split-hero': 'photo (1 landscape or square, cropped to 16:9; fan needs 5 more of any shape)',
 	'stat-hero': 'facts (exactly 4, or exactly 2)',
 	'announcement-bar': 'announcement (something the owner announced: an offer, an opening, a date)',
 	'stat-band': 'facts (3 or 6)',
-	spotlight: 'photo (1; a panorama or wide landscape for stacked and overlap)',
-	'feature-rows': 'photo (one landscape per row)',
-	'tabs-showcase': 'photo (one landscape per tab)',
+	spotlight: 'photo (1 landscape or square; a panorama or wide landscape suits stacked and overlap best)',
+	'feature-rows': 'photo (one landscape or square per row, cropped to 16:9)',
+	'tabs-showcase': 'photo (one landscape or square per tab, cropped to 16:9)',
 	chips: 'ticker-items (4-12 areas or specialties)',
-	'media-gallery': 'photo (4-8)',
-	'media-mosaic': 'photo (exactly 5; the first landscape or square)',
-	figure: 'photo (1 landscape)',
+	'media-gallery': 'photo (4-8 of any shape; the home of portrait photos)',
+	'media-mosaic': 'photo (exactly 5 of any shape)',
+	figure: 'photo (1 landscape or square, cropped to 16:9)',
 	'image-compare': 'photo-pair (a before and an after photo of the same job)',
 	grid: 'per child: reviews for testimonial cards, photos for media cards, other pages for related cards',
 	masonry: 'reviews (3-9, testimonial children) or photos (6-12, media children)',
