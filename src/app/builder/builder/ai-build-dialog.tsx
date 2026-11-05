@@ -25,6 +25,7 @@ import type { AiBuildContextValue } from './ai-build-host'
 import { AiBuildProgress } from './ai-build-progress'
 import { AiBuildReview, type ReviewItem } from './ai-build-review'
 import { openNeedsInput, writtenCount } from './ai-build-runner'
+import { LibraryImagePicker } from './library-image-picker'
 
 /** The top-level block that holds a block (needs-input items can point at a card). */
 function topLevelOf(blocks: Block[], id: string): Block | null {
@@ -49,6 +50,7 @@ export function AiBuildDialog({ ai }: { ai: AiBuildContextValue }) {
 	const { state, draft, runner } = ai
 	const [now, setNow] = useState(() => Date.now())
 	const [saveProfile, setSaveProfile] = useState(true)
+	const [picking, setPicking] = useState<'logo' | 'favicon' | null>(null)
 
 	const view =
 		state.phase === 'idle' || state.phase === 'failed'
@@ -75,12 +77,16 @@ export function AiBuildDialog({ ai }: { ai: AiBuildContextValue }) {
 		() => store.pages.map((page) => ({ id: page.id, name: page.name, sections: page.blocks.length })),
 		[store.pages],
 	)
+	const brandLogo = store.profile?.brand.logo ?? null
+	const brandFavicon = store.profile?.brand.favicon ?? null
+	// The logo and favicon are uploads too, but never photos.
 	const media = useMemo(
 		() =>
 			[...store.media]
+				.filter((item) => item.src !== brandLogo && item.src !== brandFavicon)
 				.sort((a, b) => (a.addedAt < b.addedAt ? 1 : a.addedAt > b.addedAt ? -1 : 0))
 				.map((item) => ({ id: item.id, name: item.name, src: item.src })),
-		[store.media],
+		[store.media, brandLogo, brandFavicon],
 	)
 
 	const mode = 'build' in state ? state.build.mode : draft.mode
@@ -183,6 +189,20 @@ export function AiBuildDialog({ ai }: { ai: AiBuildContextValue }) {
 						media={media}
 						uploading={ai.uploading}
 						onUpload={ai.upload}
+						library={ai.library ?? undefined}
+						brand={
+							ai.brand
+								? {
+										logo: ai.brand.logo,
+										logoFrom: ai.brand.logoFrom,
+										favicon: ai.brand.favicon,
+										faviconFrom: ai.brand.faviconFrom,
+										onPick: setPicking,
+										onClear: (target) => ai.brand?.choose(target, null),
+									}
+								: undefined
+						}
+						waiting={ai.waiting}
 						capability={ai.capability}
 						problem={problem}
 						error={failed && failed.error.code !== 'bad-request' ? failed.error : null}
@@ -228,6 +248,25 @@ export function AiBuildDialog({ ai }: { ai: AiBuildContextValue }) {
 						}}
 						onShowMe={showMe}
 						onDone={ai.done}
+					/>
+				)}
+
+				{/* Inside the dialog, so the picker stacks on top of it instead of closing it. */}
+				{view === 'compose' && ai.brand && (
+					<LibraryImagePicker
+						open={picking !== null}
+						onOpenChange={(next) => {
+							if (!next) setPicking(null)
+						}}
+						title={picking === 'favicon' ? 'Choose the favicon' : 'Choose the logo'}
+						description={
+							picking === 'favicon'
+								? 'The small icon in browser tabs and bookmarks. A square image works best.'
+								: 'Shown in the header and footer. A wide PNG with a transparent background works best.'
+						}
+						value={picking === 'favicon' ? ai.brand.favicon : ai.brand.logo}
+						prefer={picking === 'favicon' ? 'icon' : 'logo'}
+						onPick={(image) => ai.brand?.choose(picking === 'favicon' ? 'favicon' : 'logo', image.url)}
 					/>
 				)}
 			</DialogContent>

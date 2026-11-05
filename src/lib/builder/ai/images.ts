@@ -13,7 +13,7 @@ import { SECTION_META } from '../catalog/meta'
 import type { Aspect, ImageRole } from '../catalog/types'
 import { OPENER_LAYOUTS } from '../design/vocab'
 import { AI_LIMITS } from './contract'
-import type { AssignedImage, ImagePlan, NormalizedPage, NormalizedSection, PhotoCandidate, PhotoNote } from './types'
+import type { AssignedImage, BrandLogo, ImagePlan, NormalizedPage, NormalizedSection, PhotoCandidate, PhotoNote } from './types'
 
 /** Kinds a photo slot may use. A screenshot the owner picked may still fill a panel or a gallery. */
 const PHOTO_KINDS = new Set<PhotoCandidate['kind']>(['photo', 'illustration', 'graphic', 'unknown'])
@@ -85,6 +85,12 @@ export function visionBlocks(pool: PhotoCandidate[]): Anthropic.Beta.BetaContent
 		count++
 	}
 	return blocks
+}
+
+/** The site's logo for the planner, after a `logo:` label, when the API can read it. */
+export function logoBlocks(logo: BrandLogo | null | undefined): Anthropic.Beta.BetaContentBlockParam[] {
+	const source = logo?.vision ? imageSource(logo.url) : null
+	return source ? [{ type: 'text', text: 'logo:' }, { type: 'image', source }] : []
 }
 
 // ---------------------------------------------------------------- slots

@@ -135,6 +135,13 @@ in `aiBuilds` for 24 hours. Code: `src/lib/builder/ai/**` (pipeline),
 
 - The plan is two structured-output calls: the API will not compile the plan and
   the header/menu as one grammar ("compiled grammar is too large").
+- Photos and the logo come from the site's content folder: a folder of the account
+  media library, chosen in the dialog or on the project's Brand tab and saved as
+  `sites.mediaFolderId` (`/api/sites/:id/library`). Its photos go to the build as
+  `libraryIds` and are placed like the owner's own uploads; a logo or favicon found
+  there is saved to the brand before the plan, and the planner sees the logo so the
+  colours suit it. Logos, icons and patterns are never placed as photos. The section
+  writer (`…/ai/write`) picks from the same folder. Code: `src/lib/builder/library*.ts`.
 - `BUILDER_AI_MODEL` (default `claude-opus-5-5`), `BUILDER_AI_PLAN_EFFORT`,
   `BUILDER_AI_WRITE_EFFORT`, `BUILDER_AI_DAILY_LIMIT` (units per account per day,
   default 100; a site costs 1 + its pages), `BUILDER_AI_DAILY_OUTPUT_TOKENS`.

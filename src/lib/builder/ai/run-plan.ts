@@ -27,7 +27,7 @@ import {
 	readPlanReply,
 	type PlanReply,
 } from './planner'
-import { loadPhotoPool } from './pool'
+import { loadBrandLogo, loadPhotoPool } from './pool'
 import { addUsage, callSignal, dedupeIssues, existingOf, recordDay, userKeyOf, ZERO_USAGE } from './run-shared'
 import { siteContextText } from './site-context'
 import type { AiBuildDoc, BuildPageDoc, NormalizedRequest } from './types'
@@ -97,6 +97,7 @@ export async function runPlan(input: {
 	const chromeNow = site.site?.chrome
 
 	const pool = await loadPhotoPool(db, site, request)
+	const logo = await loadBrandLogo(db, site)
 	const business = groundBusiness({ request, profile, projectName })
 	const corpus = factCorpus({ request, profile, projectName, reviews: request.reviews })
 	const avail = availability({ request, business, pool, profile })
@@ -118,7 +119,7 @@ export async function runPlan(input: {
 			effort,
 			maxTokens: stage.maxTokens,
 			system: plannerSystem(),
-			content: planUserContent({ request, business, businessType, availability: avail, pool, existing: plannerExisting, pageCap, images }),
+			content: planUserContent({ request, business, businessType, availability: avail, pool, existing: plannerExisting, pageCap, images, logo }),
 			schema: planSchema(),
 			read: readPlanReply,
 			signal: callSignal(ctx, stage.ms),
@@ -136,8 +137,9 @@ export async function runPlan(input: {
 		models.push(result.model)
 		fallback = result.fallback
 	} catch (error) {
-		// A photo the API could not open fails the whole call as a 400; one retry without them.
-		if (!(error instanceof AiError) || error.code !== 'invalid-reply' || error.provider?.status !== 400 || !pool.some((photo) => photo.vision))
+		// An image the API could not open fails the whole call as a 400; one retry without them.
+		const shown = pool.some((photo) => photo.vision) || Boolean(logo?.vision)
+		if (!(error instanceof AiError) || error.code !== 'invalid-reply' || error.provider?.status !== 400 || !shown)
 			throw error
 		await recordDay(db, build, error.usage)
 		usage = addUsage(usage, error.usage)

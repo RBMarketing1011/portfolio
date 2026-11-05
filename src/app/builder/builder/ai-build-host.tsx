@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Toaster } from '@/components/ui/sonner'
 import { isGoogleFont } from '@/app/builder/google-fonts'
 import {
+	AI_LIMITS,
 	DEFAULT_PINS,
 	type BuildMode,
 	type BuildSummary,
@@ -21,7 +22,9 @@ import {
 	type Placement,
 } from '@/lib/builder/ai/contract'
 import { useBuilder } from '@/lib/builder/builder-context'
+import { findFavicon, findLogo, photoCandidates, type LibraryImagesResponse } from '@/lib/builder/library'
 import type { SiteProfile } from '@/lib/builder/site-profile'
+import type { BrandSource, ComposeLibrary } from './ai-build-compose'
 import { AiBuildDialog } from './ai-build-dialog'
 import {
 	cleanPrompt,
@@ -49,6 +52,16 @@ export type AiOpenRequest = {
 	pageName?: string
 }
 
+/** The logo and favicon a build gives the site, and how to change them before it starts. */
+export type AiBrand = {
+	logo: string | null
+	logoFrom: BrandSource | null
+	favicon: string | null
+	faviconFrom: BrandSource | null
+	/** A picked image (or null to have none). */
+	choose: (target: 'logo' | 'favicon', url: string | null) => void
+}
+
 export type AiBuildContextValue = {
 	/** capability.enabled && store.remote */
 	enabled: boolean
@@ -74,6 +87,12 @@ export type AiBuildContextValue = {
 	/** Uploads running from the compose view. */
 	uploading: number
 	upload: (files: File[]) => void
+	/** The site's content folder and its photos; null where there is no media library. */
+	library: ComposeLibrary | null
+	/** The logo and favicon the build gives the site; null for a site without a profile. */
+	brand: AiBrand | null
+	/** The content folder is loading or the brand is saving: the build waits for it. */
+	waiting: boolean
 	/** The review view's Done: the needs-input badge goes away. */
 	done: () => void
 	runner: ReturnType<typeof useAiBuildRunner>
@@ -104,6 +123,9 @@ const disabled = {
 	problem: null,
 	uploading: 0,
 	upload: noop,
+	library: null,
+	brand: null,
+	waiting: false,
 	done: noop,
 } as unknown as AiBuildContextValue
 
@@ -113,7 +135,7 @@ export function useAiBuild(): AiBuildContextValue {
 
 const draftKey = (siteId: string) => `rb.ai.draft.${siteId}`
 
-type StoredDraft = Omit<ComposeDraft, 'reviews' | 'targetPageId'> & { photosChosen?: boolean }
+type StoredDraft = Omit<ComposeDraft, 'reviews' | 'targetPageId' | 'libraryIds'> & { photosChosen?: boolean }
 
 /** The unsent draft from an earlier visit. Reviews come from sessionStorage only. */
 function readDraft(siteId: string): { draft: ComposeDraft; photosChosen: boolean } | null {
@@ -138,6 +160,8 @@ function readDraft(siteId: string): { draft: ComposeDraft; photosChosen: boolean
 				pins: { ...DEFAULT_PINS, ...(saved.pins ?? {}) },
 				business: { ...emptyBusiness(), ...(saved.business ?? {}) },
 				photoIds: Array.isArray(saved.photoIds) ? saved.photoIds.filter((id) => typeof id === 'string') : [],
+				// The folder's photos are chosen afresh from the folder as it is now.
+				libraryIds: [],
 				useLibrary: saved.useLibrary === true,
 				reviews,
 			},
@@ -149,8 +173,9 @@ function readDraft(siteId: string): { draft: ComposeDraft; photosChosen: boolean
 }
 
 function writeDraft(siteId: string, draft: ComposeDraft, photosChosen: boolean) {
-	const { reviews, targetPageId: _target, ...rest } = draft
+	const { reviews, targetPageId: _target, libraryIds: _library, ...rest } = draft
 	void _target
+	void _library
 	try {
 		window.localStorage.setItem(draftKey(siteId), JSON.stringify({ ...rest, photosChosen }))
 	} catch {
@@ -198,9 +223,34 @@ const isEmptyBusiness = (business: ComposeDraft['business']) =>
 /** Selected for a build until the person picks: the newest photos, up to the limit. */
 const NEWEST_SELECTED = 24
 
+/**
+ * What a content folder gives a build: the logo and favicon (the person's pick, else the
+ * site's own, else the ones found in the folder) and the photos it may place (never those
+ * marks), newest first. One function, so the dialog and a build started without it agree.
+ */
+function folderChoices(input: {
+	listing: LibraryImagesResponse | null
+	siteLogo: string | null
+	siteFavicon: string | null
+	logoChoice: string | null | undefined
+	faviconChoice: string | null | undefined
+}) {
+	const { listing, siteLogo, siteFavicon, logoChoice, faviconChoice } = input
+	const foundLogo = listing ? findLogo(listing.images) : null
+	const logo = logoChoice !== undefined ? logoChoice : (siteLogo ?? foundLogo?.url ?? null)
+	const logoFrom: BrandSource | null =
+		logoChoice !== undefined ? (logoChoice ? 'picked' : null) : siteLogo ? 'site' : foundLogo ? 'folder' : null
+	const foundFavicon = listing ? findFavicon(listing.images, logo) : null
+	const favicon = faviconChoice !== undefined ? faviconChoice : (siteFavicon ?? foundFavicon?.url ?? null)
+	const faviconFrom: BrandSource | null =
+		faviconChoice !== undefined ? (faviconChoice ? 'picked' : null) : siteFavicon ? 'site' : foundFavicon ? 'folder' : null
+	const photos = listing ? photoCandidates(listing.images, [logo, favicon, siteLogo, siteFavicon]) : null
+	return { logo, logoFrom, favicon, faviconFrom, photos }
+}
+
 export function AiBuildHost({ children }: { children: React.ReactNode }) {
 	const store = useBuilder()
-	const { siteId, remote } = store
+	const { siteId, remote, library, loadLibrary, folderImages, setLibraryFolder, saveBrand } = store
 	const [capability, setCapability] = useState<CapabilityResponse | null>(null)
 	const [dialogOpen, setDialogOpen] = useState(false)
 	const [draft, setDraft] = useState<ComposeDraft>(emptyDraft)
@@ -213,6 +263,71 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 	openRef.current = dialogOpen
 	const latest = useRef(store)
 	latest.current = store
+
+	// The content folder: its images, which of them the person left selected, and the
+	// logo and favicon (theirs, or found in the folder, or picked here).
+	const [listing, setListing] = useState<LibraryImagesResponse | null>(null)
+	const [listingError, setListingError] = useState<string | null>(null)
+	const [libraryChosen, setLibraryChosen] = useState(false)
+	const [logoChoice, setLogoChoice] = useState<string | null | undefined>(undefined)
+	const [faviconChoice, setFaviconChoice] = useState<string | null | undefined>(undefined)
+	// The folder is being read or the brand saved before a build starts.
+	const [preparing, setPreparing] = useState(false)
+	const preparingRef = useRef(false)
+	// Bumped when a landing resets the draft, so the folder's photos are selected again.
+	const [reselect, setReselect] = useState(0)
+
+	useEffect(() => {
+		if (dialogOpen && remote) loadLibrary()
+	}, [dialogOpen, remote, loadLibrary])
+
+	const folderId = library.folderId
+	useEffect(() => {
+		if (!dialogOpen || !folderId) return
+		let live = true
+		setListingError(null)
+		folderImages(folderId).then(
+			(body) => {
+				if (live) setListing(body)
+			},
+			(error: Error) => {
+				if (live) setListingError(error.message)
+			},
+		)
+		return () => {
+			live = false
+		}
+	}, [dialogOpen, folderId, folderImages])
+	const folderListing = folderId && listing?.folderId === folderId ? listing : null
+
+	const profile = store.profile
+	const siteLogo = profile?.brand.logo ?? null
+	const siteFavicon = profile?.brand.favicon ?? null
+	const { logo, logoFrom, favicon, faviconFrom, photos: folderPhotos } = useMemo(
+		() => folderChoices({ listing: folderListing, siteLogo, siteFavicon, logoChoice, faviconChoice }),
+		[folderListing, siteLogo, siteFavicon, logoChoice, faviconChoice],
+	)
+
+	// Every photo in the folder starts selected, until the person picks for themselves.
+	useEffect(() => {
+		if (libraryChosen || !folderPhotos) return
+		const ids = folderPhotos.slice(0, AI_LIMITS.libraryPicksMax).map((image) => image.id)
+		setDraft((current) => (current.libraryIds.join() === ids.join() ? current : { ...current, libraryIds: ids }))
+	}, [folderPhotos, libraryChosen, reselect])
+
+	const chooseFolder = useCallback(
+		(next: string | null) => {
+			setLibraryChosen(false)
+			setListing(null)
+			setListingError(null)
+			setProblem(null)
+			setDraft((current) => ({ ...current, libraryIds: [] }))
+			setLibraryFolder(next).catch((error: Error) =>
+				setProblem({ field: 'library', message: error.message || 'That folder could not be saved. Try again.' }),
+			)
+		},
+		[setLibraryFolder],
+	)
 
 	const refreshCapability = useCallback(() => {
 		if (!remote) return
@@ -261,6 +376,10 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 			clearDraft(siteId)
 			setDraft((current) => ({ ...emptyDraft(), business: current.business }))
 			setPhotosChosen(false)
+			setLibraryChosen(false)
+			setReselect((count) => count + 1)
+			setLogoChoice(undefined)
+			setFaviconChoice(undefined)
 			setReviewDone(false)
 			toast(copy.title, {
 				description: copy.description,
@@ -293,14 +412,16 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 		if (settled) refreshCapability()
 	}, [settled, refreshCapability])
 
-	// The newest photos start selected, until the person picks for themselves.
+	// The newest photos start selected, until the person picks for themselves. The site's
+	// logo and favicon are uploads too, but never photos.
 	const newest = useMemo(
 		() =>
 			[...store.media]
+				.filter((item) => item.src !== siteLogo && item.src !== siteFavicon)
 				.sort((a, b) => (a.addedAt < b.addedAt ? 1 : a.addedAt > b.addedAt ? -1 : 0))
 				.slice(0, NEWEST_SELECTED)
 				.map((item) => item.id),
-		[store.media],
+		[store.media, siteLogo, siteFavicon],
 	)
 	useEffect(() => {
 		if (photosChosen) return
@@ -313,6 +434,7 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 	draftRef.current = draft
 	const updateDraft = useCallback((next: ComposeDraft) => {
 		if (next.photoIds !== draftRef.current.photoIds) setPhotosChosen(true)
+		if (next.libraryIds !== draftRef.current.libraryIds) setLibraryChosen(true)
 		setDraft(next)
 		setProblem(null)
 	}, [])
@@ -375,8 +497,9 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 				return false
 			}
 			setProblem(null)
+			if (preparingRef.current) return true
 			const pageMode = next.mode === 'page'
-			runnerRef.current.start({
+			const base: ComposeDraft = {
 				...next,
 				prompt: cleanPrompt(next.prompt),
 				targetPageId: next.placement === 'replace-page' ? next.targetPageId : null,
@@ -401,11 +524,62 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 					role: review.role.trim(),
 					source: review.source.trim(),
 				})),
-			})
-			setDialogOpen(true)
+				// A content folder is this business's own; the whole library may hold others'.
+				useLibrary: folderId ? false : next.useLibrary,
+			}
+
+			preparingRef.current = true
+			setPreparing(true)
+			void (async () => {
+				try {
+					// The folder as it is now, also when the build starts without the dialog
+					// having shown it (the empty site's own "Build my site").
+					const now = folderId ? (folderListing ?? (await folderImages(folderId).catch(() => null))) : null
+					if (folderId && !now) {
+						setProblem({ field: 'library', message: 'The content folder could not be read. Try again.' })
+						setDialogOpen(true)
+						return
+					}
+					const chosen = folderChoices({ listing: now, siteLogo, siteFavicon, logoChoice, faviconChoice })
+					const photos = chosen.photos ?? []
+					const inFolder = new Set(photos.map((image) => image.id))
+					const libraryIds = !folderId
+						? []
+						: libraryChosen
+							? next.libraryIds.filter((id) => inFolder.has(id))
+							: photos.slice(0, AI_LIMITS.libraryPicksMax).map((image) => image.id)
+
+					// The logo and favicon are the site's from now on, so the plan sees them too.
+					const brand: Partial<SiteProfile['brand']> = {}
+					if (profile && chosen.logo !== siteLogo) brand.logo = chosen.logo
+					if (profile && chosen.favicon !== siteFavicon) brand.favicon = chosen.favicon
+					if (Object.keys(brand).length > 0) {
+						try {
+							await saveBrand(brand)
+						} catch (error) {
+							setProblem({
+								field: 'photos.logo',
+								message: (error instanceof Error && error.message) || 'The logo could not be saved. Try again.',
+							})
+							setDialogOpen(true)
+							return
+						}
+						setLogoChoice(undefined)
+						setFaviconChoice(undefined)
+					}
+					runnerRef.current.start({ ...base, libraryIds })
+					setDialogOpen(true)
+				} finally {
+					preparingRef.current = false
+					setPreparing(false)
+				}
+			})()
 			return true
 		},
-		[draft],
+		[
+			draft, folderId, folderListing, folderImages, siteLogo, siteFavicon, logoChoice, faviconChoice, libraryChosen,
+			profile, saveBrand,
+		],
 	)
 
 	const upload = useCallback(
@@ -468,6 +642,40 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 		setDialogOpen(false)
 	}, [])
 
+	const composeLibrary = useMemo<ComposeLibrary | null>(
+		() =>
+			remote
+				? {
+						folders: library.folders,
+						folderId,
+						photos: folderPhotos,
+						error: library.error ?? listingError,
+						onFolder: chooseFolder,
+					}
+				: null,
+		[remote, library.folders, library.error, folderId, folderPhotos, listingError, chooseFolder],
+	)
+
+	const brand = useMemo<AiBrand | null>(
+		() =>
+			profile
+				? {
+						logo,
+						logoFrom,
+						favicon,
+						faviconFrom,
+						choose: (target, url) => {
+							setProblem(null)
+							if (target === 'logo') setLogoChoice(url)
+							else setFaviconChoice(url)
+						},
+					}
+				: null,
+		[profile, logo, logoFrom, favicon, faviconFrom],
+	)
+
+	const waiting = preparing || Boolean(dialogOpen && folderId && !folderListing && !listingError)
+
 	const value: AiBuildContextValue = {
 		enabled,
 		capability,
@@ -485,6 +693,9 @@ export function AiBuildHost({ children }: { children: React.ReactNode }) {
 		problem,
 		uploading,
 		upload,
+		library: composeLibrary,
+		brand,
+		waiting,
 		done,
 		runner,
 		returnFocus,

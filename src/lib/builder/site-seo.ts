@@ -28,7 +28,7 @@ export function pageFor(site: Site, slug?: string[]) {
 		: (site.pages.find((item) => item.slug === HOME_SLUG) ?? site.pages[0])
 }
 
-const brandName = (input: SeoInput) =>
+const brandName = (input: Pick<SeoInput, 'profile' | 'siteName'>) =>
 	input.profile.seo.siteTitle ||
 	input.profile.business.name ||
 	input.siteName
@@ -41,6 +41,12 @@ export function letterIcon(name: string) {
 	const letter = (name.trim()[0] ?? '?').toUpperCase().replace(/[<>&"']/g, '')
 	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#111827"/><text x="32" y="43" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="34" font-weight="700" fill="#ffffff">${letter}</text></svg>`
 	return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
+/** The site's own icons: its favicon, or its initial. Every surface that shows the site uses them. */
+export function siteIcons(input: Pick<SeoInput, 'profile' | 'siteName'>): NonNullable<Metadata['icons']> {
+	const favicon = input.profile.brand.favicon ?? letterIcon(brandName(input))
+	return { icon: favicon, shortcut: favicon, apple: favicon }
 }
 
 export function siteMetadata(input: SeoInput): Metadata {
@@ -61,7 +67,6 @@ export function siteMetadata(input: SeoInput): Metadata {
 	const path = isHome ? '/' : `/${page.slug}`
 	const url = `${origin}${path}`
 	const image = profile.seo.shareImage ?? profile.brand.logo ?? undefined
-	const favicon = profile.brand.favicon ?? letterIcon(name)
 	const twitter = profile.seo.twitter.replace(/^@/, '')
 
 	return {
@@ -72,7 +77,7 @@ export function siteMetadata(input: SeoInput): Metadata {
 		robots: profile.seo.noindex
 			? { index: false, follow: false }
 			: { index: true, follow: true },
-		icons: { icon: favicon, shortcut: favicon, apple: favicon },
+		icons: siteIcons(input),
 		openGraph: {
 			type: 'website',
 			url,

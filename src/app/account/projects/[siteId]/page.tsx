@@ -5,6 +5,7 @@ import {
 	requireAccountMembership,
 } from '@/lib/workspace/current'
 import { appHost, appProtocol } from '@/lib/builder/hosting'
+import { folderImages, libraryFolders } from '@/lib/builder/library-server'
 import type { SiteDoc } from '@/lib/builder/site-doc'
 import { readSiteProfile } from '@/lib/builder/site-profile'
 import { ProjectSettings, type Project } from './project-settings'
@@ -66,6 +67,12 @@ export default async function ProjectPage({
 		createdAt: doc.createdAt.toISOString(),
 	}
 
+	// The account library's folders, and the images of the one holding this site's content.
+	const { folders } = await libraryFolders(membership.db, membership.workspace._id)
+	const content = doc.mediaFolderId
+		? await folderImages(membership.db, membership.workspace._id, doc.mediaFolderId)
+		: null
+
 	return (
 		<ProjectSettings
 			project={project}
@@ -82,6 +89,11 @@ export default async function ProjectPage({
 				name: item.name,
 				url: item.url,
 			}))}
+			library={{
+				folders,
+				folderId: content?.folderId ?? null,
+				images: (content?.images ?? []).map((image) => ({ id: image.id, name: image.name, url: image.url })),
+			}}
 		/>
 	)
 }

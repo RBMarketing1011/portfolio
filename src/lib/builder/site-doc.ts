@@ -137,6 +137,11 @@ export type SiteDoc = {
 	media: MediaEntry[]
 	/** Brand, SEO and business details. Missing on projects made before it existed. */
 	profile?: unknown
+	/**
+	 * The account media library folder that holds this site's content: its photos, logo
+	 * and favicon. The AI builder plans from it and the builder's pickers open on it.
+	 */
+	mediaFolderId?: import('mongodb').ObjectId | null
 	rev: number
 	createdAt: Date
 	updatedAt: Date

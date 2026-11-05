@@ -6,7 +6,7 @@
  * decides". State in, callbacks out: the host owns the draft.
  */
 import { useEffect, useRef, useState } from 'react'
-import { ImagePlus, Sparkles, Trash2, X } from 'lucide-react'
+import { FolderOpen, ImageIcon, ImagePlus, Loader2, Sparkles, Trash2, X } from 'lucide-react'
 import {
 	Accordion,
 	AccordionContent,
@@ -60,7 +60,9 @@ import { FONT_PAIRS } from '@/lib/builder/design/fonts'
 import { PALETTES, paletteById } from '@/lib/builder/design/palettes'
 import { polarityOf } from '@/lib/builder/design/scheme'
 import { FOOTER_VARIANT_LABELS, HEADER_VARIANT_LABELS } from '@/lib/builder/page-schema'
+import { thumbSrc, type LibraryFolder, type LibraryImage } from '@/lib/builder/library'
 import { BUSINESS_TYPES, type BusinessType } from '@/lib/builder/site-profile'
+import { cn } from '@/lib/utils'
 import {
 	errorCopy,
 	localTime,
@@ -149,6 +151,31 @@ export function parseReviews(text: string): OwnerReview[] {
 
 // ---------------------------------------------------------------- props
 
+/** The account media library folder that holds the site's content, and its images. */
+export type ComposeLibrary = {
+	/** Null while the folders load. */
+	folders: LibraryFolder[] | null
+	/** The site's content folder; null for none. */
+	folderId: string | null
+	/** The folder's images that may be placed as photos; null while they load. */
+	photos: LibraryImage[] | null
+	error: string | null
+	onFolder: (folderId: string | null) => void
+}
+
+/** Where a brand mark comes from: the site already has it, it was found in the folder, or picked here. */
+export type BrandSource = 'site' | 'folder' | 'picked'
+
+/** The logo and favicon the site carries once the build starts. */
+export type ComposeBrand = {
+	logo: string | null
+	logoFrom: BrandSource | null
+	favicon: string | null
+	faviconFrom: BrandSource | null
+	onPick: (target: 'logo' | 'favicon') => void
+	onClear: (target: 'logo' | 'favicon') => void
+}
+
 export type ComposeProps = {
 	draft: ComposeDraft
 	onDraft: (next: ComposeDraft) => void
@@ -159,6 +186,12 @@ export type ComposeProps = {
 	media: { id: string; name: string; src: string }[]
 	uploading: number
 	onUpload: (files: File[]) => void
+	/** The content folder; absent where there is no media library (the proof). */
+	library?: ComposeLibrary
+	/** The logo and favicon; absent where the site has no profile. */
+	brand?: ComposeBrand
+	/** Something the build needs is still loading or saving (the folder, the logo). */
+	waiting?: boolean
 	capability: CapabilityResponse | null
 	/** A field the person has to fix, from the checks here or the server's. */
 	problem: DraftProblem | null
@@ -182,7 +215,7 @@ const sectionOf = (field: string) =>
 		? 'business'
 		: field.startsWith('reviews')
 			? 'reviews'
-			: field.startsWith('photo')
+			: field.startsWith('photo') || field.startsWith('library')
 				? 'photos'
 				: field.startsWith('pins')
 					? 'design'
@@ -209,6 +242,74 @@ function Swatch({ value }: { value: string }) {
 			className='size-6 shrink-0 rounded-md border'
 			style={{ background: HEX.test(value) ? asHex(value) : 'transparent' }}
 		/>
+	)
+}
+
+// ---------------------------------------------------------------- photos and logo
+
+const NO_FOLDER = '__none'
+
+const BRAND_FROM: Record<BrandSource, string> = {
+	site: 'The one your site uses now.',
+	folder: 'Found in the content folder.',
+	picked: 'Chosen here.',
+}
+
+/** A light and a mid grey, so a dark mark and a white one both show against it. */
+const CHECKER: React.CSSProperties = {
+	backgroundImage: 'repeating-conic-gradient(#a1a1aa 0 25%, #d4d4d8 0 50%)',
+	backgroundSize: '14px 14px',
+}
+
+/** The logo or favicon the build gives the site: its preview, where it comes from, Change and Remove. */
+function BrandRow({
+	id,
+	label,
+	url,
+	from,
+	square,
+	onPick,
+	onClear,
+}: {
+	id: string
+	label: string
+	url: string | null
+	from: BrandSource | null
+	square?: boolean
+	onPick: () => void
+	onClear: () => void
+}) {
+	return (
+		<Card className='gap-0 py-3'>
+			<CardContent className='flex items-center gap-3 px-3'>
+				<span
+					className={cn('flex h-14 shrink-0 items-center justify-center overflow-hidden rounded-md border', square ? 'w-14' : 'w-28')}
+					style={CHECKER}>
+					{url ? (
+						// eslint-disable-next-line @next/next/no-img-element -- the site's own image
+						<img src={thumbSrc(url, 256)} alt='' className='max-h-full max-w-full object-contain p-1' />
+					) : (
+						<ImageIcon className='size-4 text-zinc-600' />
+					)}
+				</span>
+				<span className='grid min-w-0 flex-1 gap-0.5'>
+					<span className='text-sm font-medium'>{label}</span>
+					<span className='text-xs text-muted-foreground'>
+						{url && from ? BRAND_FROM[from] : square ? 'None: the site shows its initial.' : 'None: the header shows the business name.'}
+					</span>
+				</span>
+				<span className='flex shrink-0 gap-1'>
+					<Button id={id} variant='outline' size='sm' onClick={onPick}>
+						{url ? 'Change' : 'Choose'}
+					</Button>
+					{url && (
+						<Button variant='ghost' size='icon-sm' aria-label={`Remove the ${label.toLowerCase()}`} onClick={onClear}>
+							<X />
+						</Button>
+					)}
+				</span>
+			</CardContent>
+		</Card>
 	)
 }
 
@@ -705,6 +806,9 @@ export function AiBuildCompose(props: ComposeProps) {
 		media,
 		uploading,
 		onUpload,
+		library,
+		brand,
+		waiting = false,
 		capability,
 		problem,
 		error,
@@ -729,7 +833,7 @@ export function AiBuildCompose(props: ComposeProps) {
 	const remaining = capability ? Math.max(0, capability.units.limit - capability.units.used) : null
 	const overBudget = remaining !== null && units > remaining
 	const briefShort = draft.prompt.trim().length < AI_LIMITS.promptMin
-	const disabled = briefShort || uploading > 0 || overBudget
+	const disabled = briefShort || uploading > 0 || overBudget || waiting
 	const pins = draft.pins
 	const appendSite = draft.mode === 'site' && draft.placement === 'append'
 	const show = {
@@ -791,10 +895,28 @@ export function AiBuildCompose(props: ComposeProps) {
 	const shown = media.slice(0, SHOWN_PHOTOS)
 	const shownIds = new Set(shown.map((item) => item.id))
 	const selected = draft.photoIds.filter((id) => shownIds.has(id))
+
+	const folder = library?.folderId ? (library.folders ?? []).find((item) => item.id === library.folderId) ?? null : null
+	const folderPhotos = folder ? library?.photos ?? null : null
+	const picked = new Set(draft.libraryIds)
+	const fromFolder = folderPhotos ? folderPhotos.filter((image) => picked.has(image.id)).length : 0
+	// The person's pick, in the order the folder lists its images (the order the AI sees them in).
+	const pickFolderPhotos = (ids: string[]) => {
+		const wanted = new Set(ids)
+		set({ libraryIds: (folderPhotos ?? []).filter((image) => wanted.has(image.id)).map((image) => image.id).slice(0, AI_LIMITS.libraryPicksMax) })
+	}
 	const photoSummary =
-		draft.photoIds.length === 0 && !draft.useLibrary
-			? 'No photos. The site will be typographic.'
-			: `${draft.photoIds.length} chosen${draft.useLibrary ? ' · uses your library' : ''}`
+		draft.photoIds.length === 0 && fromFolder === 0 && (folder || !draft.useLibrary)
+			? `No photos. The site will be typographic.${brand?.logo ? ' Uses your logo.' : ''}`
+			: [
+					folder ? `${fromFolder} from ${folder.name}` : null,
+					draft.photoIds.length > 0 || !folder ? `${draft.photoIds.length} chosen` : null,
+					!folder && draft.useLibrary ? 'uses your library' : null,
+					brand?.logo ? 'logo' : null,
+				]
+					.filter(Boolean)
+					.join(' · ')
+	const photoCount = draft.photoIds.length + fromFolder
 
 	const designSummary = labels.length === 0 ? 'AI decides everything' : `${labels.length} set: ${labels.join(', ')}`
 
@@ -1075,13 +1197,125 @@ export function AiBuildCompose(props: ComposeProps) {
 							<AccordionTrigger>
 								<span className='flex w-full items-start justify-between gap-3'>
 									<span className='grid gap-0.5'>
-										<span>Photos</span>
+										<span>{brand ? 'Photos and logo' : 'Photos'}</span>
 										<span className='text-xs font-normal text-muted-foreground'>{photoSummary}</span>
 									</span>
-									{draft.photoIds.length > 0 && <Badge variant='secondary'>{draft.photoIds.length}</Badge>}
+									{photoCount > 0 && <Badge variant='secondary'>{photoCount}</Badge>}
 								</span>
 							</AccordionTrigger>
 							<AccordionContent className='grid gap-4'>
+								{library && (
+									<div className='grid gap-3'>
+										<div className='grid gap-2'>
+											<Label htmlFor={fieldId('library.folder')}>Content folder</Label>
+											<Select
+												value={library.folderId ?? NO_FOLDER}
+												disabled={!library.folders}
+												onValueChange={(id) => library.onFolder(id === NO_FOLDER ? null : id)}>
+												<SelectTrigger id={fieldId('library.folder')} className='w-full'>
+													<SelectValue placeholder={library.folders ? 'No folder' : 'Loading your folders…'} />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value={NO_FOLDER}>No folder</SelectItem>
+													{(library.folders ?? []).map((item) => (
+														<SelectItem key={item.id} value={item.id}>
+															{`${'\u00a0\u00a0'.repeat(item.depth)}${item.name} (${item.total})`}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<Helper>
+												The folder in your media library with this business&apos;s photos and logo. The AI places the photos across the site and puts the logo in the header. Saved for this site.
+											</Helper>
+											{library.folders && library.folders.length === 0 && (
+												<Helper>Your media library has no folders yet. Make one in Media and upload the site&apos;s images to it.</Helper>
+											)}
+											{library.error && <p className='text-sm text-destructive'>{library.error}</p>}
+											<FieldError problem={problem} field='library' />
+											<FieldError problem={problem} field='libraryIds' />
+										</div>
+										{folder && (
+											<div className='grid gap-2'>
+												<div className='flex flex-wrap items-center justify-between gap-2'>
+													<span className='flex items-center gap-1.5 text-sm font-medium'>
+														<FolderOpen className='size-4 text-muted-foreground' /> {folder.path}
+													</span>
+													{folderPhotos && folderPhotos.length > 0 && (
+														<span className='flex items-center gap-2'>
+															<span className='text-xs text-muted-foreground'>
+																{fromFolder} of {folderPhotos.length} selected
+															</span>
+															<Button
+																variant='ghost'
+																size='xs'
+																onClick={() =>
+																	pickFolderPhotos(fromFolder === folderPhotos.length ? [] : folderPhotos.map((image) => image.id))
+																}>
+																{fromFolder === folderPhotos.length ? 'Select none' : 'Select all'}
+															</Button>
+														</span>
+													)}
+												</div>
+												{!folderPhotos ? (
+													<div className='grid grid-cols-4 gap-2 sm:grid-cols-6'>
+														{Array.from({ length: 6 }, (_, index) => (
+															<Skeleton key={index} className='aspect-square w-full' />
+														))}
+													</div>
+												) : folderPhotos.length === 0 ? (
+													<p className='text-sm text-muted-foreground'>
+														No photos in this folder yet. Upload them in Media; a logo there is used as the logo.
+													</p>
+												) : (
+													<ToggleGroup
+														type='multiple'
+														spacing={2}
+														aria-label='Photos in the content folder'
+														value={draft.libraryIds.filter((id) => folderPhotos.some((image) => image.id === id))}
+														onValueChange={pickFolderPhotos}
+														className='grid w-full grid-cols-4 sm:grid-cols-6'>
+														{folderPhotos.map((image) => (
+															<ToggleGroupItem
+																key={image.id}
+																value={image.id}
+																aria-label={image.name}
+																className='aspect-square h-auto w-full overflow-hidden p-0 opacity-50 data-[state=on]:opacity-100 data-[state=on]:ring-2 data-[state=on]:ring-brand'>
+																{/* eslint-disable-next-line @next/next/no-img-element -- a rendition of the account's own image */}
+																<img src={thumbSrc(image.url)} alt='' loading='lazy' className='size-full object-cover' />
+															</ToggleGroupItem>
+														))}
+													</ToggleGroup>
+												)}
+											</div>
+										)}
+									</div>
+								)}
+
+								{brand && (
+									<div className='grid gap-2'>
+										<BrandRow
+											id={fieldId('photos.logo')}
+											label='Logo'
+											url={brand.logo}
+											from={brand.logoFrom}
+											onPick={() => brand.onPick('logo')}
+											onClear={() => brand.onClear('logo')}
+										/>
+										<BrandRow
+											id={fieldId('photos.favicon')}
+											label='Favicon'
+											url={brand.favicon}
+											from={brand.faviconFrom}
+											square
+											onPick={() => brand.onPick('favicon')}
+											onClear={() => brand.onClear('favicon')}
+										/>
+										<FieldError problem={problem} field='photos.logo' />
+										<Helper>Saved to the site when the build starts. Change them later under Theme.</Helper>
+									</div>
+								)}
+
+								{(library || brand) && <Label className='pt-2'>Uploaded to this site</Label>}
 								<p className='text-sm text-muted-foreground'>
 									Add photos of your work, team, place or products. The AI looks at each one and puts it where it fits. It never uses another company&apos;s pictures.
 								</p>
@@ -1134,19 +1368,25 @@ export function AiBuildCompose(props: ComposeProps) {
 									</div>
 								)}
 								<FieldError problem={problem} field='photoIds' />
-								<div className='grid gap-1'>
-									<div className='flex items-center gap-2'>
-										<Switch
-											id='ai-use-library'
-											checked={draft.useLibrary}
-											onCheckedChange={(useLibrary) => set({ useLibrary })}
-										/>
-										<Label htmlFor='ai-use-library' className='font-normal'>
-											Also use photos from my account&apos;s media library ({capability?.library.photos ?? 0})
-										</Label>
+								{!folder && (
+									<div className='grid gap-1'>
+										<div className='flex items-center gap-2'>
+											<Switch
+												id='ai-use-library'
+												checked={draft.useLibrary}
+												onCheckedChange={(useLibrary) => set({ useLibrary })}
+											/>
+											<Label htmlFor='ai-use-library' className='font-normal'>
+												Also use photos from my account&apos;s media library ({capability?.library.photos ?? 0})
+											</Label>
+										</div>
+										<Helper>
+											{library
+												? 'Only turn this on if your library holds photos of this business. A content folder is the safer choice.'
+												: 'Only turn this on if your library holds photos of this business.'}
+										</Helper>
 									</div>
-									<Helper>Only turn this on if your library holds photos of this business.</Helper>
-								</div>
+								)}
 								<Helper>JPG, PNG or WebP, up to 12 MB each.</Helper>
 							</AccordionContent>
 						</AccordionItem>
@@ -1325,7 +1565,7 @@ export function AiBuildCompose(props: ComposeProps) {
 						Cancel
 					</Button>
 					<Button onClick={submit} disabled={disabled}>
-						<Sparkles /> {primary}
+						{waiting ? <Loader2 className='animate-spin' /> : <Sparkles />} {primary}
 					</Button>
 				</DialogFooter>
 			</div>

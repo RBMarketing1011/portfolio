@@ -314,6 +314,18 @@ check('builtSiteVars per header variant', () => {
 	assert.equal(builtSiteVars(undefined), want.bar)
 })
 
+check('builtSiteVars: a taller logo, or one on a plate, makes in-page links clear a taller bar', () => {
+	const vars = (header, brand) => /--header-h:([^}]*)\}/.exec(builtSiteVars(header, brand))[1]
+	assert.equal(vars('bar', { logo: 'https://x/l.png', logoSize: 'md' }), '4.25rem', 'the medium logo fits the bar as it is')
+	assert.equal(vars('bar', { logo: 'https://x/l.png', logoSize: 'sm' }), '4.25rem')
+	assert.equal(vars('bar', { logo: 'https://x/l.png', logoSize: 'xl' }), 'calc(4.25rem + 28px)')
+	assert.equal(vars('stacked', { logo: 'https://x/l.png', logoSize: 'lg', logoBackdrop: 'light' }), 'calc(6.75rem + 24px)')
+	assert.equal(vars('floating', { logo: 'https://x/l.png', logoSize: 'lg' }), 'calc(5.5rem + 8px)')
+	assert.equal(vars('none', { logo: 'https://x/l.png', logoSize: 'xl' }), '0rem')
+	assert.equal(vars('bar', { logo: null, logoSize: 'xl' }), '4.25rem', 'a wordmark is not a logo')
+	assert.equal(vars('bar', { logo: 'https://x/l.png', logoSize: 'huge', logoBackdrop: 'neon' }), '4.25rem', 'junk reads as medium, no plate')
+})
+
 // ---- tints and the theme codec ---------------------------------------------------
 
 check('tintVar(null), tintVar({}) and every other non-tint paint the accent variable', () => {

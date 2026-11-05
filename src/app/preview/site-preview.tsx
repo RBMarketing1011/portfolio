@@ -113,7 +113,7 @@ export function SitePreview({ siteId = LOCAL_SITE_ID }: { siteId?: string }) {
 		? cssText(
 				[
 					lookCss(look, { blockIds: page.blocks.map((block) => block.id) }),
-					builtSiteVars(site.chrome.header),
+					builtSiteVars(site.chrome.header, brand),
 				].join('\n'),
 			)
 		: ''

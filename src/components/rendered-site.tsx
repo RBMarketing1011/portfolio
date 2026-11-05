@@ -55,7 +55,7 @@ export function RenderedSite({
 	const css = cssText(
 		[
 			lookCss(merged, { blockIds: page.blocks.map((block) => block.id) }),
-			builtSiteVars(site.chrome.header),
+			builtSiteVars(site.chrome.header, brand),
 		].join('\n'),
 	)
 

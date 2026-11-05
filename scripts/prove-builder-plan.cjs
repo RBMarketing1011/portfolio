@@ -300,7 +300,7 @@ check('the loose schemas swap only the layout enums for strings (BUILDER_AI_LOOS
 })
 
 // Pinned: changing a schema or the prompt is deliberate (it also invalidates the prompt cache).
-const PINNED = { plan: '3dc025db82b2b501', outline: 'a8726519ef958f57', write: '5fa4f5fe15efda57', planner: '54d9629dcc08123a' }
+const PINNED = { plan: '3dc025db82b2b501', outline: 'a8726519ef958f57', write: '5fa4f5fe15efda57', planner: '6d6d49ae50f20a34' }
 check('snapshot hashes of the schemas and the planner prompt', () => {
 	assert.equal(schemaHash(planner.PLAN_SCHEMA), PINNED.plan, 'PLAN_SCHEMA')
 	assert.equal(schemaHash(outline.OUTLINE_SCHEMA), PINNED.outline, 'OUTLINE_SCHEMA')
@@ -473,6 +473,19 @@ check('parseCreateBuild: photos must be this project media, Blob or a small data
 	assert.equal(brief.isAllowedDataImage('data:image/svg+xml;base64,PHN2Zz4='), false)
 })
 
+check('parseCreateBuild: content folder images are optional, well-formed ids, unique, at most 60', () => {
+	assert.deepEqual(brief.parseCreateBuild(body(), site).request.libraryIds, [], 'absent reads as none')
+	const id = (n) => n.toString(16).padStart(24, '0')
+	const result = brief.parseCreateBuild(body({ libraryIds: [` ${id(1).toUpperCase()} `, id(1), id(2)] }), site)
+	assert.equal(result.ok, true)
+	assert.deepEqual(result.request.libraryIds, [id(1), id(2)])
+	reject({ libraryIds: 'all' }, 'libraryIds', 'One of those images is not in your media library.')
+	reject({ libraryIds: [id(1), 'md_1'] }, 'libraryIds.1', 'One of those images is not in your media library.')
+	reject({ libraryIds: [id(1), 7] }, 'libraryIds.1')
+	reject({ libraryIds: Array.from({ length: 61 }, (_, index) => id(index + 1)) }, 'libraryIds', 'One of those images is not in your media library.')
+	assert.equal(brief.parseCreateBuild(body({ libraryIds: Array.from({ length: 60 }, (_, index) => id(index + 1)) }), site).ok, true)
+})
+
 check('pageCapOf: one page, the pinned list or count, else eight', () => {
 	assert.equal(brief.pageCapOf({ mode: 'page', pins: { pages: { kind: 'ai' } } }), 1)
 	assert.equal(brief.pageCapOf({ mode: 'site', pins: { pages: { kind: 'list', names: ['a', 'b', 'c'] } } }), 3)
@@ -500,6 +513,27 @@ check('planUserContent: photos first, each after its label, then the brief as JS
 	assert.ok(!JSON.stringify(brief).includes('data:image'), 'no photo URL in the text brief')
 	const noImages = planner.planUserContent({ request, business, businessType: '', availability: ctx.availability, pool: ctx.pool, existing: null, pageCap: 8, images: false })
 	assert.equal(noImages.length, 1)
+})
+
+check('planUserContent: the logo goes first after its label, and the brief says there is one and its colours', () => {
+	const { ctx, business, request } = fixtureContext(loadFixture('roofer'))
+	const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+	const logo = { url: PNG, vision: true, colors: ['#c8102e', '#111111', '#ffffff', '#cccccc', '#000000'] }
+	const args = { request, business, businessType: request.business.type, availability: ctx.availability, pool: ctx.pool, existing: null, pageCap: 8 }
+	const content = planner.planUserContent({ ...args, logo })
+	assert.equal(content.length, 15)
+	assert.deepEqual(content[0], { type: 'text', text: 'logo:' })
+	assert.equal(content[1].type, 'image')
+	assert.deepEqual(content[2], { type: 'text', text: 'img1:' })
+	const shown = JSON.parse(content.at(-1).text)
+	assert.deepEqual(shown.brand, { logo: true, logoColors: ['#c8102e', '#111111', '#ffffff', '#cccccc'] })
+	assert.ok(!content.at(-1).text.includes('data:image'), 'no logo URL in the text brief')
+	// A logo the API cannot read is only mentioned; the retry without images drops it too.
+	const unseen = planner.planUserContent({ ...args, logo: { ...logo, vision: false } })
+	assert.equal(unseen.length, 13)
+	assert.deepEqual(JSON.parse(unseen.at(-1).text).brand.logo, true)
+	assert.equal(planner.planUserContent({ ...args, logo, images: false }).length, 1)
+	assert.ok(!('brand' in JSON.parse(planner.planUserContent(args).at(-1).text)), 'no logo, no brand key')
 })
 
 check('pinsForPlanner renders pins as plain values', () => {

@@ -1810,6 +1810,80 @@ check('the library: opt-in, this workspace only, photos/illustrations/graphics o
 	assert.equal(full.at(-1).ref, 'img60')
 })
 
+/** A library asset of `workspaceId`, analysed, newest last by `n`. */
+const libraryAsset = (workspaceId, n, overrides = {}) => ({
+	_id: new ObjectId(), workspaceId, folderId: null, name: `f${n}`, nameKey: `f${n}`, filename: `f${n}.jpg`,
+	url: blobUrl(`workspaces/${workspaceId}/media/f${n}.jpg`), pathname: `workspaces/${workspaceId}/media/f${n}.jpg`,
+	contentType: 'image/jpeg', bytes: 2_000_000, width: 2000, height: 1333, pixels: 2_666_000, orientation: 'landscape',
+	hasAlpha: false, animated: false, colors: [], colorNames: ['green'], brightness: 'light', saturation: 'vivid', sha256: `f${n}`, blur: null,
+	tags: [{ slug: 'lawn', label: 'Lawn', source: 'auto', via: 'vision' }], rejectedTags: [], caption: `Freshly mown lawn ${n}`, altText: '',
+	captionEdited: false, textInImage: '', keywords: [], kind: 'photo', notes: '', terms: [], termsVersion: 1, rev: 0,
+	tagging: { status: 'done', attempts: 1 }, uploadedBy: 'proof', createdAt: new Date(Date.now() - 60_000 + n * 1000), updatedAt: new Date(),
+	...overrides,
+})
+
+check('the content folder: picked library images in the order given, this account only, never a logo, icon or pattern, never a brand mark', async () => {
+	const workspaceId = newWorkspace()
+	const other = newWorkspace()
+	const docs = {
+		photo: libraryAsset(workspaceId, 1),
+		plain: libraryAsset(workspaceId, 2, { kind: null, contentType: 'image/png' }),
+		logo: libraryAsset(workspaceId, 3, { kind: 'logo', contentType: 'image/png' }),
+		icon: libraryAsset(workspaceId, 4, { kind: 'icon' }),
+		pattern: libraryAsset(workspaceId, 5, { kind: 'pattern' }),
+		diagram: libraryAsset(workspaceId, 6, { kind: 'diagram', contentType: 'image/png' }),
+		screenshot: libraryAsset(workspaceId, 7, { kind: 'screenshot', width: 1440, height: 900 }),
+		avif: libraryAsset(workspaceId, 8, { contentType: 'image/avif' }),
+		heavy: libraryAsset(workspaceId, 9, { bytes: 6_000_000 }),
+		unanalysed: libraryAsset(workspaceId, 10, { width: 0, height: 0 }),
+		brand: libraryAsset(workspaceId, 11, { colors: [{ hex: '#C8102E', name: 'red', share: 0.6 }, { hex: '#111111', name: 'black', share: 0.3 }, { hex: 'bad', name: 'x', share: 0.1 }] }),
+		foreign: libraryAsset(other, 12),
+	}
+	await db.collection('mediaAssets').insertMany(Object.values(docs))
+	const site = {
+		_id: newSite(),
+		workspaceId,
+		media: [entry('md_pick', 1), entry('md_icon', 2)],
+		profile: { brand: { logo: docs.brand.url, favicon: blobUrl('sites/s/md_icon.webp') } },
+	}
+	const ids = (...names) => names.map((name) => docs[name]._id.toHexString())
+	const wanted = [...ids('plain', 'photo', 'logo', 'icon', 'pattern', 'diagram', 'screenshot', 'avif', 'heavy', 'unanalysed', 'brand', 'foreign', 'photo'), 'not-an-id']
+	const pool = await P.loadPhotoPool(db, site, { ...request(['md_pick', 'md_icon']), libraryIds: wanted })
+	assert.deepEqual(
+		pool.map((item) => item.value),
+		['media:md_pick', ...['plain', 'photo', 'diagram', 'screenshot', 'avif', 'heavy'].map((name) => docs[name].url)],
+		'the favicon upload and the logo are never photos',
+	)
+	assert.ok(pool.every((item) => item.source === 'upload'), 'picked from the folder: the owner’s own')
+	assert.deepEqual(pool.slice(1).map((item) => item.kind), ['unknown', 'photo', 'graphic', 'screenshot', 'photo', 'photo'])
+	assert.deepEqual(pool.map((item) => item.vision), [true, true, true, true, true, false, false], 'AVIF and over 5 MB stay digest-only')
+	assert.equal(pool[2].caption, 'Freshly mown lawn 1')
+	assert.deepEqual(pool[2].tags, ['Lawn'])
+	assert.equal(pool[2].orientation, 'landscape')
+	assert.equal(pool[2].light, 'light')
+	const withLibrary = await P.loadPhotoPool(db, site, { ...request(['md_pick']), libraryIds: wanted, useLibrary: true })
+	assert.deepEqual(withLibrary.map((item) => item.value), pool.map((item) => item.value), 'the library never offers a pick twice, or the logo')
+	assert.deepEqual((await P.loadPhotoPool(db, site, request([]))).map((item) => item.value), [], 'no libraryIds: nothing from the library')
+})
+
+check('the logo for the planner: a readable URL, what the library knows of it, else nothing', async () => {
+	const workspaceId = newWorkspace()
+	const logo = libraryAsset(workspaceId, 1, {
+		kind: 'logo',
+		contentType: 'image/png',
+		colors: ['#C8102E', '#111111', 'bad', '#eeeeee', '#222222', '#333333'].map((hex, i) => ({ hex, name: 'c', share: 0.5 - i / 20 })),
+	})
+	const heavy = libraryAsset(workspaceId, 2, { kind: 'logo', bytes: 9_000_000 })
+	await db.collection('mediaAssets').insertMany([logo, heavy])
+	const site = (url, media = []) => ({ _id: newSite(), workspaceId, media, profile: url === undefined ? undefined : { brand: { logo: url } } })
+	assert.deepEqual(await P.loadBrandLogo(db, site(logo.url)), { url: logo.url, vision: true, colors: ['#c8102e', '#111111', '#eeeeee', '#222222'] })
+	assert.equal((await P.loadBrandLogo(db, site(heavy.url))).vision, false, 'over 5 MB is described, not shown')
+	const upload = entry('md_logo', 1, { url: blobUrl('sites/s/logo.webp'), width: 800, height: 200 })
+	assert.deepEqual(await P.loadBrandLogo(db, site(upload.url, [upload])), { url: upload.url, vision: true, colors: [] })
+	assert.equal(await P.loadBrandLogo(db, site(undefined)), null)
+	assert.equal(await P.loadBrandLogo(db, site('https://evil.example.com/logo.png')), null, 'never a foreign URL')
+})
+
 /* -------------------------------------------------------------------------- */
 /* Run                                                                        */
 /* -------------------------------------------------------------------------- */

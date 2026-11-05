@@ -6,6 +6,7 @@ import {
 	builderAiConfigured,
 	writeBlocks,
 } from '@/lib/builder/ai-writer'
+import { folderSubtree } from '@/lib/builder/library-server'
 import { blockSchema } from '@/lib/builder/page-schema'
 import { readSiteProfile } from '@/lib/builder/site-profile'
 
@@ -72,6 +73,8 @@ export async function POST(request: Request, { params }: Params) {
 			profile: readSiteProfile(site.profile),
 			projectName: site.name,
 			siteMedia: (site.media ?? []).map(({ id, name, url }) => ({ id, name, url })),
+			// The site's content folder, when it has one (a deleted folder falls back to the whole library).
+			folderIds: await folderSubtree(db, site.workspaceId, site.mediaFolderId),
 			page: body.page,
 			blocks: body.blocks,
 			instructions: body.instructions,

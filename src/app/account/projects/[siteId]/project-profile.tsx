@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { FormAlert } from '@/components/form-alert'
@@ -29,12 +30,30 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import {
 	BUSINESS_TYPES,
+	LOGO_BACKDROP_LABELS,
+	LOGO_BACKDROPS,
+	LOGO_SIZE_LABELS,
+	LOGO_SIZES,
 	WEEKDAYS,
+	isLogoBackdrop,
+	isLogoSize,
 	type BusinessType,
 	type SiteProfile,
 	type Weekday,
 } from '@/lib/builder/site-profile'
+import type { LibraryFolder } from '@/lib/builder/library'
 import { SiteImageField, type ProjectImage } from './site-image-field'
+
+/** The account media library as this project's Brand tab shows it. */
+export type ProjectLibrary = {
+	folders: LibraryFolder[]
+	/** The folder holding this site's content; null for none. */
+	folderId: string | null
+	/** That folder's images (and its subfolders'), newest first. */
+	images: ProjectImage[]
+}
+
+const NO_FOLDER = '__none'
 
 const lines = (value: string) =>
 	value
@@ -102,6 +121,7 @@ export function ProjectProfile({
 	address,
 	initial,
 	initialImages,
+	library,
 	canEdit,
 }: {
 	siteId: string
@@ -110,6 +130,7 @@ export function ProjectProfile({
 	address: string
 	initial: SiteProfile
 	initialImages: ProjectImage[]
+	library: ProjectLibrary
 	canEdit: boolean
 }) {
 	const router = useRouter()
@@ -121,6 +142,26 @@ export function ProjectProfile({
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [notice, setNotice] = useState<string | null>(null)
+	const [folderBusy, setFolderBusy] = useState(false)
+	const [folderError, setFolderError] = useState<string | null>(null)
+
+	/** The content folder saves on its own, as soon as it is chosen. */
+	const chooseFolder = async (value: string) => {
+		setFolderBusy(true)
+		setFolderError(null)
+		const response = await fetch(`/api/sites/${siteId}/library`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ folderId: value === NO_FOLDER ? null : value }),
+		}).catch(() => null)
+		setFolderBusy(false)
+		if (!response?.ok) {
+			const body = await response?.json().catch(() => ({}))
+			setFolderError(body?.error ?? 'That folder could not be saved. Try again.')
+			return
+		}
+		router.refresh()
+	}
 
 	const next: SiteProfile = useMemo(
 		() => ({
@@ -202,6 +243,8 @@ export function ProjectProfile({
 		disabled: !canEdit,
 		onUploaded: (image: ProjectImage) => setImages((list) => [...list, image]),
 	}
+	const contentFolder = library.folders.find((folder) => folder.id === library.folderId) ?? null
+	const folderImages = contentFolder ? { path: contentFolder.path, images: library.images } : undefined
 
 	const name = next.seo.siteTitle || next.business.name || projectName
 	const previewTitle = next.seo.homeTitle || name
@@ -215,10 +258,50 @@ export function ProjectProfile({
 			{/* ---------------------------------------------------------------- Brand */}
 			<TabsContent value='brand' className='space-y-6 pt-6'>
 				<Section
+					title='Content folder'
+					description='The folder in your media library that holds this site’s photos, logo and favicon. The AI builder places its photos and finds the logo there, and the image pickers open on it.'>
+					<Field
+						label='Folder'
+						htmlFor='brand-folder'
+						hint={
+							library.folders.length === 0 ? (
+								<>
+									Your media library has no folders yet. Make one in{' '}
+									<Link href='/account/media' className='underline underline-offset-4'>
+										Media
+									</Link>{' '}
+									and upload the site’s images to it.
+								</>
+							) : (
+								'Saved as soon as you choose.'
+							)
+						}>
+						<Select
+							value={library.folderId ?? NO_FOLDER}
+							disabled={!canEdit || folderBusy || library.folders.length === 0}
+							onValueChange={(value) => void chooseFolder(value)}>
+							<SelectTrigger id='brand-folder' className='w-full sm:w-96'>
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value={NO_FOLDER}>No folder</SelectItem>
+								{library.folders.map((folder) => (
+									<SelectItem key={folder.id} value={folder.id}>
+										{`${'\u00a0\u00a0'.repeat(folder.depth)}${folder.name} (${folder.total})`}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+					</Field>
+					{folderError && <FormAlert>{folderError}</FormAlert>}
+				</Section>
+
+				<Section
 					title='Logo'
 					description='Shown in the site’s header and footer. Without one, the business name is set in the heading font instead.'>
 					<SiteImageField
 						{...imageProps}
+						library={folderImages}
 						id='brand-logo'
 						label='Logo image'
 						hint='A PNG with a transparent background works best. Wide logos fit the header better than tall ones.'
@@ -237,6 +320,42 @@ export function ProjectProfile({
 							onChange={(event) => brand({ logoAlt: event.target.value })}
 						/>
 					</Field>
+					<Field label='Logo size' hint='How tall the logo stands in the header and footer. On phones a large logo steps down a little.'>
+						<ToggleGroup
+							type='single'
+							variant='outline'
+							aria-label='Logo size'
+							disabled={!canEdit}
+							value={next.brand.logoSize}
+							onValueChange={(size) => {
+								if (isLogoSize(size)) brand({ logoSize: size })
+							}}
+							className='flex-wrap'>
+							{LOGO_SIZES.map((size) => (
+								<ToggleGroupItem key={size} value={size}>
+									{LOGO_SIZE_LABELS[size]}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
+					</Field>
+					<Field label='Behind the logo' hint='A plate keeps a dark logo readable on a dark header, or a light one on a light header.'>
+						<ToggleGroup
+							type='single'
+							variant='outline'
+							aria-label='Behind the logo'
+							disabled={!canEdit}
+							value={next.brand.logoBackdrop}
+							onValueChange={(backdrop) => {
+								if (isLogoBackdrop(backdrop)) brand({ logoBackdrop: backdrop })
+							}}
+							className='flex-wrap'>
+							{LOGO_BACKDROPS.map((backdrop) => (
+								<ToggleGroupItem key={backdrop} value={backdrop}>
+									{LOGO_BACKDROP_LABELS[backdrop]}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
+					</Field>
 				</Section>
 
 				<Section
@@ -244,6 +363,7 @@ export function ProjectProfile({
 					description='The small icon in browser tabs, bookmarks, and on phone home screens.'>
 					<SiteImageField
 						{...imageProps}
+						library={folderImages}
 						id='brand-favicon'
 						label='Icon image'
 						hint='A square PNG, at least 512 × 512. Without one, the site shows its first letter on a dark tile.'

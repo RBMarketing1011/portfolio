@@ -30,6 +30,14 @@ import {
 	type Tint,
 } from '@/app/builder/theme-settings'
 import type { HeaderVariant } from './page-schema'
+import {
+	isLogoBackdrop,
+	isLogoSize,
+	LOGO_HEIGHTS,
+	LOGO_PLATE_PAD,
+	type LogoBackdrop,
+	type LogoSize,
+} from './site-profile'
 
 /** The site chrome carries its own surface, separate from the page surface. */
 export type BuilderLook = {
@@ -221,8 +229,23 @@ const SITE_VARS: Record<HeaderVariant, { trim: string; trimLg: string; header: s
 	stacked: { trim: '5rem', trimLg: '5rem', header: '6.75rem' },
 }
 
-/** The root variables a built site sets for its header variant (the kit defaults them to 0). */
-export function builtSiteVars(header: HeaderVariant): string {
+/**
+ * The root variables a built site sets for its header variant (the kit defaults them to 0).
+ * A logo taller than the medium one, or on a plate, makes the bar taller, so in-page
+ * links clear it by that much more.
+ */
+export function builtSiteVars(
+	header: HeaderVariant,
+	brand?: { logo?: string | null; logoSize?: LogoSize; logoBackdrop?: LogoBackdrop } | null,
+): string {
 	const vars = Object.hasOwn(SITE_VARS, header) ? SITE_VARS[header] : SITE_VARS.bar
-	return `:root{--hero-trim:${vars.trim};--hero-trim-lg:${vars.trimLg};--header-h:${vars.header}}`
+	let height = vars.header
+	if (brand?.logo && header !== 'none') {
+		const place = header === 'floating' ? 'pill' : 'header'
+		const size = isLogoSize(brand.logoSize) ? brand.logoSize : 'md'
+		const plate = isLogoBackdrop(brand.logoBackdrop) && brand.logoBackdrop !== 'none' ? LOGO_PLATE_PAD * 2 : 0
+		const extra = LOGO_HEIGHTS[place][size] + plate - LOGO_HEIGHTS[place].md
+		if (extra > 0) height = `calc(${vars.header} + ${extra}px)`
+	}
+	return `:root{--hero-trim:${vars.trim};--hero-trim-lg:${vars.trimLg};--header-h:${height}}`
 }

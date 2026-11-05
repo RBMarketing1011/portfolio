@@ -162,6 +162,7 @@ export const emptyDraft = (): ComposeDraft => ({
 	business: emptyBusiness(),
 	reviews: [],
 	photoIds: [],
+	libraryIds: [],
 	useLibrary: false,
 })
 
@@ -266,6 +267,8 @@ export function validateDraft(
 			return { field: `reviews.${index}.role`, message: "Reviews need the review text and the reviewer's name." }
 	}
 	if (draft.photoIds.length > AI_LIMITS.photosMax) return { field: 'photoIds', message: 'Up to 24 photos.' }
+	if ((draft.libraryIds ?? []).length > AI_LIMITS.libraryPicksMax)
+		return { field: 'libraryIds', message: 'Up to 60 images from the folder.' }
 	return null
 }
 

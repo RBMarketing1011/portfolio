@@ -37,6 +37,11 @@ export type WriteInput = {
 	projectName: string
 	/** The project's own builder library. */
 	siteMedia: SiteMediaItem[]
+	/**
+	 * The site's content folder and the folders beneath it. When given, images come from
+	 * there instead of the whole account library.
+	 */
+	folderIds?: ObjectId[] | null
 	page: { name: string; slug: string }
 	blocks: Block[]
 	instructions?: string
@@ -111,20 +116,23 @@ export type SiteMediaItem = {
 }
 
 /**
- * The images the model may pick from: the account's media library first, with what
- * the AI tagger knows about each, then anything uploaded to this project's own
- * builder library that is not in the account library too. A project image is
- * written as its `media:<id>` ref, the same as the builder's picker would; an
- * account image as its URL, which renders the same way.
+ * The images the model may pick from: the account's media library first (only the site's
+ * content folder, when it has one), with what the AI tagger knows about each, then
+ * anything uploaded to this project's own builder library that is not in the account
+ * library too. A project image is written as its `media:<id>` ref, the same as the
+ * builder's picker would; an account image as its URL, which renders the same way. The
+ * site's own logo and favicon are never offered.
  */
 async function mediaCandidates(
 	db: Db,
 	workspaceId: ObjectId,
 	siteMedia: SiteMediaItem[],
+	folderIds?: ObjectId[] | null,
+	brandUrls: string[] = [],
 ) {
 	const docs = await assetsOf(db)
 		.find(
-			{ workspaceId },
+			folderIds?.length ? { workspaceId, folderId: { $in: folderIds } } : { workspaceId },
 			{
 				projection: {
 					name: 1,
@@ -145,6 +153,7 @@ async function mediaCandidates(
 		.toArray()
 
 	const projectRef = new Map(siteMedia.map((item) => [item.url, `media:${item.id}`]))
+	const brand = new Set(brandUrls)
 	const choices = new Map<string, ImageChoice>()
 	const listing: Record<string, unknown>[] = []
 	const add = (value: string, details: Record<string, unknown>) => {
@@ -154,20 +163,21 @@ async function mediaCandidates(
 	}
 
 	for (const doc of docs)
-		add(projectRef.get(doc.url) ?? doc.url, {
-			name: doc.name,
-			caption: doc.caption || undefined,
-			description: doc.altText || undefined,
-			tags: (doc.tags ?? []).map((tag) => tag.label).slice(0, 12),
-			kind: doc.kind ?? undefined,
-			orientation: doc.orientation,
-			size: `${doc.width}x${doc.height}`,
-			colors: doc.colorNames?.slice(0, 3),
-		})
+		if (!brand.has(doc.url))
+			add(projectRef.get(doc.url) ?? doc.url, {
+				name: doc.name,
+				caption: doc.caption || undefined,
+				description: doc.altText || undefined,
+				tags: (doc.tags ?? []).map((tag) => tag.label).slice(0, 12),
+				kind: doc.kind ?? undefined,
+				orientation: doc.orientation,
+				size: `${doc.width}x${doc.height}`,
+				colors: doc.colorNames?.slice(0, 3),
+			})
 
 	const inLibrary = new Set(docs.map((doc) => doc.url))
 	for (const item of siteMedia.slice(-MAX_IMAGES).reverse())
-		if (!inLibrary.has(item.url) && choices.size < MAX_IMAGES * 2)
+		if (!inLibrary.has(item.url) && !brand.has(item.url) && choices.size < MAX_IMAGES * 2)
 			add(
 				`media:${item.id}`,
 				item.description
@@ -680,7 +690,10 @@ export async function writeBlocks(input: WriteInput): Promise<Block[]> {
 
 	const withImages = options.replaceImages || options.fillImages
 	const media = withImages
-		? await mediaCandidates(input.db, input.workspaceId, input.siteMedia)
+		? await mediaCandidates(input.db, input.workspaceId, input.siteMedia, input.folderIds, [
+				input.profile.brand.logo,
+				input.profile.brand.favicon,
+			].filter((url): url is string => Boolean(url)))
 		: { choices: new Map<string, ImageChoice>(), listing: [] as Record<string, unknown>[] }
 
 	const tasks = [

@@ -70,6 +70,7 @@ const MESSAGE = {
 	reviewRole: "Keep the reviewer's role under 80 characters.",
 	reviewSource: 'Keep the review source under 40 characters.',
 	photos: 'One of those photos is not in this project.',
+	library: 'One of those images is not in your media library.',
 } as const
 
 // A declaration, not an arrow, so a call narrows the code after it the way a `throw` does.
@@ -337,7 +338,25 @@ function parsePhotoIds(
 	return ids
 }
 
-const TOP_KEYS = ['mode', 'placement', 'targetPageId', 'prompt', 'pins', 'business', 'reviews', 'photoIds', 'useLibrary', 'fast'] as const
+const OBJECT_ID = /^[a-f0-9]{24}$/i
+
+/** Library image ids: well-formed and unique. Whether each is this account's is settled when the pool loads. */
+function parseLibraryIds(value: unknown): string[] {
+	if (value === undefined) return []
+	if (!Array.isArray(value)) bad(MESSAGE.library, 'libraryIds')
+	const ids: string[] = []
+	;(value as unknown[]).forEach((id, index) => {
+		if (typeof id !== 'string' || !OBJECT_ID.test(id.trim())) bad(MESSAGE.library, `libraryIds.${index}`)
+		const clean = (id as string).trim().toLowerCase()
+		if (!ids.includes(clean)) ids.push(clean)
+	})
+	if (ids.length > AI_LIMITS.libraryPicksMax) bad(MESSAGE.library, 'libraryIds')
+	return ids
+}
+
+const TOP_KEYS = [
+	'mode', 'placement', 'targetPageId', 'prompt', 'pins', 'business', 'reviews', 'photoIds', 'libraryIds', 'useLibrary', 'fast',
+] as const
 
 /**
  * Validates a create request in the order of section 4.2's table; the first failure is a
@@ -378,6 +397,7 @@ export function parseCreateBuild(
 		const business = parseBusiness(raw.business)
 		const reviews = parseReviews(raw.reviews)
 		const photoIds = parsePhotoIds(raw.photoIds, site?.media, opts.blobUrlOk)
+		const libraryIds = parseLibraryIds(raw.libraryIds)
 
 		return {
 			ok: true,
@@ -390,6 +410,7 @@ export function parseCreateBuild(
 				business,
 				reviews,
 				photoIds,
+				libraryIds,
 				useLibrary: bool(raw.useLibrary, false, 'useLibrary'),
 				fast: bool(raw.fast, false, 'fast'),
 			},

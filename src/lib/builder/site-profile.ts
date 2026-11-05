@@ -70,6 +70,60 @@ const time = z
 /** An uploaded image's URL, or nothing. The API checks it belongs to the project. */
 const image = z.string().url().max(2000).nullable().catch(null).default(null)
 
+/** How tall the logo stands in the header and footer. */
+export const LOGO_SIZES = ['sm', 'md', 'lg', 'xl'] as const
+export type LogoSize = (typeof LOGO_SIZES)[number]
+export const LOGO_SIZE_LABELS: Record<LogoSize, string> = {
+	sm: 'Small',
+	md: 'Medium',
+	lg: 'Large',
+	xl: 'Extra large',
+}
+
+/**
+ * The logo's height in pixels where it shows: the header bar, the floating header's
+ * pill, and the footer. The renderer and the header's anchor offset both read it.
+ */
+export const LOGO_HEIGHTS: Record<'header' | 'pill' | 'footer', Record<LogoSize, number>> = {
+	header: { sm: 32, md: 44, lg: 56, xl: 72 },
+	pill: { sm: 28, md: 36, lg: 44, xl: 52 },
+	footer: { sm: 32, md: 40, lg: 48, xl: 64 },
+}
+
+/** A plate behind the logo, so a dark logo reads on a dark header and a light one on a light header. */
+export const LOGO_BACKDROPS = ['none', 'light', 'dark'] as const
+export type LogoBackdrop = (typeof LOGO_BACKDROPS)[number]
+export const LOGO_BACKDROP_LABELS: Record<LogoBackdrop, string> = {
+	none: 'None',
+	light: 'Light plate',
+	dark: 'Dark plate',
+}
+
+/** The plate's padding above and below the logo, in pixels. */
+export const LOGO_PLATE_PAD = 6
+
+/**
+ * The plate's own colours, literal on purpose: a built site points Tailwind's `white` at
+ * its heading colour, which on a light site is near black.
+ */
+export const LOGO_PLATE_COLORS: Record<Exclude<LogoBackdrop, 'none'>, string> = {
+	light: '#ffffff',
+	dark: '#0b1220',
+}
+
+export const isLogoSize = (value: unknown): value is LogoSize =>
+	typeof value === 'string' && (LOGO_SIZES as readonly string[]).includes(value)
+export const isLogoBackdrop = (value: unknown): value is LogoBackdrop =>
+	typeof value === 'string' && (LOGO_BACKDROPS as readonly string[]).includes(value)
+
+const brandDefaults = () => ({
+	logo: null as string | null,
+	logoAlt: '',
+	logoSize: 'md' as LogoSize,
+	logoBackdrop: 'none' as LogoBackdrop,
+	favicon: null as string | null,
+})
+
 const hoursSchema = z.object({
 	days: z.array(z.enum(WEEKDAYS)).max(7).catch([]).default([]),
 	opens: time.default('09:00'),
@@ -102,11 +156,13 @@ export const siteProfileSchema = z.object({
 			logo: image,
 			/** Read by screen readers and shown if the logo fails to load. */
 			logoAlt: text(120),
+			logoSize: z.enum(LOGO_SIZES).catch('md').default('md'),
+			logoBackdrop: z.enum(LOGO_BACKDROPS).catch('none').default('none'),
 			/** A square PNG, ideally 512×512. */
 			favicon: image,
 		})
-		.catch({ logo: null, logoAlt: '', favicon: null })
-		.default({ logo: null, logoAlt: '', favicon: null }),
+		.catch(brandDefaults)
+		.default(brandDefaults),
 
 	seo: z
 		.object({
@@ -173,7 +229,7 @@ export type SiteProfile = z.infer<typeof siteProfileSchema>
 
 export function siteProfileDefaults(): SiteProfile {
 	return {
-		brand: { logo: null, logoAlt: '', favicon: null },
+		brand: brandDefaults(),
 		seo: {
 			siteTitle: '',
 			homeTitle: '',
@@ -284,6 +340,8 @@ export function brandFromProfile(profile: SiteProfile, projectName: string) {
 		name: business.name || profile.seo.siteTitle || projectName,
 		logo: profile.brand.logo,
 		logoAlt: profile.brand.logoAlt,
+		logoSize: profile.brand.logoSize,
+		logoBackdrop: profile.brand.logoBackdrop,
 		tagline: business.description || profile.seo.description,
 		contact,
 	}

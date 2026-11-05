@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, Layers, Palette, RotateCcw } from 'lucide-react'
+import { Check, ImageIcon, Layers, Loader2, Palette, RotateCcw, Trash2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
 	Dialog,
@@ -14,8 +15,22 @@ import {
 import { Label } from '@/components/ui/label'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useBuilder } from '@/lib/builder/builder-context'
+import {
+	isLogoBackdrop,
+	isLogoSize,
+	LOGO_BACKDROP_LABELS,
+	LOGO_BACKDROPS,
+	LOGO_HEIGHTS,
+	LOGO_PLATE_COLORS,
+	LOGO_PLATE_PAD,
+	LOGO_SIZE_LABELS,
+	LOGO_SIZES,
+	type SiteProfile,
+} from '@/lib/builder/site-profile'
 import { cn } from '@/lib/utils'
 import { BackgroundDrawer } from './background-drawer'
+import { CHECKER } from './builder/library-browser'
+import { LibraryImagePicker } from './builder/library-image-picker'
 import { FontCombobox } from './font-combobox'
 import { fontStack } from './google-fonts'
 import {
@@ -53,6 +68,171 @@ const shapeCorner: Record<Shape, string> = {
 const choiceItem =
 	'h-auto min-w-0 gap-1.5 rounded-md border border-white/10 bg-white/3 px-3 py-1.5 text-xs font-medium text-slate-400 hover:border-white/25 hover:bg-white/3 hover:text-white data-[state=on]:border-brand/40 data-[state=on]:bg-brand/12 data-[state=on]:text-white'
 
+type BrandDraft = Pick<SiteProfile['brand'], 'logo' | 'logoSize' | 'logoBackdrop' | 'favicon'>
+
+const brandDraftOf = (profile: SiteProfile | null): BrandDraft | null =>
+	profile
+		? {
+				logo: profile.brand.logo,
+				logoSize: profile.brand.logoSize,
+				logoBackdrop: profile.brand.logoBackdrop,
+				favicon: profile.brand.favicon,
+			}
+		: null
+
+const sameBrand = (a: BrandDraft, b: BrandDraft) =>
+	(Object.keys(a) as (keyof BrandDraft)[]).every((key) => a[key] === b[key])
+
+/**
+ * The logo, how big it stands and what sits behind it, and the favicon. Staged with the
+ * rest of the dialog and saved to the project's brand on Apply.
+ */
+function BrandSettings({
+	brand,
+	onBrand,
+	onPick,
+}: {
+	brand: BrandDraft
+	onBrand: (patch: Partial<BrandDraft>) => void
+	onPick: (target: 'logo' | 'favicon') => void
+}) {
+	const height = LOGO_HEIGHTS.header[brand.logoSize]
+	const plate = brand.logoBackdrop !== 'none'
+	return (
+		<div>
+			<p className='font-display text-sm font-semibold text-white'>Brand</p>
+			<p className='mt-0.5 text-xs text-slate-500'>
+				The logo in the header and footer, and the icon in browser tabs. Saved for the whole site.
+			</p>
+
+			<div className='mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto]'>
+				<div className='grid gap-4'>
+					<div
+						className='flex min-h-28 items-center justify-center overflow-hidden rounded-xl border border-white/10 px-6 py-4'
+						style={CHECKER}>
+						{brand.logo ? (
+							<span
+								className={cn('flex max-w-full items-center', plate && 'rounded-md px-2.5 shadow-sm')}
+								style={
+									brand.logoBackdrop === 'none'
+										? undefined
+										: { paddingBlock: LOGO_PLATE_PAD, backgroundColor: LOGO_PLATE_COLORS[brand.logoBackdrop] }
+								}>
+								{/* eslint-disable-next-line @next/next/no-img-element -- the site's own image */}
+								<img
+									src={brand.logo}
+									alt='Logo preview'
+									style={{ height }}
+									className='w-auto max-w-full object-contain'
+								/>
+							</span>
+						) : (
+							<p className='rounded-md bg-ink/80 px-3 py-2 text-center text-xs text-slate-300'>
+								No logo yet: the header shows the business name.
+							</p>
+						)}
+					</div>
+					<div className='flex flex-wrap gap-2'>
+						<Button
+							type='button'
+							variant='outline'
+							size='sm'
+							onClick={() => onPick('logo')}
+							className='border-white/20 bg-transparent text-slate-200 hover:bg-white/5 hover:text-white'>
+							<ImageIcon /> {brand.logo ? 'Change logo' : 'Choose a logo'}
+						</Button>
+						{brand.logo && (
+							<Button
+								type='button'
+								variant='ghost'
+								size='sm'
+								onClick={() => onBrand({ logo: null })}
+								className='text-slate-400 hover:bg-white/5 hover:text-white'>
+								<Trash2 /> Remove
+							</Button>
+						)}
+					</div>
+					<div className='grid gap-2'>
+						<Label className='text-xs text-slate-300'>Logo size</Label>
+						<ToggleGroup
+							type='single'
+							spacing={1}
+							aria-label='Logo size'
+							value={brand.logoSize}
+							onValueChange={(size) => {
+								if (isLogoSize(size)) onBrand({ logoSize: size })
+							}}
+							className='flex flex-wrap gap-1.5'>
+							{LOGO_SIZES.map((size) => (
+								<ToggleGroupItem key={size} value={size} className={choiceItem}>
+									{LOGO_SIZE_LABELS[size]}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
+					</div>
+					<div className='grid gap-2'>
+						<Label className='text-xs text-slate-300'>Behind the logo</Label>
+						<ToggleGroup
+							type='single'
+							spacing={1}
+							aria-label='Behind the logo'
+							value={brand.logoBackdrop}
+							onValueChange={(backdrop) => {
+								if (isLogoBackdrop(backdrop)) onBrand({ logoBackdrop: backdrop })
+							}}
+							className='flex flex-wrap gap-1.5'>
+							{LOGO_BACKDROPS.map((backdrop) => (
+								<ToggleGroupItem key={backdrop} value={backdrop} className={choiceItem}>
+									{LOGO_BACKDROP_LABELS[backdrop]}
+								</ToggleGroupItem>
+							))}
+						</ToggleGroup>
+						<p className='text-xs text-slate-500'>
+							A plate keeps a dark logo readable on a dark header, or a light one on a light header.
+						</p>
+					</div>
+				</div>
+
+				<div className='grid content-start gap-3'>
+					<Label className='text-xs text-slate-300'>Favicon</Label>
+					<div
+						className='flex size-20 items-center justify-center overflow-hidden rounded-xl border border-white/10'
+						style={CHECKER}>
+						{brand.favicon ? (
+							// eslint-disable-next-line @next/next/no-img-element -- the site's own image
+							<img src={brand.favicon} alt='Favicon preview' className='size-12 object-contain' />
+						) : (
+							<span className='text-[10px] text-slate-700'>Initial</span>
+						)}
+					</div>
+					<div className='flex flex-wrap gap-2'>
+						<Button
+							type='button'
+							variant='outline'
+							size='sm'
+							onClick={() => onPick('favicon')}
+							className='border-white/20 bg-transparent text-slate-200 hover:bg-white/5 hover:text-white'>
+							<ImageIcon /> {brand.favicon ? 'Change' : 'Choose'}
+						</Button>
+						{brand.favicon && (
+							<Button
+								type='button'
+								variant='ghost'
+								size='icon-sm'
+								aria-label='Remove the favicon'
+								onClick={() => onBrand({ favicon: null })}
+								className='text-slate-400 hover:bg-white/5 hover:text-white'>
+								<Trash2 />
+							</Button>
+						)}
+					</div>
+					<p className='max-w-40 text-xs text-slate-500'>A square image, at least 512 × 512.</p>
+				</div>
+			</div>
+		</div>
+	)
+}
+
 export function SettingsDialog({
 	settings,
 	onChange,
@@ -70,24 +250,57 @@ export function SettingsDialog({
 	const site = useBuilder()
 	const editsSite = settings === site.look.theme
 
+	// The brand lives with the project, so only a signed-in site has one to edit.
+	const savedBrand = editsSite && site.remote ? brandDraftOf(site.profile) : null
+	const [brand, setBrand] = useState<BrandDraft | null>(savedBrand)
+	const [picking, setPicking] = useState<'logo' | 'favicon' | null>(null)
+	const [saving, setSaving] = useState(false)
+	const [brandError, setBrandError] = useState<string | null>(null)
+
 	// Pulls the staged faces in so the specimen renders in the real font.
 	useGoogleFonts([draft.headingFont, draft.bodyFont])
 
-	const dirty = (Object.keys(draft) as (keyof ThemeSettings)[]).some(
-		(key) => draft[key] !== settings[key],
-	)
+	const brandDirty = Boolean(brand && savedBrand && !sameBrand(brand, savedBrand))
+	const dirty =
+		brandDirty ||
+		(Object.keys(draft) as (keyof ThemeSettings)[]).some(
+			(key) => draft[key] !== settings[key],
+		)
 
 	const set = <K extends keyof ThemeSettings>(
 		key: K,
 		value: ThemeSettings[K],
 	) => setDraft((current) => ({ ...current, [key]: value }))
 
+	const apply = async () => {
+		if (brandDirty && brand) {
+			setSaving(true)
+			setBrandError(null)
+			try {
+				await site.saveBrand(brand)
+			} catch (error) {
+				setBrandError(error instanceof Error ? error.message : 'The brand could not be saved. Try again.')
+				return
+			} finally {
+				setSaving(false)
+			}
+		}
+		onChange(draft)
+		setOpen(false)
+	}
+
 	return (
 		<Dialog
 			open={open}
 			onOpenChange={(next) => {
-				if (next) setDraft(settings)
-				else setBackdropOpen(false)
+				if (next) {
+					setDraft(settings)
+					setBrand(savedBrand)
+					setBrandError(null)
+				} else {
+					setBackdropOpen(false)
+					setPicking(null)
+				}
 				setOpen(next)
 			}}>
 			<DialogTrigger asChild>
@@ -104,7 +317,9 @@ export function SettingsDialog({
 				<DialogHeader className='shrink-0 border-b border-white/10 px-6 py-5'>
 					<DialogTitle className='text-white'>Theme</DialogTitle>
 					<DialogDescription className='text-slate-400'>
-						Applies to every section and template in the library.
+						{savedBrand
+							? 'Your logo, fonts and colors. Applies to every section and template in the library.'
+							: 'Applies to every section and template in the library.'}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -112,7 +327,15 @@ export function SettingsDialog({
 				    auto inside a max-height flex item, so a plain overflow box is used here. */}
 				<div className='min-h-0 flex-1 overflow-y-auto'>
 					<div className='space-y-8 px-6 py-5'>
-						<div className='grid gap-6 lg:grid-cols-3'>
+						{brand && (
+							<BrandSettings
+								brand={brand}
+								onBrand={(patch) => setBrand((current) => (current ? { ...current, ...patch } : current))}
+								onPick={setPicking}
+							/>
+						)}
+
+						<div className={cn('grid gap-6 lg:grid-cols-3', brand && 'border-t border-white/10 pt-8')}>
 							<div className='space-y-5'>
 								<FontCombobox
 									label='Heading font'
@@ -433,9 +656,35 @@ export function SettingsDialog({
 					/>
 				)}
 
+				{brand && (
+					<LibraryImagePicker
+						open={picking !== null}
+						onOpenChange={(next) => {
+							if (!next) setPicking(null)
+						}}
+						title={picking === 'favicon' ? 'Choose the favicon' : 'Choose the logo'}
+						description={
+							picking === 'favicon'
+								? 'The small icon in browser tabs and bookmarks. A square image works best.'
+								: 'Shown in the header and footer. A wide PNG with a transparent background works best.'
+						}
+						value={picking === 'favicon' ? brand.favicon : brand.logo}
+						prefer={picking === 'favicon' ? 'icon' : 'logo'}
+						onPick={(image) =>
+							setBrand((current) =>
+								current ? { ...current, [picking === 'favicon' ? 'favicon' : 'logo']: image.url } : current,
+							)
+						}
+					/>
+				)}
+
 				<div className='flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-white/10 bg-panel px-6 py-4'>
-					{dirty && (
-						<p className='mr-auto text-xs text-slate-500'>Unapplied changes</p>
+					{brandError ? (
+						<Alert variant='destructive' className='mr-auto w-auto py-2'>
+							<AlertDescription>{brandError}</AlertDescription>
+						</Alert>
+					) : (
+						dirty && <p className='mr-auto text-xs text-slate-500'>Unapplied changes</p>
 					)}
 					<Button
 						type='button'
@@ -446,12 +695,10 @@ export function SettingsDialog({
 					</Button>
 					<Button
 						type='button'
-						onClick={() => {
-							onChange(draft)
-							setOpen(false)
-						}}
+						disabled={saving}
+						onClick={() => void apply()}
 						className='bg-brand font-bold text-ink hover:bg-brand-strong'>
-						<Check /> Apply Settings
+						{saving ? <Loader2 className='animate-spin' /> : <Check />} Apply Settings
 					</Button>
 				</div>
 			</DialogContent>

@@ -9,7 +9,17 @@ import { DesktopMenu, MobileMenu, type SheetLink } from '@/components/built-menu
 import { cn } from '@/lib/utils'
 import { chromeHref } from '@/lib/builder/links'
 import { HOME_SLUG, type Chrome, type MenuItem } from '@/lib/builder/page-schema'
-import { phoneHref, type BusinessContact } from '@/lib/builder/site-profile'
+import {
+	isLogoBackdrop,
+	isLogoSize,
+	LOGO_HEIGHTS,
+	LOGO_PLATE_COLORS,
+	LOGO_PLATE_PAD,
+	phoneHref,
+	type BusinessContact,
+	type LogoBackdrop,
+	type LogoSize,
+} from '@/lib/builder/site-profile'
 
 export type NavPage = { id: string; name: string; slug: string }
 
@@ -18,6 +28,10 @@ export type SiteBrand = {
 	name: string
 	logo?: string | null
 	logoAlt?: string
+	/** How tall the logo (or the name, without one) stands. Medium when unset. */
+	logoSize?: LogoSize
+	/** A plate behind the logo. None when unset. */
+	logoBackdrop?: LogoBackdrop
 	/** The line under the logo in the footer. */
 	tagline?: string
 	/** The bare host, for the footer's last line. */
@@ -26,35 +40,66 @@ export type SiteBrand = {
 	contact?: BusinessContact
 }
 
+type Place = keyof typeof LOGO_HEIGHTS
+
+// The name, set as a wordmark when there is no logo, scales with the logo size.
+const NAME_SIZE: Record<Place, Record<LogoSize, string>> = {
+	header: { sm: 'text-base', md: 'text-lg', lg: 'text-xl', xl: 'text-2xl' },
+	pill: { sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' },
+	footer: { sm: 'text-sm', md: 'text-base', lg: 'text-lg', xl: 'text-xl' },
+}
+
+/**
+ * The logo's CSS height. On a narrow screen a large header logo steps down towards the
+ * medium one, so the bar keeps room for the menu button.
+ */
+function logoHeight(place: Place, size: LogoSize) {
+	const px = LOGO_HEIGHTS[place][size]
+	const floor = place === 'footer' ? px : Math.min(px, LOGO_HEIGHTS[place].md)
+	return px > floor ? `min(${px}px, max(${floor}px, 11vw))` : `${px}px`
+}
+
 /** The site's logo, or its name set as a wordmark when there is no logo. */
 function BrandMark({
 	brand,
 	href,
-	size = 'md',
+	place = 'header',
 }: {
 	brand?: SiteBrand
 	href: string
-	size?: 'sm' | 'md'
+	place?: Place
 }) {
-	if (!brand) return <Wordmark href={href} size={size === 'sm' ? 'sm' : undefined} />
+	if (!brand) return <Wordmark href={href} size={place === 'header' ? undefined : 'sm'} />
+	const size = isLogoSize(brand.logoSize) ? brand.logoSize : 'md'
+	const backdrop = isLogoBackdrop(brand.logoBackdrop) ? brand.logoBackdrop : 'none'
 	// Shrinks before anything else in a crowded row, so a long name never pushes the header wider.
 	return (
 		<Link href={href} className='flex min-w-0 items-center'>
 			{brand.logo ? (
-				// eslint-disable-next-line @next/next/no-img-element -- the site's own upload, any host
-				<img
-					src={brand.logo}
-					alt={brand.logoAlt || brand.name}
+				<span
+					data-logo-backdrop={backdrop === 'none' ? undefined : backdrop}
 					className={cn(
-						'w-auto min-w-0 max-w-full object-contain',
-						size === 'sm' ? 'h-7' : 'h-9',
+						'flex min-w-0 max-w-full items-center',
+						backdrop !== 'none' && 'rounded-md px-2.5 shadow-sm',
 					)}
-				/>
+					style={
+						backdrop === 'none'
+							? undefined
+							: { paddingBlock: LOGO_PLATE_PAD, backgroundColor: LOGO_PLATE_COLORS[backdrop] }
+					}>
+					{/* eslint-disable-next-line @next/next/no-img-element -- the site's own upload, any host */}
+					<img
+						src={brand.logo}
+						alt={brand.logoAlt || brand.name}
+						style={{ height: logoHeight(place, size) }}
+						className='w-auto min-w-0 max-w-full object-contain'
+					/>
+				</span>
 			) : (
 				<span
 					className={cn(
 						'truncate font-display font-semibold tracking-tight text-white',
-						size === 'sm' ? 'text-base' : 'text-lg',
+						NAME_SIZE[place][size],
 					)}>
 					{brand.name}
 				</span>
@@ -214,7 +259,7 @@ export function BuiltHeader({
 					{surfaceLayer}
 					{/* Relative, so a menu panel is exactly as wide as this row. */}
 					<div className='relative flex items-center justify-between gap-6'>
-						<BrandMark brand={brand} href={home} size='sm' />
+						<BrandMark brand={brand} href={home} place='pill' />
 						{desktop}
 						{actions}
 					</div>
@@ -315,7 +360,7 @@ export function BuiltFooter({
 
 	const brandBlock = (
 		<div>
-			<BrandMark brand={brand} href={chromeHref(linkBase, HOME_SLUG)} size='sm' />
+			<BrandMark brand={brand} href={chromeHref(linkBase, HOME_SLUG)} place='footer' />
 			{(!brand || brand.tagline) && (
 				<p
 					className={cn(

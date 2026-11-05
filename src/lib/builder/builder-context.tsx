@@ -1,7 +1,9 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { LOCAL_SITE_ID, LOOK_KEY } from './drivers'
+import type { LibraryFolder, LibraryImagesResponse } from './library'
+import { fetchFolderImages, fetchSiteLibrary, saveSiteBrand, saveSiteFolder } from './library-client'
 import { defaultLook, mergeLook, sanitizeLook, type BuilderLook } from './look'
 import {
 	invalidateMedia,
@@ -10,6 +12,7 @@ import {
 	writeMedia,
 	type MediaItem,
 } from './media-store'
+import type { SiteProfile } from './site-profile'
 import { useBuilderStore, type BuilderStore } from './store'
 
 export type { MediaItem }
@@ -20,6 +23,21 @@ export { defaultLook, mergeLook }
 
 /** An uploaded image, with its pixel size when the upload knew it. */
 export type UploadedMedia = MediaItem & { width?: number; height?: number }
+
+/**
+ * The account media library as this site sees it. Signed-in sites only; it loads the
+ * first time something asks for it (`loadLibrary`).
+ */
+export type SiteLibrary = {
+	/** Null until loaded, and always for a browser-only site. */
+	folders: LibraryFolder[] | null
+	/** The folder holding this site's content (photos, logo, favicon). */
+	folderId: string | null
+	/** Images in the whole library. */
+	total: number
+	loading: boolean
+	error: string | null
+}
 
 /** For surfaces that only render the built site and never edit it. */
 export function readLook(): BuilderLook {
@@ -47,6 +65,15 @@ export type BuilderContextValue = BuilderStore & {
 	) => Promise<UploadedMedia>
 	removeMedia: (id: string) => void
 	mediaError: string | null
+	library: SiteLibrary
+	/** Loads the folders once (again with `force`). A browser-only site has none. */
+	loadLibrary: (force?: boolean) => void
+	/** A folder's images, fetched once per tab unless `refresh`. */
+	folderImages: (folderId: string, refresh?: boolean) => Promise<LibraryImagesResponse>
+	/** Saves the folder that holds this site's content; throws with a message to show. */
+	setLibraryFolder: (folderId: string | null) => Promise<void>
+	/** Saves brand fields (logo, its size and plate, favicon); throws with a message to show. */
+	saveBrand: (brand: Partial<SiteProfile['brand']>) => Promise<SiteProfile>
 	/**
 	 * A block the canvas should scroll to and flash once it shows the page that holds it
 	 * (asked for before a navigation, so the canvas may not be mounted yet).
@@ -71,6 +98,92 @@ export function BuilderProvider({
 	const [scrollTarget, setScrollTarget] = useState<string | null>(null)
 	const clearScrollTarget = useCallback(() => setScrollTarget(null), [])
 	const remote = store.remote
+	const [library, setLibrary] = useState<SiteLibrary>({
+		folders: null,
+		folderId: null,
+		total: 0,
+		loading: false,
+		error: null,
+	})
+	const libraryAsked = useRef(false)
+	const folderCache = useRef(new Map<string, Promise<LibraryImagesResponse>>())
+	const { setProfile } = store
+	const siteRef = useRef(siteId)
+	siteRef.current = siteId
+
+	// Another site's library is another account's.
+	useEffect(() => {
+		libraryAsked.current = false
+		folderCache.current = new Map()
+		setLibrary({ folders: null, folderId: null, total: 0, loading: false, error: null })
+	}, [siteId])
+
+	const loadLibrary = useCallback(
+		(force = false) => {
+			if (!remote || (libraryAsked.current && !force)) return
+			libraryAsked.current = true
+			if (force) folderCache.current = new Map()
+			setLibrary((current) => ({ ...current, loading: true, error: null }))
+			fetchSiteLibrary(siteId).then(
+				(body) => {
+					if (siteRef.current !== siteId) return
+					setLibrary({ folders: body.folders, folderId: body.folderId, total: body.total, loading: false, error: null })
+				},
+				(error: Error) => {
+					if (siteRef.current !== siteId) return
+					// Asked again next time, rather than stuck on one failed load.
+					libraryAsked.current = false
+					setLibrary((current) => ({ ...current, loading: false, error: error.message }))
+				},
+			)
+		},
+		[remote, siteId],
+	)
+
+	// The content folder decides where the pickers open, so it loads with the site.
+	useEffect(() => {
+		if (remote && store.hydrated) loadLibrary()
+	}, [remote, store.hydrated, loadLibrary])
+
+	const folderImages = useCallback(
+		(folderId: string, refresh = false) => {
+			const cached = folderCache.current.get(folderId)
+			if (cached && !refresh) return cached
+			const asked = fetchFolderImages(siteId, folderId)
+			folderCache.current.set(folderId, asked)
+			asked.catch(() => {
+				if (folderCache.current.get(folderId) === asked) folderCache.current.delete(folderId)
+			})
+			return asked
+		},
+		[siteId],
+	)
+
+	const libraryFolderRef = useRef(library.folderId)
+	libraryFolderRef.current = library.folderId
+	const setLibraryFolder = useCallback(
+		async (folderId: string | null) => {
+			const before = libraryFolderRef.current
+			setLibrary((current) => ({ ...current, folderId }))
+			try {
+				await saveSiteFolder(siteId, folderId)
+			} catch (error) {
+				setLibrary((current) => (current.folderId === folderId ? { ...current, folderId: before } : current))
+				throw error
+			}
+		},
+		[siteId],
+	)
+
+	const saveBrand = useCallback(
+		async (brand: Partial<SiteProfile['brand']>) => {
+			if (!remote) throw new Error('Sign in and save this site to give it a logo.')
+			const saved = await saveSiteBrand(siteId, brand)
+			setProfile(saved)
+			return saved
+		},
+		[remote, siteId, setProfile],
+	)
 
 	useEffect(() => {
 		if (remote) return
@@ -195,6 +308,11 @@ export function BuilderProvider({
 				uploadMedia,
 				removeMedia,
 				mediaError,
+				library,
+				loadLibrary,
+				folderImages,
+				setLibraryFolder,
+				saveBrand,
 				scrollTarget,
 				showBlock: setScrollTarget,
 				clearScrollTarget,

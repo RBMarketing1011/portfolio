@@ -10,17 +10,20 @@ import {
 	DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { useBuilder } from '@/lib/builder/builder-context'
+import { thumbSrc } from '@/lib/builder/library'
 import {
 	formatBytes,
 	freeStorage,
+	isMediaRef,
 	mediaRef,
 	mediaUsage,
 	resolveMediaSrc,
 	storageBytes,
 } from '@/lib/builder/media-store'
+import { LibraryBrowser } from './library-browser'
 
 // Uploads are inlined as data URLs, which live in localStorage, so a full-size photo
 // would eat the whole budget. Downscale to something a hero can still use.
@@ -66,13 +69,20 @@ export function MediaPicker({
 	value: string | undefined
 	onChange: (value: string | undefined) => void
 }) {
-	const { media, addMedia, uploadMedia, removeMedia, mediaError, remote } =
+	const { media, addMedia, uploadMedia, removeMedia, mediaError, remote, library } =
 		useBuilder()
 	const [open, setOpen] = useState(false)
 	const [query, setQuery] = useState('')
 	const [error, setError] = useState<string | null>(null)
+	// A signed-in site with a content folder opens on it; the site's own uploads otherwise.
+	const [source, setSource] = useState<'library' | 'site'>('site')
 	const fileRef = useRef<HTMLInputElement>(null)
 	const dialogFileRef = useRef<HTMLInputElement>(null)
+
+	const openPicker = () => {
+		setSource(remote && library.folderId ? 'library' : 'site')
+		setOpen(true)
+	}
 
 	const shown = media.filter((item) =>
 		item.name.toLowerCase().includes(query.trim().toLowerCase()),
@@ -80,6 +90,7 @@ export function MediaPicker({
 	// The stored value is a reference, so the preview has to look the image up.
 	const selectedSrc = resolveMediaSrc(value) as string | undefined
 	const current = media.find((item) => mediaRef(item.id) === value)
+	const valueName = current?.name ?? (isMediaRef(value) ? 'Uploaded image' : 'Media library image')
 
 	// Re-measured whenever the library changes, since a probe is not free.
 	const quota = useMemo(() => {
@@ -130,11 +141,11 @@ export function MediaPicker({
 			<div className='flex items-center gap-2'>
 				<button
 					type='button'
-					onClick={() => setOpen(true)}
+					onClick={openPicker}
 					className='flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md border border-white/10 bg-white/4 text-slate-500 transition-colors hover:border-brand/50'>
 					{value ? (
 						// eslint-disable-next-line @next/next/no-img-element
-						<img alt='' src={selectedSrc} className='size-full object-cover' />
+						<img alt='' src={selectedSrc ? thumbSrc(selectedSrc, 128) : undefined} className='size-full object-cover' />
 					) : (
 						<ImageIcon className='size-5' />
 					)}
@@ -142,15 +153,15 @@ export function MediaPicker({
 				<div className='min-w-0 flex-1'>
 					<Input
 						readOnly
-						value={value ? (current?.name ?? 'Uploaded image') : ''}
+						value={value ? valueName : ''}
 						placeholder='No image selected'
-						onClick={() => setOpen(true)}
+						onClick={openPicker}
 						className='cursor-pointer border-white/10 bg-white/4 text-sm'
 					/>
 					<div className='mt-1 flex items-center gap-3'>
 						<button
 							type='button'
-							onClick={() => setOpen(true)}
+							onClick={openPicker}
 							className='text-xs text-brand transition-colors hover:text-brand-strong'>
 							Media library
 						</button>
@@ -193,10 +204,22 @@ export function MediaPicker({
 					<DialogHeader className='shrink-0 border-b border-white/10 px-6 py-5'>
 						<DialogTitle>Media library</DialogTitle>
 						<DialogDescription>
-							Images you have uploaded. Nothing else is available to the
-							builder.
+							{remote
+								? "Images in your account's media library, or uploaded to this site."
+								: 'Images you have uploaded. Nothing else is available to the builder.'}
 						</DialogDescription>
-						<div className='mt-3 flex items-center gap-2'>
+						{remote && (
+							<Tabs
+								value={source}
+								onValueChange={(next) => setSource(next === 'library' ? 'library' : 'site')}
+								className='mt-3'>
+								<TabsList>
+									<TabsTrigger value='library'>Media library</TabsTrigger>
+									<TabsTrigger value='site'>This site&apos;s uploads</TabsTrigger>
+								</TabsList>
+							</Tabs>
+						)}
+						<div className={cn('mt-3 flex items-center gap-2', source === 'library' && 'hidden')}>
 							<Input
 								autoFocus
 								value={query}
@@ -225,7 +248,18 @@ export function MediaPicker({
 					</DialogHeader>
 
 					<div className='min-h-0 flex-1 overflow-y-auto'>
-						<div className='px-6 py-5'>
+						<div className={cn('px-6 py-5', source === 'site' && 'hidden')}>
+							{source === 'library' && (
+								<LibraryBrowser
+									value={value}
+									onPick={(image) => {
+										onChange(image.url)
+										setOpen(false)
+									}}
+								/>
+							)}
+						</div>
+						<div className={cn('px-6 py-5', source === 'library' && 'hidden')}>
 							{remote ? (
 								<div className='mb-5 rounded-lg border border-white/10 bg-white/3 px-4 py-3'>
 									<p className='text-xs leading-5 text-slate-400'>

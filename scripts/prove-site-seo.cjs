@@ -46,6 +46,23 @@ check('junk is repaired field by field, never rejected', () => {
 	assert.deepEqual(repaired.business.profiles, [])
 })
 
+check('logo size and plate: medium and none by default, junk repaired, the rest kept', () => {
+	const fresh = P.readSiteProfile({ brand: { logo: 'https://cdn.example/logo.png' } })
+	assert.equal(fresh.brand.logoSize, 'md')
+	assert.equal(fresh.brand.logoBackdrop, 'none')
+	const junk = P.readSiteProfile({ brand: { logo: 'https://cdn.example/logo.png', logoSize: 'huge', logoBackdrop: 7 } })
+	assert.equal(junk.brand.logo, 'https://cdn.example/logo.png')
+	assert.equal(junk.brand.logoSize, 'md')
+	assert.equal(junk.brand.logoBackdrop, 'none')
+	const set = P.readSiteProfile({ brand: { logoSize: 'xl', logoBackdrop: 'light' } })
+	assert.deepEqual([set.brand.logoSize, set.brand.logoBackdrop], ['xl', 'light'])
+	const brand = P.brandFromProfile(set, 'Acme')
+	assert.deepEqual([brand.logoSize, brand.logoBackdrop], ['xl', 'light'])
+	assert.deepEqual(P.readSiteProfile({ brand: 'nope' }).brand, P.siteProfileDefaults().brand)
+	for (const size of P.LOGO_SIZES) assert.ok(P.LOGO_HEIGHTS.header[size] > 0 && P.LOGO_HEIGHTS.pill[size] > 0 && P.LOGO_HEIGHTS.footer[size] > 0)
+	assert.ok(P.LOGO_HEIGHTS.header.md > 36, 'medium is bigger than the old 36px logo')
+})
+
 check('profileImages lists exactly the image fields that are set', () => {
 	const profile = P.siteProfileDefaults()
 	profile.brand.logo = 'https://cdn.example/logo.png'
@@ -83,6 +100,11 @@ check('favicon: the upload, or a letter tile, never the app’s own icon', () =>
 	profile.brand.favicon = 'https://cdn.example/icon.png'
 	assert.equal(S.siteMetadata(input(profile)).icons.icon, 'https://cdn.example/icon.png')
 	assert.equal(S.siteMetadata(input(profile)).icons.apple, 'https://cdn.example/icon.png')
+	// The previews use the same icons as the live site.
+	assert.deepEqual(S.siteIcons({ profile, siteName: 'Acme Project' }), S.siteMetadata(input(profile)).icons)
+	profile.brand.favicon = null
+	profile.business.name = 'Zenith Roofing'
+	assert.match(decodeURIComponent(S.siteIcons({ profile, siteName: 'Acme Project' }).icon), />Z<\/text>/)
 })
 
 check('share image: the share image, else the logo; large card only with a share image', () => {

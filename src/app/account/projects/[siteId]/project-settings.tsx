@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input'
 import { StatusPill } from '../projects-table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { SiteProfile } from '@/lib/builder/site-profile'
-import { ProjectProfile } from './project-profile'
+import { ProjectProfile, type ProjectLibrary } from './project-profile'
 import { PublishDialog, type DnsRecord } from './publish-dialog'
 import type { ProjectImage } from './site-image-field'
 
@@ -60,6 +60,7 @@ export function ProjectSettings({
 	can,
 	profile,
 	images,
+	library,
 }: {
 	project: Project
 	appHost: string
@@ -67,6 +68,7 @@ export function ProjectSettings({
 	can: { edit: boolean; publish: boolean; delete: boolean }
 	profile: SiteProfile
 	images: ProjectImage[]
+	library: ProjectLibrary
 }) {
 	const router = useRouter()
 	const [name, setName] = useState(project.name)
@@ -331,6 +333,7 @@ export function ProjectSettings({
 					address={new URL(liveUrl).host}
 					initial={profile}
 					initialImages={images}
+					library={library}
 					canEdit={can.edit}
 				/>
 			</Tabs>

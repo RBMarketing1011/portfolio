@@ -1,22 +1,26 @@
 import 'server-only'
-import type { Db, Filter, ObjectId } from 'mongodb'
+import { ObjectId, type Db, type Filter } from 'mongodb'
 import { assetsOf } from '@/lib/media/collections'
 import { assertBlobUrl } from '@/lib/media/storage'
 import type { MediaAssetDoc } from '@/lib/media/types'
 import type { MediaEntry, SiteDoc } from '../site-doc'
+import { readSiteProfile } from '../site-profile'
 import { AI_LIMITS } from './contract'
-import type { NormalizedRequest, PhotoCandidate } from './types'
+import type { BrandLogo, NormalizedRequest, PhotoCandidate } from './types'
 
 /**
  * The photos a build may place (section 6.9): the ones the person picked in the dialog
- * (uploads and project photos left selected) first, newest first, then, only when they
- * turned the library on, the account library's own photos, illustrations and graphics,
- * newest first. At most 60, with refs `img1…` in that order.
+ * first — the project photos left selected, newest first, then the images of the site's
+ * content folder left selected, in the order the dialog listed them — then, only when
+ * they turned the library on, the account library's own photos, illustrations and
+ * graphics, newest first. At most 60, with refs `img1…` in that order.
  *
  * The library is opt-in and never offers screenshots, logos, icons, patterns, diagrams
  * or "other": one workspace library can hold several businesses' images (an agency
  * builds all its clients' sites in one account), and a built site must never show
- * another company's pictures. A deselected project photo is never used.
+ * another company's pictures. A deselected project photo is never used. A picked
+ * library image must be this account's and never a logo, an icon or a pattern, and the
+ * site's own logo and favicon are never offered as photos, wherever they live.
  *
  * Only a URL that passes `assertBlobUrl`, or a `data:image/(png|jpeg|webp|gif);base64,`
  * URL of at most 3.75 MB decoded, is ever offered; anything else is skipped and never
@@ -99,6 +103,60 @@ const kindOf = (kind: MediaAssetDoc['kind'] | undefined): PhotoCandidate['kind']
 			? 'graphic'
 			: 'unknown'
 
+/** Kinds a picked library image is never placed as, whatever the person left selected. */
+const NEVER_PICKED: ReadonlySet<string> = new Set(['logo', 'icon', 'pattern'])
+
+/** A picked library image's kind: a diagram reads as a graphic, anything unclassified as unknown. */
+const pickedKindOf = (kind: MediaAssetDoc['kind'] | undefined): PhotoCandidate['kind'] =>
+	kind === 'diagram' ? 'graphic' : kindOf(kind)
+
+const ASSET_PROJECTION = {
+	url: 1,
+	kind: 1,
+	contentType: 1,
+	bytes: 1,
+	width: 1,
+	height: 1,
+	orientation: 1,
+	brightness: 1,
+	caption: 1,
+	altText: 1,
+	tags: 1,
+	colorNames: 1,
+} as const
+
+type AssetFields = Pick<
+	MediaAssetDoc,
+	| '_id' | 'url' | 'kind' | 'contentType' | 'bytes' | 'width' | 'height' | 'orientation' | 'brightness' | 'caption' | 'altText'
+	| 'tags' | 'colorNames'
+>
+
+/** What the digest knows about a library asset, whichever way it joined the pool. */
+function described(asset: AssetFields) {
+	// Filename-derived tags are photographer names and id fragments, not content.
+	const labels = (asset.tags ?? [])
+		.filter((tag) => tag && tag.via !== 'filename')
+		.map((tag) => clip(tag.label, 40))
+		.filter(Boolean)
+	const width = side(asset.width)
+	const height = side(asset.height)
+	return {
+		width,
+		height,
+		orientation: orientationOf(width, height, asset.orientation),
+		light: asset.brightness === 'dark' || asset.brightness === 'mid' || asset.brightness === 'light' ? asset.brightness : ('unknown' as const),
+		caption: clip(asset.caption || asset.altText, CAPTION_MAX),
+		tags: [...new Set(labels)].slice(0, TAGS_MAX),
+		colors: (asset.colorNames ?? []).filter((name) => typeof name === 'string' && name).slice(0, COLORS_MAX),
+	}
+}
+
+/** The site's own brand marks: never offered as photos. */
+function brandUrls(site: SiteDoc): string[] {
+	const brand = readSiteProfile(site.profile).brand
+	return [brand.logo, brand.favicon].filter((url): url is string => Boolean(url))
+}
+
 /** The library's usable images for this workspace: analysed, and a photo, illustration or graphic, or not yet classified. */
 export function libraryFilter(workspaceId: ObjectId): Filter<MediaAssetDoc> {
 	return {
@@ -135,11 +193,32 @@ function pickedEntries(site: SiteDoc, request: NormalizedRequest): MediaEntry[] 
 		.map((item) => item.entry)
 }
 
+/** The picked library image ids, as ObjectIds, in the order the dialog listed them. */
+function pickedLibraryIds(request: NormalizedRequest): ObjectId[] {
+	const seen = new Set<string>()
+	const ids: ObjectId[] = []
+	for (const id of Array.isArray(request.libraryIds) ? request.libraryIds : []) {
+		if (typeof id !== 'string' || !/^[a-f0-9]{24}$/i.test(id)) continue
+		const key = id.toLowerCase()
+		if (seen.has(key)) continue
+		seen.add(key)
+		ids.push(new ObjectId(key))
+		if (ids.length >= AI_LIMITS.libraryPicksMax) break
+	}
+	return ids
+}
+
 export async function loadPhotoPool(db: Db, site: SiteDoc, request: NormalizedRequest): Promise<PhotoCandidate[]> {
 	const pool: PhotoCandidate[] = []
-	const urls = new Set<string>()
+	// The logo and favicon count as offered already, so neither ever becomes a photo.
+	const urls = new Set<string>(brandUrls(site))
 	let visions = 0
 	const ref = () => `img${pool.length + 1}`
+	const seen = (contentType: string, bytes: number, width: number | null, height: number | null) => {
+		const vision = visions < AI_LIMITS.visionPhotosMax && visionReady(contentType, bytes, width, height)
+		if (vision) visions++
+		return vision
+	}
 
 	for (const entry of pickedEntries(site, request)) {
 		const url = readable(entry.url)
@@ -150,8 +229,7 @@ export async function loadPhotoPool(db: Db, site: SiteDoc, request: NormalizedRe
 		const height = side(stored.height)
 		const contentType = url.kind === 'data' ? url.contentType : String(entry.contentType ?? '')
 		const bytes = url.kind === 'data' ? url.bytes : typeof entry.bytes === 'number' ? entry.bytes : 0
-		const vision = visions < AI_LIMITS.visionPhotosMax && visionReady(contentType, bytes, width, height)
-		if (vision) visions++
+		const vision = seen(contentType, bytes, width, height)
 		urls.add(entry.url)
 		pool.push({
 			ref: ref(),
@@ -170,23 +248,39 @@ export async function loadPhotoPool(db: Db, site: SiteDoc, request: NormalizedRe
 		})
 	}
 
+	// The content folder's images the person left selected: theirs, so placed like an upload.
+	const libraryIds = pickedLibraryIds(request)
+	if (libraryIds.length && pool.length < AI_LIMITS.digestMax) {
+		const found = await assetsOf(db)
+			.find(
+				{ workspaceId: site.workspaceId, _id: { $in: libraryIds }, width: { $gt: 0 }, height: { $gt: 0 } },
+				{ projection: ASSET_PROJECTION },
+			)
+			.toArray()
+		const byId = new Map(found.map((asset) => [asset._id.toString(), asset]))
+		for (const id of libraryIds) {
+			if (pool.length >= AI_LIMITS.digestMax) break
+			const asset = byId.get(id.toString())
+			if (!asset || NEVER_PICKED.has(asset.kind ?? '')) continue
+			if (readable(asset.url)?.kind !== 'blob' || urls.has(asset.url)) continue
+			urls.add(asset.url)
+			const about = described(asset)
+			pool.push({
+				ref: ref(),
+				source: 'upload',
+				value: asset.url,
+				url: asset.url,
+				kind: pickedKindOf(asset.kind),
+				...about,
+				vision: seen(String(asset.contentType ?? ''), typeof asset.bytes === 'number' ? asset.bytes : 0, about.width, about.height),
+			})
+		}
+	}
+
 	if (!request.useLibrary || pool.length >= AI_LIMITS.digestMax) return pool
 
 	const assets = await assetsOf(db)
-		.find(libraryFilter(site.workspaceId), {
-			projection: {
-				url: 1,
-				kind: 1,
-				width: 1,
-				height: 1,
-				orientation: 1,
-				brightness: 1,
-				caption: 1,
-				altText: 1,
-				tags: 1,
-				colorNames: 1,
-			},
-		})
+		.find(libraryFilter(site.workspaceId), { projection: ASSET_PROJECTION })
 		.sort({ createdAt: -1, _id: -1 })
 		.limit(AI_LIMITS.digestMax + pool.length)
 		.toArray()
@@ -196,28 +290,49 @@ export async function loadPhotoPool(db: Db, site: SiteDoc, request: NormalizedRe
 		// The library is Blob storage only; an inline or foreign URL is never offered.
 		if (readable(asset.url)?.kind !== 'blob' || urls.has(asset.url)) continue
 		urls.add(asset.url)
-		const width = side(asset.width)
-		const height = side(asset.height)
-		// Filename-derived tags are photographer names and id fragments, not content.
-		const labels = (asset.tags ?? [])
-			.filter((tag) => tag && tag.via !== 'filename')
-			.map((tag) => clip(tag.label, 40))
-			.filter(Boolean)
 		pool.push({
 			ref: ref(),
 			source: 'library',
 			value: asset.url,
 			url: asset.url,
 			kind: kindOf(asset.kind),
-			width,
-			height,
-			orientation: orientationOf(width, height, asset.orientation),
-			light: asset.brightness === 'dark' || asset.brightness === 'mid' || asset.brightness === 'light' ? asset.brightness : 'unknown',
-			caption: clip(asset.caption || asset.altText, CAPTION_MAX),
-			tags: [...new Set(labels)].slice(0, TAGS_MAX),
-			colors: (asset.colorNames ?? []).filter((name) => typeof name === 'string' && name).slice(0, COLORS_MAX),
+			...described(asset),
 			vision: false,
 		})
 	}
 	return pool
+}
+
+/**
+ * The logo the site carries, if it is a URL the model may be given (a project upload or
+ * an image in the account library, both Blob storage, or a small inline image), so the
+ * planner can choose colours that suit it.
+ */
+export async function loadBrandLogo(db: Db, site: SiteDoc): Promise<BrandLogo | null> {
+	const url = readSiteProfile(site.profile).brand.logo
+	const kind = url ? readable(url) : null
+	if (!url || !kind) return null
+	const entry = (site.media ?? []).find((item) => item.url === url) as (MediaEntry & { width?: unknown; height?: unknown }) | undefined
+	let contentType = kind.kind === 'data' ? kind.contentType : String(entry?.contentType ?? '')
+	let bytes = kind.kind === 'data' ? kind.bytes : typeof entry?.bytes === 'number' ? entry.bytes : 0
+	let width = side(entry?.width)
+	let height = side(entry?.height)
+	let colors: string[] = []
+	if (kind.kind === 'blob') {
+		const asset = await assetsOf(db).findOne(
+			{ workspaceId: site.workspaceId, url },
+			{ projection: { contentType: 1, bytes: 1, width: 1, height: 1, colors: 1 } },
+		)
+		if (asset) {
+			contentType = String(asset.contentType ?? contentType)
+			bytes = typeof asset.bytes === 'number' ? asset.bytes : bytes
+			width = side(asset.width) ?? width
+			height = side(asset.height) ?? height
+			colors = (asset.colors ?? [])
+				.map((color) => (typeof color?.hex === 'string' ? color.hex.toLowerCase() : ''))
+				.filter((hex) => /^#[0-9a-f]{6}$/.test(hex))
+				.slice(0, 4)
+		}
+	}
+	return { url, vision: visionReady(contentType, bytes, width, height), colors }
 }

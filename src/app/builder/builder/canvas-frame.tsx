@@ -195,7 +195,7 @@ export function CanvasFrame({
 	// without key collisions, so the whole look comes by message, through the same
 	// stylesheet the hosted site uses, with the variables a built site sets for its header.
 	const surfaceCss = [
-		cssText(builtSiteVars(chrome.header)),
+		cssText(builtSiteVars(chrome.header, store.brand)),
 		lookCss(store.look, { blockIds: blocks.map((block) => block.id) }),
 	].join('\n')
 

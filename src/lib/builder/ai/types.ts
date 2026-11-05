@@ -18,12 +18,12 @@ import type {
 export type NormalizedRequest = {
 	mode: BuildMode; placement: Placement; targetPageId: string | null
 	prompt: string; pins: BuildPins; business: BusinessInput; reviews: OwnerReview[]
-	photoIds: string[]; useLibrary: boolean; fast: boolean
+	photoIds: string[]; libraryIds: string[]; useLibrary: boolean; fast: boolean
 }
 
 export type PhotoCandidate = {
 	ref: string // 'img1'…, stable within the build
-	source: 'upload' | 'project' | 'library' // upload = picked in the dialog for this build
+	source: 'upload' | 'project' | 'library' // upload = picked in the dialog for this build (an upload, or the content folder's)
 	value: string // what a block stores: 'media:<id>' (project media) or the Blob URL (library)
 	url: string // what the model may fetch: a Blob URL, or a data: URL (fixtures); never sent to the client
 	kind: 'photo' | 'illustration' | 'graphic' | 'screenshot' | 'unknown'
@@ -44,6 +44,13 @@ export type PhotoNote = {
 }
 
 export type AssignedImage = { path: string; ref: string; value: string; shows: string }
+
+/** The site's logo as the planner may see it, so the colours can suit it. */
+export type BrandLogo = {
+	url: string // a Blob URL, or a data: URL (fixtures); never sent to the client
+	vision: boolean // the API can read it, so it is shown to the planner as an image
+	colors: string[] // its dominant colours, '#rrggbb', largest share first (library logos only)
+}
 
 export type ImagePlan = {
 	pool: PhotoCandidate[]

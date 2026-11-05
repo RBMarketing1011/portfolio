@@ -923,6 +923,41 @@ await check('compose sections open: business details, photos, reviews and design
 	assert(!text(pageMode).includes('Corner shape'), 'one page keeps the design')
 })
 
+await check('compose, photos and logo: the content folder, its photos, the logo found there, and waiting for it', async () => {
+	const GIF = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='
+	const blob = (name) => `https://x.public.blob.vercel-storage.com/${name}.jpg`
+	const folders = [
+		{ id: 'f1', parentId: null, name: 'Clients', path: 'Clients', depth: 0, count: 0, total: 3 },
+		{ id: 'f2', parentId: 'f1', name: 'Summit Roofing', path: 'Clients/Summit Roofing', depth: 1, count: 3, total: 3 },
+	]
+	const photo = (id, name) => ({ id, name, url: blob(id), width: 2000, height: 1300, kind: 'photo', hasAlpha: false, blur: null, caption: '', folderPath: 'Clients/Summit Roofing' })
+	const library = { folders, folderId: 'f2', photos: [photo('a1', 'Crew on a roof'), photo('a2', 'Finished house')], error: null, onFolder() {} }
+	const brand = { logo: GIF, logoFrom: 'folder', favicon: null, faviconFrom: null, onPick() {}, onClear() {} }
+	const primaryDisabled = (markup) => {
+		const button = /<button([^>]*)>(?:(?!<\/button>)[^])*?Build my site/.exec(markup)
+		return Boolean(button && button[1].includes('disabled=""'))
+	}
+
+	const out = html(h(AiBuildCompose, composeProps({ initialSection: 'photos', library, brand, draft: brief({ photoIds: [], libraryIds: ['a1'] }) })))
+	contains(out, 'Photos and logo', '1 from Summit Roofing · logo', 'Content folder', 'Clients/Summit Roofing', '1 of 2 selected', 'Select all')
+	contains(out, 'Logo', 'Found in the content folder.', 'Favicon', 'None: the site shows its initial.', 'Uploaded to this site')
+	assert(out.includes('aria-label="Crew on a roof"') && out.includes('aria-label="Finished house"'), 'the folder photos as toggles')
+	assert(out.includes(`/_next/image?url=${encodeURIComponent(blob('a1'))}`), 'thumbnails, never the originals')
+	assert(!text(out).includes("Also use photos from my account's media library"), 'a folder replaces the whole library')
+	assert(!primaryDisabled(out), 'ready to build')
+
+	const loading = html(h(AiBuildCompose, composeProps({ initialSection: 'photos', library: { ...library, photos: null }, brand, waiting: true, draft: brief() })))
+	assert(primaryDisabled(loading), 'the build waits for the folder')
+
+	const none = html(h(AiBuildCompose, composeProps({ initialSection: 'photos', library: { ...library, folderId: null }, brand: { ...brand, logo: null, logoFrom: null }, media: [], draft: brief() })))
+	contains(none, 'No photos. The site will be typographic.', 'None: the header shows the business name.')
+	assert(!text(none).includes('Clients/Summit Roofing'), 'no folder, no folder photos')
+	assert(text(none).includes("Also use photos from my account's media library"))
+
+	const site = html(h(AiBuildCompose, composeProps({ initialSection: 'photos', library: { ...library, folderId: null }, brand: { ...brand, logoFrom: 'site' }, draft: brief({ photoIds: ['md_1'] }) })))
+	contains(site, '1 chosen · logo', 'The one your site uses now.')
+})
+
 await check('compose after a failed plan, a conflict, a field problem and an empty allowance', async () => {
 	const failedPlan = html(h(AiBuildCompose, composeProps({ draft: brief(), error: { code: 'upstream', status: 502, retryable: true, message: 'x' }, refunded: true })))
 	contains(failedPlan, "The AI's answer for this plan could not be used. Nothing extra was charged. Nothing was charged.", 'Try again')
@@ -1063,6 +1098,8 @@ await check('the dialog files contain no raw <button>, <input>, <select> or <tex
 		'src/app/builder/builder/ai-build-progress.tsx',
 		'src/app/builder/builder/ai-build-review.tsx',
 		'src/app/builder/builder/ai-build-runner.ts',
+		'src/app/builder/builder/library-browser.tsx',
+		'src/app/builder/builder/library-image-picker.tsx',
 	]
 	for (const file of files) {
 		const source = await readFile(new URL(`../${file}`, import.meta.url), 'utf8')

@@ -29,7 +29,7 @@ export const AI_LIMITS = {
 	pagesMax: 12, pagesDefault: 8, outlinePagesMax: 6, sectionsMin: 2, sectionsMax: 10,
 	pageNameMax: 60, slugMax: 60,
 	reviewsMax: 12, reviewQuoteMin: 20, reviewQuoteMax: 600, reviewNameMax: 80, reviewRoleMax: 80, reviewSourceMax: 40,
-	photosMax: 24, visionPhotosMax: 12, digestMax: 60, dataUrlMaxBytes: 3_750_000,
+	photosMax: 24, libraryPicksMax: 60, visionPhotosMax: 12, digestMax: 60, dataUrlMaxBytes: 3_750_000,
 	ctaLabelMax: 40,
 	attemptsPerPage: 3, outlineAttempts: 2, pagesWritingPerBuild: 4, activeBuildsPerWorkspace: 2,
 	buildTtlMs: 86_400_000, staleActiveMs: 360_000,
@@ -115,6 +115,8 @@ export type CreateBuildRequest = {
 	business: BusinessInput
 	reviews: OwnerReview[] // ≤ 12
 	photoIds: string[] // ≤ 24 site.media ids picked for this build (uploads land in site.media first)
+	/** ≤ 60 account media library image ids picked for this build: the site's content folder. Optional on the wire. */
+	libraryIds: string[]
 	useLibrary: boolean // also consider the account media library
 	fast: boolean // set only by the client's automatic retry after a plan timeout
 }

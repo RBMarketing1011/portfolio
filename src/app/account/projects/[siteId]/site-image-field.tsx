@@ -12,6 +12,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from '@/components/ui/popover'
+import { thumbSrc } from '@/lib/builder/library'
 import { cn } from '@/lib/utils'
 
 export type ProjectImage = { id: string; name: string; url: string }
@@ -21,9 +22,10 @@ const ACCEPT = ['image/png', 'image/jpeg', 'image/webp', 'image/avif']
 const MAX_BYTES = 12 * 1024 * 1024
 
 /**
- * One image setting: upload a new file to the project, or reuse one it already has.
- * Uploads go browser to Blob storage, then are registered on the project, exactly as
- * the builder's own uploads are, so they show up in its image library too.
+ * One image setting: upload a new file to the project, or reuse one it already has or
+ * one from its content folder in the media library. Uploads go browser to Blob storage,
+ * then are registered on the project, exactly as the builder's own uploads are, so they
+ * show up in its image library too.
  */
 export function SiteImageField({
 	siteId,
@@ -32,6 +34,7 @@ export function SiteImageField({
 	hint,
 	value,
 	images,
+	library,
 	disabled,
 	preview = 'wide',
 	onChange,
@@ -43,6 +46,8 @@ export function SiteImageField({
 	hint: string
 	value: string | null
 	images: ProjectImage[]
+	/** The site's content folder in the media library, offered first. */
+	library?: { path: string; images: ProjectImage[] }
 	disabled?: boolean
 	/** How the current image is framed: a wide strip, a square tile, or a 1.91:1 card. */
 	preview?: 'wide' | 'square' | 'card'
@@ -103,8 +108,8 @@ export function SiteImageField({
 						preview === 'card' && 'aspect-[1.91/1] w-56',
 					)}>
 					{value ? (
-						// eslint-disable-next-line @next/next/no-img-element -- the project's own upload
-						<img src={value} alt='' className='size-full object-contain' />
+						// eslint-disable-next-line @next/next/no-img-element -- the project's own image
+						<img src={thumbSrc(value, 384)} alt='' className='size-full object-contain' />
 					) : (
 						<ImageIcon className='size-5 text-muted-foreground' />
 					)}
@@ -131,7 +136,7 @@ export function SiteImageField({
 							Upload
 						</Button>
 
-						{images.length > 0 && (
+						{(images.length > 0 || (library?.images.length ?? 0) > 0) && (
 							<Popover open={open} onOpenChange={setOpen}>
 								<PopoverTrigger asChild>
 									<Button
@@ -142,33 +147,42 @@ export function SiteImageField({
 										<ImageIcon /> Choose existing
 									</Button>
 								</PopoverTrigger>
-								<PopoverContent align='start' className='w-80 p-2'>
-									<p className='px-1 pb-2 text-xs text-muted-foreground'>
-										Images already in this project
-									</p>
-									<ToggleGroup
-										type='single'
-										variant='outline'
-										spacing={2}
-										aria-label='Images already in this project'
-										value={value ?? ''}
-										onValueChange={(url) => {
-											if (!url) return
-											onChange(url)
-											setOpen(false)
-										}}
-										className='grid max-h-64 w-full grid-cols-4 overflow-y-auto'>
-										{images.map((image) => (
-											<ToggleGroupItem
-												key={image.id}
-												value={image.url}
-												aria-label={`Use ${image.name}`}
-												className='aspect-square h-auto w-full overflow-hidden p-0 data-[state=on]:border-primary'>
-												{/* eslint-disable-next-line @next/next/no-img-element */}
-												<img src={image.url} alt='' className='size-full object-cover' />
-											</ToggleGroupItem>
-										))}
-									</ToggleGroup>
+								<PopoverContent align='start' className='max-h-96 w-80 overflow-y-auto p-2'>
+									{[
+										...(library && library.images.length > 0
+											? [{ key: 'library', title: `From ${library.path}`, list: library.images }]
+											: []),
+										...(images.length > 0
+											? [{ key: 'project', title: 'Images already in this project', list: images }]
+											: []),
+									].map((group) => (
+										<div key={group.key} className='pb-2'>
+											<p className='px-1 pb-2 text-xs text-muted-foreground'>{group.title}</p>
+											<ToggleGroup
+												type='single'
+												variant='outline'
+												spacing={2}
+												aria-label={group.title}
+												value={group.list.some((image) => image.url === value) ? (value ?? '') : ''}
+												onValueChange={(url) => {
+													if (!url) return
+													onChange(url)
+													setOpen(false)
+												}}
+												className='grid w-full grid-cols-4'>
+												{group.list.map((image) => (
+													<ToggleGroupItem
+														key={image.id}
+														value={image.url}
+														aria-label={`Use ${image.name}`}
+														className='aspect-square h-auto w-full overflow-hidden p-0 data-[state=on]:border-primary'>
+														{/* eslint-disable-next-line @next/next/no-img-element */}
+														<img src={thumbSrc(image.url, 128)} alt='' loading='lazy' className='size-full object-contain' />
+													</ToggleGroupItem>
+												))}
+											</ToggleGroup>
+										</div>
+									))}
 								</PopoverContent>
 							</Popover>
 						)}
